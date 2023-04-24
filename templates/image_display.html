@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+
+<head>
+  <title>Lazy Loading Images</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+
+<body>
+  <h1>My Images</h1>
+
+  <div class="image-container">
+    {% for image in images %}
+    <img src="{{url_for('resized_image', filename=image)}}" loading="lazy" width="200" height="200">
+    {% endfor %}
+  </div>
+</body>
+
+</html>
