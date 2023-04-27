@@ -1,32 +1,51 @@
-from flask import Flask, render_template, Response
-from PIL import Image
 import os
-from io import BytesIO
 from functools import cache
+from io import BytesIO
+
+from flask import Flask, Response, render_template, request, redirect
+from PIL import Image
+from werkzeug.utils import secure_filename
 
 # TODO: How to handle multiple requests in parallel using async/await?
 app = Flask(__name__)
+images_folder = os.path.join(app.static_folder, "images") # type: ignore
 
 # TODO: How could we implement caching for clients, sending a 304 if the client already requested an image? This already heppens for /static/images
 @app.route("/resized/<filename>")
 @cache
-def resized_image(filename, width=300):
+def resized_image(filename: str, width=300):
     # Serve a resized image from the cache
-    images_folder = os.path.join(app.static_folder, "images")
     filepath = os.path.join(images_folder, filename)
+    
+    extension = filename.split('.')[-1]
+    if extension == 'jpg':
+        extension = 'jpeg'
 
     buffer = BytesIO()
     with Image.open(filepath) as img:
         img.thumbnail((width, width))
-        img.save(buffer, "JPEG")
+        img.save(buffer, extension)
 
-    return Response(buffer.getvalue(), mimetype='image/jpeg')
+    return Response(buffer.getvalue(), mimetype=f"image/{extension}")
+
+
+@app.route("/upload", methods=["POST"])
+def upload():
+    files = request.files.getlist('upload')
+    for file in files:
+        print(file)
+
+        # TODO: Add image alphabetially earlier than all other images to it appears at the top
+        save_filename = secure_filename(str(file.filename))
+        file.save(os.path.join(images_folder, save_filename))
+    
+    return redirect("/")
+    # return Response(status=200)
 
 
 @app.route("/")
 def image_display():
     # Get the list of images in the 'static/images' folder
-    images_folder = os.path.join(app.static_folder, "images")
     images = os.listdir(images_folder)
 
     # Render the 'image_display.html' template and pass in the list of images
