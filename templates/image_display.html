@@ -55,7 +55,7 @@
     {% endfor %}
     <div class="modal fade" id="imageModal" tabindex="-1" role="dialog" aria-labelledby="imageModalLabel"
       aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-dialog modal-dialog-centered modal-xl" role="document">
         <div class="modal-content">
           <div class="modal-body">
             <img src="" class="img-fluid" id="fullImage">
@@ -66,15 +66,43 @@
   </div>
 
   <script>
-    $(document).ready(function () {
-      $('.img-thumbnail').click(function () {
-        $('#fullImage').attr('src', $(this).attr('src').replace('resized', 'static/images'));
-        $('#imageModal').modal('show');
+    $(document).ready(() => {
+      const LEFT_ARROW = 37;
+      const RIGHT_ARROW = 39;
+
+      const imageUrls = {{ images | tojson }};
+
+      const thumbnails = $('.image-container img');
+      const modal = $("#imageModal");
+      const fullImage = $("#fullImage");
+
+      // Index of image last displayed in modal
+      let index = -1;
+
+      function updateModal(index) {
+        const imageUrl = imageUrls[index];
+        fullImage.attr('src', 'static/images/' + imageUrl);
+        modal.modal('show');
+      }
+
+      thumbnails.on('click', function (e) {
+        index = $(this).index();
+        updateModal(index);
       });
 
-      $('#imageModal').on('hidden.bs.modal', function () {
-        $('#fullImage').attr('src', '');
-      });
+      modal.on('keydown', function (e) {
+        if (!modal.is(':visible')) return;
+
+        if (e.keyCode === LEFT_ARROW) {
+          if (index === 0) return;
+          index--;
+        } else if (e.keyCode === RIGHT_ARROW) {
+          if (index === imageUrls.length - 1) return;
+          index++;
+        }
+
+        updateModal(index);
+      }); 
     });
   </script>
 
