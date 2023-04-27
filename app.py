@@ -7,8 +7,6 @@ from functools import cache
 # TODO: How to handle multiple requests in parallel using async/await?
 app = Flask(__name__)
 
-# Define a cache to store the resized images
-
 # TODO: How could we implement caching for clients, sending a 304 if the client already requested an image? This already heppens for /static/images
 @app.route("/resized/<filename>")
 @cache
