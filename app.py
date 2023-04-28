@@ -13,7 +13,7 @@ images_folder = os.path.join(app.static_folder, "images") # type: ignore
 # TODO: How could we implement caching for clients, sending a 304 if the client already requested an image? This already heppens for /static/images
 @app.route("/resized/<filename>")
 @cache
-def resized_image(filename: str, width=300):
+def resized_image(filename: str):
     # Serve a resized image from the cache
     filepath = os.path.join(images_folder, filename)
     
@@ -23,7 +23,7 @@ def resized_image(filename: str, width=300):
 
     buffer = BytesIO()
     with Image.open(filepath) as img:
-        img.thumbnail((width, width))
+        img.thumbnail((370, 280))
         img.save(buffer, extension)
 
     return Response(buffer.getvalue(), mimetype=f"image/{extension}")
