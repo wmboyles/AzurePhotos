@@ -34,6 +34,10 @@
       max-height: 95vh;
     }
 
+    .modal-footer {
+      border: none;
+    }
+
     .img-thumbnail {
       border: none;
     }
@@ -60,15 +64,18 @@
   <h2>My Photos</h2>
   <div class="image-container">
     {% for image in images %}
-    <img src="{{url_for('resized_image', filename=image)}}" loading="lazy" width="300" height="300"
+    <img src="{{url_for('resized_image', filename=image)}}" loading="lazy" width="370" height="280"
       class="img-thumbnail" data-toggle="modal" data-target="#imageModal">
     {% endfor %}
     <div class="modal fade" id="imageModal" tabindex="-1" role="dialog" aria-labelledby="imageModalLabel"
       aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered modal-xl" role="document">
+      <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content">
           <div class="modal-body">
             <img src="" class="img-fluid" id="fullImage">
+          </div>
+          <div class="modal-footer mt-1">
+            <button type="button" class="btn btn-danger" id="deleteBtn">Delete</button>
           </div>
         </div>
       </div>
@@ -80,9 +87,9 @@
       const LEFT_ARROW = 37;
       const RIGHT_ARROW = 39;
 
-      const imageUrls = {{ images | tojson }};
-
-      const thumbnails = $('.image-container img');
+      let imageUrls = {{ images | tojson}};
+      let thumbnails = $('.image-container img');
+      
       const modal = $("#imageModal");
       const fullImage = $("#fullImage");
 
@@ -112,7 +119,24 @@
         }
 
         updateModal(index);
-      }); 
+      });
+
+      $("#deleteBtn").click(function () {
+        if (!confirm("Are you sure you want to delete?")) return;
+
+        const imageUrl = imageUrls[index];
+        fetch(`/delete/${imageUrl}`, { method: 'DELETE' })
+          .then(response => {
+            modal.modal("hide")
+            thumbnails[index].remove()
+            imageUrls.splice(index, 1)
+            thumbnails.splice(index, 1)
+            index = -1
+          })
+          .catch(error => {
+            console.log(error);
+          });
+      });
     });
   </script>
 
