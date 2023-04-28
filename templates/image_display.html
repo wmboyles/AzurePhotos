@@ -75,7 +75,9 @@
             <img src="" class="img-fluid" id="fullImage">
           </div>
           <div class="modal-footer mt-1">
+            <button type="button" class="btn btn-secondary" id="prevBtn">&lt; Prev</button>
             <button type="button" class="btn btn-danger" id="deleteBtn">Delete</button>
+            <button type="button" class="btn btn-secondary" id="nextBtn">Next &gt;</button>
           </div>
         </div>
       </div>
@@ -86,10 +88,11 @@
     $(document).ready(() => {
       const LEFT_ARROW = 37;
       const RIGHT_ARROW = 39;
+      const DELETE = 127;
 
       let imageUrls = {{ images | tojson}};
       let thumbnails = $('.image-container img');
-      
+
       const modal = $("#imageModal");
       const fullImage = $("#fullImage");
 
@@ -107,21 +110,21 @@
         updateModal(index);
       });
 
-      modal.on('keydown', function (e) {
-        if (!modal.is(':visible')) return;
+      function prevImage() {
+        if (index === 0) return;
+        index--;
 
-        if (e.keyCode === LEFT_ARROW) {
-          if (index === 0) return;
-          index--;
-        } else if (e.keyCode === RIGHT_ARROW) {
-          if (index === imageUrls.length - 1) return;
-          index++;
-        }
+        updateModal(index)
+      }
+
+      function nextImage() {
+        if (index === imageUrls.length - 1) return;
+        index++;
 
         updateModal(index);
-      });
+      }
 
-      $("#deleteBtn").click(function () {
+      function deleteImage() {
         if (!confirm("Are you sure you want to delete?")) return;
 
         const imageUrl = imageUrls[index];
@@ -136,7 +139,27 @@
           .catch(error => {
             console.log(error);
           });
+      }
+
+      $("#prevBtn").click(prevImage);
+
+      $("#nextBtn").click(nextImage);
+
+      $("#deleteBtn").click(deleteImage);
+
+      modal.on('keydown', function (e) {
+        if (!modal.is(':visible')) return;
+
+        if (e.keyCode === LEFT_ARROW) {
+          prevImage();
+        } else if (e.keyCode === RIGHT_ARROW) {
+          nextImage();
+        } else if (e.keyCode === DELETE) {
+          deleteImage()
+        }
       });
+
+
     });
   </script>
 
