@@ -4,16 +4,13 @@ from io import BytesIO
 import azure.functions as func
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobClient
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 
 app = func.FunctionApp()
 
 # func azure functionapp publish wboyles-resizer
 
 
-# TODO: Handle not processing non-image files.
-# Could we somehow look at content-type?
-# Maybe just if file extension is in (Image.OPEN.keys() & Image.SAVE.keys()), with a try/catch if PIL throws an error when reading
 @app.function_name(name="Resizer")
 @app.blob_trigger(arg_name="myblob", path="photos", connection="PhotosConnection")
 def test_function(myblob: func.InputStream):
@@ -47,6 +44,9 @@ def test_function(myblob: func.InputStream):
             # TODO: Would it be better to use the blob output binding?
             des_client.upload_blob(buffer.getvalue())
             logging.info("Uploaded to desination container")
+    except UnidentifiedImageError:
+        logging.warning(f"Could not open {name} as an image. Exiting.")
+        return
     except Exception as e:
         logging.error(e)
         raise e

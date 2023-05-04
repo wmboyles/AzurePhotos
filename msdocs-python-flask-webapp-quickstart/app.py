@@ -1,43 +1,65 @@
-from flask import Flask, render_template, request
-from azure.identity import DefaultAzureCredential
-from azure.storage.blob import BlobServiceClient, BlobClient, generate_blob_sas, BlobSasPermissions
 from datetime import datetime, timedelta
+import asyncio
+
+from azure.identity.aio import DefaultAzureCredential
+from azure.storage.blob import ContainerSasPermissions, generate_container_sas
+from azure.storage.blob.aio import BlobServiceClient, ContainerClient
+from flask import Flask, redirect, render_template, request
 
 app = Flask(__name__)
 credential = DefaultAzureCredential()
 
+account_name = "wboylesbackups"
+account_url = f"https://{account_name}.blob.core.windows.net"
+container_name = "photos"
+container_sas = None
+container_client = ContainerClient(account_url, container_name, credential)
+bsc = BlobServiceClient(account_url, credential)
+image_names = []
+
+
+async def get_container_sas():
+    print("Getting container sas")
+
+    sas_start = datetime.utcnow() - timedelta(minutes=1)
+    sas_end = datetime.utcnow() + timedelta(minutes=10)
+
+    user_delegation_key = await bsc.get_user_delegation_key(
+        key_start_time=sas_start,
+        key_expiry_time=sas_end,
+    )
+
+    global container_sas
+    container_sas = generate_container_sas(
+        account_name=account_name,
+        container_name=container_name,
+        user_delegation_key=user_delegation_key,
+        permission=ContainerSasPermissions(read=True),
+        start=sas_start,
+        expiry=sas_end,
+    )
+
+
+async def get_image_names():
+    print("Getting image names")
+    global image_names
+    async for name in container_client.list_blob_names():
+        image_names.append(name)
+
+
+@app.route("/thumbnail/<filename>", methods=["GET"])
+async def thumbnail(filename: str):
+    blob_url = container_client.get_blob_client(filename).url
+    return redirect(f"{blob_url}?{container_sas}")
+
 
 @app.route("/")
-def index():
-    account_name = "wboylesbackups"
-    account_url = f"https://{account_name}.blob.core.windows.net"
-    container_name = "photos"
-    blob_name = "20220304_123030.jpg"
-
-    bsc = BlobServiceClient(account_url, credential)
-    start = datetime.utcnow() - timedelta(minutes=1)
-    end = datetime.utcnow() + timedelta(hours=1)
-    udk = bsc.get_user_delegation_key(
-        key_start_time=start,
-        key_expiry_time=end,
-    )
-    blob_sas = generate_blob_sas(
-        account_name, 
-        container_name, 
-        blob_name, 
-        user_delegation_key=udk,
-        permission=BlobSasPermissions(read=True),
-        start=start,
-        expiry=end,
-    )
-    blob_client = BlobClient(
-        account_url, container_name, blob_name, credential=credential
-    )
-    url = f"{blob_client.url}?{blob_sas}"
-
-    name = request.headers.get("X-MS-CLIENT-PRINCIPAL-NAME", "DEV")
-    return render_template("index.html", name=name, imgurl=url)
+async def index():
+    return render_template("index.html", images=image_names)
 
 
-if __name__ == "__main__":
+asyncio.run(get_container_sas())
+asyncio.run(get_image_names())
+
+if __name__ == '__main__':    
     app.run()
