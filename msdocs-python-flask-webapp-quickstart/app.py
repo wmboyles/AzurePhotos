@@ -12,15 +12,13 @@ credential = DefaultAzureCredential()
 
 account_name = "wboylesbackups"
 account_url = f"https://{account_name}.blob.core.windows.net"
-container_name = "thumbnails"
+thumbnails_container_name = "thumbnails"
+photos_container_name = "photos"
 
-container_sas = None
-container_sas_expiry = None
+thumbnails_container_sas = None
+photos_container_sas = None
 
-
-async def get_container_sas():
-    global container_sas, container_sas_expiry
-
+async def get_container_sas(container_name: str):
     sas_start = datetime.utcnow() - timedelta(minutes=1)
     sas_end = datetime.utcnow() + timedelta(minutes=30)
 
@@ -39,23 +37,30 @@ async def get_container_sas():
         start=sas_start,
         expiry=sas_end,
     )
-    container_sas_expiry = sas_end
 
+    return container_sas
 
-async def get_image_names():
+async def get_image_names(container_name: str):
     container_client = ContainerClient(account_url, container_name, credential)  # type: ignore
     return [name async for name in container_client.list_blob_names()]
 
 
 @app.route("/thumbnail/<filename>", methods=["GET"])
 def thumbnail(filename: str):
-    return redirect(f"{account_url}/{container_name}/{filename}?{container_sas}")
+    return redirect(f"{account_url}/{thumbnails_container_name}/{filename}?{thumbnails_container_sas}")
 
+@app.route("/fullsize/<filename>", methods=["GET"])
+def fullsize(filename: str):
+    return redirect(f"{account_url}/{photos_container_name}/{filename}?{photos_container_sas}")
 
 @app.route("/")
 def index():
-    loop.run_until_complete(get_container_sas())
-    image_names = loop.run_until_complete(get_image_names())
+    global thumbnails_container_sas, photos_container_sas
+    thumbnails_container_sas = loop.run_until_complete(get_container_sas(thumbnails_container_name))
+    photos_container_sas = loop.run_until_complete(get_container_sas(photos_container_name))
+    
+    image_names = loop.run_until_complete(get_image_names(photos_container_name))
+    
     return render_template("index.html", images=image_names)
 
 
