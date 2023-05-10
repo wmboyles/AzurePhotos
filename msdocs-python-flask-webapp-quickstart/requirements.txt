@@ -1,5 +1,4 @@
 flask[async]
-gunicorn
 azure-identity
 azure-storage-blob
 aiohttp
