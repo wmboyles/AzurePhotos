@@ -50,3 +50,5 @@ __azurite_db*__.json
 # User defined
 .vscode/
 webapp/static/images/*
+notebooks/downloads/*
+notebooks/resized/*

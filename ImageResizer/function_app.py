@@ -33,7 +33,8 @@ def test_function(myblob: func.InputStream):
             credential = DefaultAzureCredential()
             logging.info("Created credential")
 
-            des_client = BlobClient(account_url, "videos", name, credential=credential)
+            # TODO: Get this container name from config
+            des_client = BlobClient(account_url, "thumbnails", name, credential=credential)
             logging.info("Created destination BlobClient")
 
             buffer = BytesIO()
