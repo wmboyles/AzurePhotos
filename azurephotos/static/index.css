@@ -1,0 +1,27 @@
+.modal-dialog {
+    margin: auto;
+    max-height: 94vh;
+}
+
+.modal-content {
+    background-color: transparent;
+    border: none;
+    align-items: center;
+}
+
+.modal-body {
+    max-height: 94vh;
+}
+
+.modal-footer {
+    border: none;
+}
+
+.img-thumbnail {
+    border: none;
+}
+
+#fullImage {
+    max-width: 94vw;
+    max-height: 94vh;
+}
