@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from azure.identity.aio import DefaultAzureCredential
 from azure.storage.blob import ContainerSasPermissions, generate_container_sas
 from azure.storage.blob.aio import BlobServiceClient, ContainerClient
-from flask import Flask, redirect, render_template
+from flask import Flask, redirect, render_template, Response
 
 loop = asyncio.get_event_loop()
 app = Flask(__name__)
@@ -52,6 +52,19 @@ def thumbnail(filename: str):
 @app.route("/fullsize/<filename>", methods=["GET"])
 def fullsize(filename: str):
     return redirect(f"{account_url}/{photos_container_name}/{filename}?{photos_container_sas}")
+
+@app.route("/delete/<filename>", methods=["DELETE"])
+async def delete(filename: str):
+    thumbnail_container_client = ContainerClient(account_url, thumbnails_container_name, credential)
+    async with thumbnail_container_client:
+        await thumbnail_container_client.delete_blob(filename)
+
+    photos_container_client = ContainerClient(account_url, photos_container_name, credential)
+    async with photos_container_client:
+        await photos_container_client.delete_blob(filename)
+
+    # Client JS code should remove image from view
+    return Response(status=200)
 
 @app.route("/")
 def index():
