@@ -1,10 +1,12 @@
 import asyncio
 from datetime import datetime, timedelta
 
+from azure.core.exceptions import ResourceNotFoundError
 from azure.identity.aio import DefaultAzureCredential
 from azure.storage.blob import ContainerSasPermissions, generate_container_sas
 from azure.storage.blob.aio import BlobServiceClient, ContainerClient
-from flask import Flask, redirect, render_template, Response
+from flask import Flask, Response, redirect, render_template, request
+from werkzeug.utils import secure_filename
 
 loop = asyncio.get_event_loop()
 app = Flask(__name__)
@@ -17,6 +19,7 @@ photos_container_name = "photos"
 
 thumbnails_container_sas = None
 photos_container_sas = None
+
 
 async def get_container_sas(container_name: str):
     sas_start = datetime.utcnow() - timedelta(minutes=1)
@@ -40,40 +43,64 @@ async def get_container_sas(container_name: str):
 
     return container_sas
 
+
 async def get_image_names(container_name: str):
     container_client = ContainerClient(account_url, container_name, credential)  # type: ignore
     return [name async for name in container_client.list_blob_names()]
 
 
 @app.route("/thumbnail/<filename>", methods=["GET"])
-def thumbnail(filename: str):
+async def thumbnail(filename: str):
     return redirect(f"{account_url}/{thumbnails_container_name}/{filename}?{thumbnails_container_sas}")
 
+
 @app.route("/fullsize/<filename>", methods=["GET"])
-def fullsize(filename: str):
+async def fullsize(filename: str):
     return redirect(f"{account_url}/{photos_container_name}/{filename}?{photos_container_sas}")
+
 
 @app.route("/delete/<filename>", methods=["DELETE"])
 async def delete(filename: str):
-    thumbnail_container_client = ContainerClient(account_url, thumbnails_container_name, credential)
-    async with thumbnail_container_client:
-        await thumbnail_container_client.delete_blob(filename)
+    try:
+        thumbnail_container_client = ContainerClient(account_url, thumbnails_container_name, credential) # type: ignore
+        async with thumbnail_container_client:
+            await thumbnail_container_client.delete_blob(filename)
 
-    photos_container_client = ContainerClient(account_url, photos_container_name, credential)
-    async with photos_container_client:
-        await photos_container_client.delete_blob(filename)
+        photos_container_client = ContainerClient(account_url, photos_container_name, credential) # type: ignore
+        async with photos_container_client:
+            await photos_container_client.delete_blob(filename)
+    except ResourceNotFoundError as e:
+        return Response(e.message, status=404)
 
     # Client JS code should remove image from view
     return Response(status=200)
 
+
+@app.route("/upload", methods=["POST"])
+async def upload():
+    container_client = ContainerClient(account_url, photos_container_name, credential) # type: ignore
+    async with container_client:
+        files = request.files.getlist("upload")
+        for file in files:
+            save_filename = secure_filename(str(file.filename))
+            await container_client.upload_blob(save_filename, file.stream)
+
+    # TODO: Allow uploading photos with refreshing the page
+    return redirect("/")
+
+
 @app.route("/")
 def index():
     global thumbnails_container_sas, photos_container_sas
-    thumbnails_container_sas = loop.run_until_complete(get_container_sas(thumbnails_container_name))
-    photos_container_sas = loop.run_until_complete(get_container_sas(photos_container_name))
-    
+    thumbnails_container_sas = loop.run_until_complete(
+        get_container_sas(thumbnails_container_name)
+    )
+    photos_container_sas = loop.run_until_complete(
+        get_container_sas(photos_container_name)
+    )
+
     image_names = loop.run_until_complete(get_image_names(photos_container_name))
-    
+
     return render_template("index.html", images=image_names)
 
 
