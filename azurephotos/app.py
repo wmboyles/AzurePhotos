@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime, timedelta
 
-from azure.core.exceptions import ResourceNotFoundError
+from azure.core.exceptions import ResourceNotFoundError, ResourceExistsError
 from azure.identity.aio import DefaultAzureCredential
 from azure.storage.blob import ContainerSasPermissions, generate_container_sas
 from azure.storage.blob.aio import BlobServiceClient, ContainerClient
@@ -18,23 +18,10 @@ blob_account_url = f"https://{account_name}.blob.core.windows.net"
 table_account_url = f"https://{account_name}.table.core.windows.net"
 thumbnails_container_name = "thumbnails"
 photos_container_name = "photos"
+albums_table_name = "Albums"
 
 thumbnails_container_sas = None
 photos_container_sas = None
-
-
-MAX_ALBUM_NAME_BYTES = 31
-
-# TODO: We could probably change from hex to a longer alphabet to allow longer names. [0-9a-zA-Z] is the best, allowing 42 bytes of input
-def encode_album_name(album_name: str) -> str:
-    album_name_utf8 = album_name.encode("utf-8")
-    if len(album_name_utf8) > MAX_ALBUM_NAME_BYTES:
-        raise ValueError("album_name is too long")
-    
-    return f"A{album_name_utf8.hex()}"
-
-def decode_album_name(encoded_album_name: str) -> str:
-    return bytes.fromhex(encoded_album_name[1:]).decode("utf-8")
 
 
 async def get_container_sas(container_name: str):
@@ -75,32 +62,102 @@ async def fullsize(filename: str):
     return redirect(f"{blob_account_url}/{photos_container_name}/{filename}?{photos_container_sas}")
 
 
-@app.route("/albums", methods=["GET"])
-async def list_albums():
-    table_service_client = TableServiceClient(endpoint=table_account_url, credential=credential)
-    async with table_service_client:
-        tables_list = table_service_client.list_tables()
-        return [decode_album_name(table.name) async for table in tables_list]
-
 @app.route("/albums/<album_name>", methods=["POST"])
 async def create_album(album_name: str):
-    table_service_client = TableServiceClient(endpoint=table_account_url, credential=credential)
-    async with table_service_client:
-        encoded_album_name = encode_album_name(album_name)
-        print(f"Creating table `{encoded_album_name}`", type(encoded_album_name))
-        await table_service_client.create_table(encoded_album_name)
-        return Response(status=201)
+    new_album = {
+        "PartitionKey": album_name,
+        "RowKey": "",
+        "Created": datetime.utcnow(),
+    }
+
+    table_service_client = TableServiceClient(endpoint=table_account_url, credential=credential)  # type: ignore
+    table_client = table_service_client.get_table_client(albums_table_name)
+    try:
+        return await table_client.create_entity(new_album)
+    except ResourceExistsError:
+        return Response("Album already exists", status=409)
+
+
+@app.route("/albums", methods=["GET"])
+async def list_albums():
+    table_service_client = TableServiceClient(endpoint=table_account_url, credential=credential)  # type: ignore
+    table_client = table_service_client.get_table_client(albums_table_name)
+    entities = table_client.query_entities(query_filter="RowKey eq ''")
+    return [row["PartitionKey"] async for row in entities]
+
+
+@app.route("/albums/<album_name>", methods=["DELETE"])
+async def delete_album(album_name: str):
+    table_service_client = TableServiceClient(endpoint=table_account_url, credential=credential)  # type: ignore
+    table_client = table_service_client.get_table_client(albums_table_name)
+
+    query = "PartitionKey eq @album_name"
+    parameters = {"album_name": album_name}
+    entities = table_client.query_entities(query_filter=query, parameters=parameters)
+    async for entity in entities:
+        await table_client.delete_entity(entity["RowKey"], entity["PartitionKey"])
+
+    return Response(status=204)
+
+
+@app.route("/albums/<album_name>/<filename>", methods=["POST"])
+async def add_to_album(album_name: str, filename: str):
+    table_service_client = TableServiceClient(endpoint=table_account_url, credential=credential)  # type: ignore
+    table_client = table_service_client.get_table_client(albums_table_name)
+
+    try:
+        table_client.get_entity(partition_key=album_name, row_key="")
+    except ResourceNotFoundError:
+        return Response("Album does not exist", status=404)
+
+    new_photo = {
+        "PartitionKey": album_name,
+        "RowKey": filename,
+        "Created": datetime.utcnow(),
+    }
+    return await table_client.create_entity(new_photo)
+
+
+@app.route("/albums/<album_name>", methods=["GET"])
+async def list_album(album_name: str):
+    table_service_client = TableServiceClient(endpoint=table_account_url, credential=credential)  # type: ignore
+    table_client = table_service_client.get_table_client(albums_table_name)
+
+    query = "PartitionKey eq @album_name"
+    parameters = {"album_name": album_name}
+    entities = [
+        entity
+        async for entity in table_client.query_entities(
+            query_filter=query, parameters=parameters
+        )
+    ]
+    if len(entities) == 0:
+        return Response("Album does not exist", status=404)
+
+    return [entity["RowKey"] for entity in entities]
+
+
+@app.route("/albums/<album_name>/<filename>", methods=["DELETE"])
+async def remove_from_album(album_name: str, filename: str):
+    table_service_client = TableServiceClient(endpoint=table_account_url, credential=credential)  # type: ignore
+    table_client = table_service_client.get_table_client(albums_table_name)
+
+    await table_client.delete_entity(partition_key=album_name, row_key=filename)
+    return Response(status=204)
+
 
 @app.route("/delete/<filename>", methods=["DELETE"])
 async def delete(filename: str):
     try:
-        thumbnail_container_client = ContainerClient(blob_account_url, thumbnails_container_name, credential) # type: ignore
+        thumbnail_container_client = ContainerClient(blob_account_url, thumbnails_container_name, credential)  # type: ignore
         async with thumbnail_container_client:
             await thumbnail_container_client.delete_blob(filename)
 
-        photos_container_client = ContainerClient(blob_account_url, photos_container_name, credential) # type: ignore
+        photos_container_client = ContainerClient(blob_account_url, photos_container_name, credential)  # type: ignore
         async with photos_container_client:
             await photos_container_client.delete_blob(filename)
+
+        # TODO: Handle deleting from albums
     except ResourceNotFoundError as e:
         return Response(e.message, status=404)
 
@@ -110,7 +167,7 @@ async def delete(filename: str):
 
 @app.route("/upload", methods=["POST"])
 async def upload():
-    container_client = ContainerClient(blob_account_url, photos_container_name, credential) # type: ignore
+    container_client = ContainerClient(blob_account_url, photos_container_name, credential)  # type: ignore
     async with container_client:
         files = request.files.getlist("upload")
         for file in files:
@@ -123,6 +180,7 @@ async def upload():
 
 @app.route("/")
 def index():
+    # Prepare SAS tokens for images
     global thumbnails_container_sas, photos_container_sas
     thumbnails_container_sas = loop.run_until_complete(
         get_container_sas(thumbnails_container_name)
@@ -132,7 +190,6 @@ def index():
     )
 
     image_names = loop.run_until_complete(get_image_names(photos_container_name))
-
     return render_template("index.html", images=image_names)
 
 
