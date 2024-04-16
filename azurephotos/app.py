@@ -145,6 +145,15 @@ async def remove_from_album(album_name: str, filename: str):
     await table_client.delete_entity(partition_key=album_name, row_key=filename)
     return Response(status=204)
 
+async def remove_from_all_albums(filename: str):
+    table_service_client = TableServiceClient(endpoint=table_account_url, credential=credential)  # type: ignore
+    table_client = table_service_client.get_table_client(albums_table_name)
+
+    query = "RowKey eq @filename"
+    parameters = {"filename": filename}
+    entities = table_client.query_entities(query_filter=query, parameters=parameters)
+    async for entity in entities:
+        await table_client.delete_entity(entity)
 
 @app.route("/delete/<filename>", methods=["DELETE"])
 async def delete(filename: str):
@@ -157,7 +166,7 @@ async def delete(filename: str):
         async with photos_container_client:
             await photos_container_client.delete_blob(filename)
 
-        # TODO: Handle deleting from albums
+        await remove_from_all_albums(filename)
     except ResourceNotFoundError as e:
         return Response(e.message, status=404)
 
