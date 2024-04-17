@@ -58,11 +58,23 @@ $(document).ready(() => {
             });
     }
 
+    function createAlbum() {
+        const albumName = prompt("Enter album name");
+        fetch(`/albums/${albumName}`, { method: "POST" })
+        .then(response => {
+            albums.push(albumName);
+        }).catch(error => {
+            console.log(error);
+        });
+    }
+
     $("#prevBtn").click(prevImage);
 
     $("#nextBtn").click(nextImage);
 
     $("#deleteBtn").click(deleteImage);
+
+    $("#createAlbumBtn").click(createAlbum);
 
     modal.on("keydown", function (e) {
         if (!modal.is(":visible")) return;
