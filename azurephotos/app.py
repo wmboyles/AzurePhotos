@@ -11,7 +11,7 @@ from werkzeug.utils import secure_filename
 
 loop = asyncio.get_event_loop()
 app = Flask(__name__)
-credential = DefaultAzureCredential()
+credential = DefaultAzureCredential(exclude_cli_credential=True, exclude_shared_token_cache_credential=True)
 
 account_name = "wboylesbackups"
 blob_account_url = f"https://{account_name}.blob.core.windows.net"
@@ -199,7 +199,8 @@ def index():
     )
 
     image_names = loop.run_until_complete(get_image_names(photos_container_name))
-    return render_template("index.html", images=image_names)
+    album_names = loop.run_until_complete(list_albums())
+    return render_template("index.html", images=image_names, albums=album_names)
 
 
 if __name__ == "__main__":
