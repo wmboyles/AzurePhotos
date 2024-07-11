@@ -13,33 +13,24 @@ import src.api.api as api
 def create_app():
     app = Flask(__name__)
 
-    event_loop = asyncio.get_event_loop()
-
     account_name = "wboylesbackups"
-    blob_account_url = f"https://{account_name}.blob.core.windows.net"
-    table_account_url = f"https://{account_name}.table.core.windows.net"
+
+    credential = DefaultAzureCredential(
+        exclude_cli_credential=True, exclude_shared_token_cache_credential=True
+    )
+
     thumbnails_container_name = "thumbnails"
     photos_container_name = "photos"
 
-    credential=DefaultAzureCredential(
-        exclude_cli_credential=True, exclude_shared_token_cache_credential=True
-    )
-    thumbnails_container_sas=event_loop.run_until_complete(
-        get_container_sas(account_name, thumbnails_container_name, credential)
-    )
-    photos_container_sas=event_loop.run_until_complete(get_container_sas(account_name, photos_container_name, credential)
-    )
-
     app.config.update(
-        event_loop=event_loop,
+        credential=credential,
         account_name=account_name,
-        blob_account_url=blob_account_url,
-        table_account_url=table_account_url,
+        blob_account_url=f"https://{account_name}.blob.core.windows.net",
+        table_account_url=f"https://{account_name}.table.core.windows.net",
         thumbnails_container_name=thumbnails_container_name,
         photos_container_name=photos_container_name,
-        credential=credential,
-        thumbnails_container_sas=thumbnails_container_sas,
-        photos_container_sas=photos_container_sas,
+        thumbnails_container_sas = asyncio.run(get_container_sas(account_name, thumbnails_container_name, credential)),
+        photos_container_sas = asyncio.run(get_container_sas(account_name, photos_container_name, credential)),
     )
 
     for blueprint in view.blueprints:
@@ -52,7 +43,9 @@ def create_app():
     return app
 
 
-async def get_container_sas(account_name: str, container_name: str, credential: DefaultAzureCredential):
+async def get_container_sas(
+    account_name: str, container_name: str, credential: DefaultAzureCredential
+):
     blob_account_url = f"https://{account_name}.blob.core.windows.net"
 
     sas_start = datetime.now(timezone.utc) - timedelta(minutes=1)
