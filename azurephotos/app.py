@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from azure.core.exceptions import ResourceNotFoundError, ResourceExistsError
 from azure.identity.aio import DefaultAzureCredential
@@ -25,8 +25,8 @@ photos_container_sas = None
 
 
 async def get_container_sas(container_name: str):
-    sas_start = datetime.utcnow() - timedelta(minutes=1)
-    sas_end = datetime.utcnow() + timedelta(minutes=30)
+    sas_start = datetime.now(timezone.utc) - timedelta(minutes=1)
+    sas_end = datetime.now(timezone.utc) + timedelta(minutes=30)
 
     bsc = BlobServiceClient(blob_account_url, credential)  # type: ignore
 
@@ -67,7 +67,7 @@ async def create_album(album_name: str):
     new_album = {
         "PartitionKey": album_name,
         "RowKey": "",
-        "Created": datetime.utcnow(),
+        "Created": datetime.now(timezone.utc),
     }
 
     table_service_client = TableServiceClient(endpoint=table_account_url, credential=credential)  # type: ignore
@@ -113,7 +113,7 @@ async def add_to_album(album_name: str, filename: str):
     new_photo = {
         "PartitionKey": album_name,
         "RowKey": filename,
-        "Created": datetime.utcnow(),
+        "Created": datetime.now(timezone.utc),
     }
     return await table_client.create_entity(new_photo)
 
