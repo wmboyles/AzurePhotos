@@ -1,3 +1,9 @@
+"""
+API endpoints for handling individual photos.
+
+:author: William Boyles
+"""
+
 from azure.core.exceptions import ResourceNotFoundError
 from azure.storage.blob.aio import ContainerClient
 from flask import Blueprint, Response, redirect, request, current_app
@@ -14,7 +20,13 @@ api_photos_controller = Blueprint(
 )
 
 @api_photos_controller.route("/thumbnail/<filename>", methods=["GET"])
-async def thumbnail(filename: str):
+async def thumbnail(filename: str) -> Response:
+    """
+    Get the thumbnail image for a photo.
+
+    :param filename: The name of the photo file.
+    """
+
     blob_account_url: str = current_app.config["blob_account_url"]
     thumbnails_container_name: str = current_app.config["thumbnails_container_name"]
     thumbnails_container_sas: str = current_app.config["thumbnails_container_sas"]
@@ -25,7 +37,13 @@ async def thumbnail(filename: str):
 
 
 @api_photos_controller.route("/fullsize/<filename>", methods=["GET"])
-async def fullsize(filename: str):
+async def fullsize(filename: str) -> Response:
+    """
+    Get the full-size image for a photo.
+
+    :param filename: The name of the photo file.
+    """
+
     blob_account_url: str = current_app.config["blob_account_url"]
     photos_container_name: str = current_app.config["photos_container_name"]
     photos_container_sas: str = current_app.config["photos_container_sas"]
@@ -37,6 +55,13 @@ async def fullsize(filename: str):
 
 @api_photos_controller.route("/delete/<filename>", methods=["DELETE"])
 async def delete(filename: str):
+    """
+    Delete a photo from the storage account.
+    Removes the photo, thumbnail, and all references to the photo in albums.
+
+    :param filename: The name of the photo file.
+    """
+
     blob_account_url: str = current_app.config["blob_account_url"]
     thumbnails_container_name: str = current_app.config["thumbnails_container_name"]
     photos_container_name: str = current_app.config["photos_container_name"]
@@ -61,6 +86,11 @@ async def delete(filename: str):
 
 @api_photos_controller.route("/upload", methods=["POST"])
 async def upload():
+    """
+    Upload a photo to the storage account.
+    Creating the thumbnail is handled by the resizer function.
+    """
+
     blob_account_url: str = current_app.config["blob_account_url"]
     photos_container_name: str = current_app.config["photos_container_name"]
     credential = current_app.config["credential"]

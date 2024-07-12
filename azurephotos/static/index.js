@@ -61,11 +61,11 @@ $(document).ready(() => {
     function createAlbum() {
         const albumName = prompt("Enter album name");
         fetch(`/albums/${albumName}`, { method: "POST" })
-        .then(response => {
-            albums.push(albumName);
-        }).catch(error => {
-            console.log(error);
-        });
+            .then(response => {
+                albums.push(albumName);
+            }).catch(error => {
+                console.log(error);
+            });
     }
 
     $("#prevBtn").click(prevImage);

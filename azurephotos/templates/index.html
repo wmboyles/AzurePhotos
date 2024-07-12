@@ -45,12 +45,16 @@
       New Album
     </button>
 
-    <ul class="container">
+
+    <div class="row">
       {% for album in albums %}
-      <li>{{album}}</a>
+      <div class="col-6 col-md-4 col-lg-3">
+        <!-- <h3>{{album}}</h3> -->
+        <img src="/albums/thumbnail/{{album}}" class="img-thumbnail" width="370" height="280">
+      </div>
       {% endfor %}
-    </ul>
-    
+    </div>
+
     <!-- <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">
       New Album
     </button> -->
