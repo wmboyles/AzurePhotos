@@ -63,6 +63,7 @@ $(document).ready(() => {
         fetch(`/api/albums/${albumName}`, { method: "POST" })
             .then(response => {
                 albums.push(albumName);
+                window.location.reload();
             }).catch(error => {
                 console.log(error);
             });
@@ -78,6 +79,17 @@ $(document).ready(() => {
             });
     }
 
+    function renameAlbum() {
+        const newAlbumName = prompt("Enter new album name");
+        fetch(`/api/albums/${album}/rename/${newAlbumName}`, { method: "PUT" })
+            .then(response => {
+                album = newAlbumName;
+                window.location.href = `/albums/${newAlbumName}`;
+            }).catch(error => {
+                console.log(error);
+            });
+    }
+
     $("#prevBtn").click(prevImage);
 
     $("#nextBtn").click(nextImage);
@@ -87,6 +99,8 @@ $(document).ready(() => {
     $("#createAlbumBtn").click(createAlbum);
 
     $("#deleteAlbumBtn").click(deleteAlbum);
+
+    $("#renameAlbumBtn").click(renameAlbum);
 
     modal.on("keydown", function (e) {
         if (!modal.is(":visible")) return;

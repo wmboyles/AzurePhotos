@@ -78,6 +78,34 @@ async def list_albums() -> list[str]:
     entities = table_client.query_entities(query_filter="RowKey eq ''")
     return [row["PartitionKey"] async for row in entities]
 
+@api_albums_controller.route("/<album_name>/rename/<new_name>", methods=["PUT"])
+async def rename_album(album_name: str, new_name: str) -> Response:
+    """
+    Rename an album.
+
+    :param album_name: The name of the album to rename.
+    :param new_name: The new name for the album.
+    """
+
+    """
+    Since we can't actually update the partition key, we create a copy of the
+    old album with the new name and then delete the old album.
+    """
+
+    table_client = get_table_client()
+    query = "PartitionKey eq @album_name"
+    parameters = {"album_name": album_name}
+    entities = table_client.query_entities(query_filter=query, parameters=parameters)
+    async for entity in entities:
+        photo_copy = {
+            "PartitionKey": new_name,
+            "RowKey": entity["RowKey"],
+            "Created": entity["Created"],
+        }
+        await table_client.create_entity(photo_copy)
+        await table_client.delete_entity(entity["PartitionKey"], entity["RowKey"])
+
+    return Response(status=204)
 
 @api_albums_controller.route("<album_name>", methods=["DELETE"])
 async def delete_album(album_name: str):
