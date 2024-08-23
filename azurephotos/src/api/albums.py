@@ -94,8 +94,9 @@ async def delete_album(album_name: str):
     parameters = {"album_name": album_name}
     entities = table_client.query_entities(query_filter=query, parameters=parameters)
     async for entity in entities:
-        await table_client.delete_entity(entity["RowKey"], entity["PartitionKey"])
+        await table_client.delete_entity(entity["PartitionKey"], entity["RowKey"])
 
+    # TODO: Check if the album was actually deleted
     return Response(status=204)
 
 
@@ -162,6 +163,7 @@ async def remove_from_album(album_name: str, filename: str) -> Response:
     await table_client.delete_entity(partition_key=album_name, row_key=filename)
     return Response(status=204)
 
+
 @api_albums_controller.route("thumbnail/<album_name>", methods=["GET"])
 async def get_album_thumbnail(album_name: str) -> Response:
     """
@@ -180,10 +182,10 @@ async def get_album_thumbnail(album_name: str) -> Response:
     elif len(album_photos) == 0:
         print("Trying to serve static photo_album-512.webp")
         return redirect("/static/photo_album-512.webp")
-    
+
     thumbnail_filename = album_photos[0]
     return redirect(url_for("api_photos_controller.thumbnail", filename=thumbnail_filename))
-    
+
 
 async def remove_from_all_albums(filename: str) -> None:
     """

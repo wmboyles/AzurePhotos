@@ -68,6 +68,16 @@ $(document).ready(() => {
             });
     }
 
+    function deleteAlbum() {
+        alert("Are you sure you want to delete this album?");
+        fetch(`/api/albums/${album}`, { method: "DELETE" })
+            .then(response => {
+                window.location.href = "/";
+            }).catch(error => {
+                console.log(error);
+            });
+    }
+
     $("#prevBtn").click(prevImage);
 
     $("#nextBtn").click(nextImage);
@@ -75,6 +85,8 @@ $(document).ready(() => {
     $("#deleteBtn").click(deleteImage);
 
     $("#createAlbumBtn").click(createAlbum);
+
+    $("#deleteAlbumBtn").click(deleteAlbum);
 
     modal.on("keydown", function (e) {
         if (!modal.is(":visible")) return;

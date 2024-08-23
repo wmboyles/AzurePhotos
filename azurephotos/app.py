@@ -22,7 +22,7 @@ def create_app():
             table_account_url = f"https://{account_name}.table.core.windows.net",
             thumbnails_container_name = thumbnails_container_name,
             photos_container_name = photos_container_name,
-            albums_table_name = "Albums",
+            albums_table_name = "Albums2",
             thumbnails_container_sas = asyncio.run(
                 get_container_sas(account_name, thumbnails_container_name, credential)
             ),
