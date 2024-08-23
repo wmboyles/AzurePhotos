@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>Azure Photos | {{album}}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
+    integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r"
+    crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js"
+    integrity="sha384-0pUGZvbkm6XF6gxjEnlmuGrJXVbNuzT9qBBavbLwCsOGabYfZo0T0to5eqruptLy"
+    crossorigin="anonymous"></script>
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"
+    integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj"
+    crossorigin="anonymous"></script>
+
+  <link rel="stylesheet" href="/static/index.css">
+</head>
+
+<body>
+  <h1>Azure Photos | {{album}}</h1>
+  <div class="image-container">
+    {% for image in images %}
+    <img src="/thumbnail/{{image}}" loading="lazy" width="370" height="280" class="img-thumbnail" data-toggle="modal"
+      data-target="#imageModal">
+    {% endfor %}
+    <div class="modal fade" id="imageModal" tabindex="-1" role="dialog" aria-labelledby="imageModalLabel"
+      aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+          <div class="modal-body">
+            <img src="" class="img-fluid" id="fullImage">
+          </div>
+          <div class="modal-footer mt-1">
+            <button type="button" class="btn btn-secondary" id="prevBtn">&lt; Prev</button>
+            <button type="button" class="btn btn-danger" id="deleteBtn">Delete</button>
+            <button type="button" class="btn btn-secondary" id="nextBtn">Next &gt;</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <script src="/static/index.js"></script>
+</body>
+
+</html>

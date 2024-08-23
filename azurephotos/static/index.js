@@ -60,7 +60,7 @@ $(document).ready(() => {
 
     function createAlbum() {
         const albumName = prompt("Enter album name");
-        fetch(`/albums/${albumName}`, { method: "POST" })
+        fetch(`/api/albums/${albumName}`, { method: "POST" })
             .then(response => {
                 albums.push(albumName);
             }).catch(error => {

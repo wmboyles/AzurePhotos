@@ -19,7 +19,7 @@ api_albums_controller = Blueprint(
     __name__,
     template_folder="templates",
     static_folder="static",
-    url_prefix="/",
+    url_prefix="/api/albums",
 )
 
 
@@ -45,7 +45,7 @@ def get_table_client() -> TableClient:
     return table_client
 
 
-@api_albums_controller.route("/albums/<album_name>", methods=["POST"])
+@api_albums_controller.route("/<album_name>", methods=["POST"])
 async def create_album(album_name: str) -> Response | dict[str,]:
     """
     Create a new album.
@@ -79,7 +79,7 @@ async def list_albums() -> list[str]:
     return [row["PartitionKey"] async for row in entities]
 
 
-@api_albums_controller.route("/albums/<album_name>", methods=["DELETE"])
+@api_albums_controller.route("<album_name>", methods=["DELETE"])
 async def delete_album(album_name: str):
     """
     Delete an album.
@@ -99,7 +99,7 @@ async def delete_album(album_name: str):
     return Response(status=204)
 
 
-@api_albums_controller.route("/albums/<album_name>/<filename>", methods=["POST"])
+@api_albums_controller.route("<album_name>/<filename>", methods=["POST"])
 async def add_to_album(album_name: str, filename: str) -> Response | dict[str,]:
     """
     Add a photo to an album.
@@ -123,7 +123,7 @@ async def add_to_album(album_name: str, filename: str) -> Response | dict[str,]:
     return await table_client.create_entity(new_photo)
 
 
-@api_albums_controller.route("/albums/<album_name>", methods=["GET"])
+@api_albums_controller.route("<album_name>", methods=["GET"])
 async def list_album(album_name: str) -> Response | list[str]:
     """
     List the photos in an album.
@@ -147,7 +147,7 @@ async def list_album(album_name: str) -> Response | list[str]:
     return [entity["RowKey"] for entity in entities if entity["RowKey"] != ""]
 
 
-@api_albums_controller.route("/albums/<album_name>/<filename>", methods=["DELETE"])
+@api_albums_controller.route("<album_name>/<filename>", methods=["DELETE"])
 async def remove_from_album(album_name: str, filename: str) -> Response:
     """
     Remove a photo from an album.
@@ -162,7 +162,7 @@ async def remove_from_album(album_name: str, filename: str) -> Response:
     await table_client.delete_entity(partition_key=album_name, row_key=filename)
     return Response(status=204)
 
-@api_albums_controller.route("/albums/thumbnail/<album_name>", methods=["GET"])
+@api_albums_controller.route("thumbnail/<album_name>", methods=["GET"])
 async def get_album_thumbnail(album_name: str) -> Response:
     """
     Get the thumbnail for an album.
