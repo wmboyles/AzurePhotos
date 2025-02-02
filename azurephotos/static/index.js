@@ -21,7 +21,7 @@ $(document).ready(() => {
     }
 
     thumbnails.on("click", function (e) {
-        if (modal.is(":visible")) return
+        if (modal.is(":visible")) return;
 
         index = $(this).index();
         updateModal(index);
@@ -42,11 +42,18 @@ $(document).ready(() => {
     }
 
     function deleteImage() {
-        if (!confirm("Are you sure you want to delete?")) return;
+        const isAlbum = typeof (album) !== "undefined";
+        if (!confirm(isAlbum ?
+            "Are you sure you want to remove from this album?" :
+            "Are you sure you want to delete?")) {
+            return
+        }
 
         const imageUrl = imageUrls[index];
-        fetch(`/delete/${imageUrl}`, { method: "DELETE" })
-            .then(response => {
+        const deleteUrl = isAlbum ? `/api/albums/${album}/${imageUrl}` : `/delete/${imageUrl}`
+
+        fetch(deleteUrl, { method: "DELETE" })
+            .then(_ => {
                 modal.modal("hide")
                 thumbnails[index].remove()
                 imageUrls.splice(index, 1)
