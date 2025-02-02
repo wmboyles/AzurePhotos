@@ -9,10 +9,11 @@ An empty row key represents the album itself.
 """
 
 from datetime import datetime, timezone
-from azure.identity.aio import DefaultAzureCredential
 from azure.core.exceptions import ResourceNotFoundError, ResourceExistsError
-from azure.data.tables.aio import TableServiceClient, TableClient
 from flask import Blueprint, Response, current_app, url_for, redirect
+from typing import Any
+
+from ..storage_helper import get_table_client
 
 api_albums_controller = Blueprint(
     "api_albums_controller",
@@ -23,37 +24,18 @@ api_albums_controller = Blueprint(
 )
 
 
-def get_table_client() -> TableClient:
-    """
-    Built a TableClient for the albums table.
-
-    flask.current_app.config must contain the following keys:
-    - table_account_url: The URL of the Azure Table Storage account.
-    - credential: The Azure credential to use for authentication.
-    - albums_table_name: The name of the table to use for albums.
-    """
-
-    table_account_url: str = current_app.config["table_account_url"]
-    credential: DefaultAzureCredential = current_app.config["credential"]
-    albums_table_name: str = current_app.config["albums_table_name"]
-
-    table_service_client = TableServiceClient(
-        endpoint=table_account_url, credential=credential
-    )
-    table_client = table_service_client.get_table_client(albums_table_name)
-
-    return table_client
-
-
 @api_albums_controller.route("/<album_name>", methods=["POST"])
-async def create_album(album_name: str) -> Response | dict[str,]:
+async def create_album(album_name: str) -> Response | dict[str, Any]:
     """
     Create a new album.
 
     :param album_name: The name of the album to create. Must be unique.
     """
 
-    table_client = get_table_client()
+    account_name = current_app.config["account_name"]
+    table_name = current_app.config["albums_table_name"]
+    credential = current_app.config["credential"]
+    table_client = get_table_client(account_name, table_name, credential)
 
     new_album = {
         "PartitionKey": album_name,
@@ -62,7 +44,7 @@ async def create_album(album_name: str) -> Response | dict[str,]:
     }
 
     try:
-        return await table_client.create_entity(new_album)
+        return await table_client.create_entity(new_album)  # type: ignore
     except ResourceExistsError:
         return Response("Album already exists", status=409)
 
@@ -73,10 +55,14 @@ async def list_albums() -> list[str]:
     List all album names.
     """
 
-    table_client = get_table_client()
+    account_name = current_app.config["account_name"]
+    table_name = current_app.config["albums_table_name"]
+    credential = current_app.config["credential"]
+    table_client = get_table_client(account_name, table_name, credential)
 
     entities = table_client.query_entities(query_filter="RowKey eq ''")
     return [row["PartitionKey"] async for row in entities]
+
 
 @api_albums_controller.route("/<album_name>/rename/<new_name>", methods=["PUT"])
 async def rename_album(album_name: str, new_name: str) -> Response:
@@ -92,7 +78,11 @@ async def rename_album(album_name: str, new_name: str) -> Response:
     old album with the new name and then delete the old album.
     """
 
-    table_client = get_table_client()
+    account_name = current_app.config["account_name"]
+    table_name = current_app.config["albums_table_name"]
+    credential = current_app.config["credential"]
+    table_client = get_table_client(account_name, table_name, credential)
+
     query = "PartitionKey eq @album_name"
     parameters = {"album_name": album_name}
     entities = table_client.query_entities(query_filter=query, parameters=parameters)
@@ -107,6 +97,7 @@ async def rename_album(album_name: str, new_name: str) -> Response:
 
     return Response(status=204)
 
+
 @api_albums_controller.route("<album_name>", methods=["DELETE"])
 async def delete_album(album_name: str):
     """
@@ -116,7 +107,10 @@ async def delete_album(album_name: str):
     :param album_name: The name of the album to delete.
     """
 
-    table_client = get_table_client()
+    account_name = current_app.config["account_name"]
+    table_name = current_app.config["albums_table_name"]
+    credential = current_app.config["credential"]
+    table_client = get_table_client(account_name, table_name, credential)
 
     query = "PartitionKey eq @album_name"
     parameters = {"album_name": album_name}
@@ -129,7 +123,7 @@ async def delete_album(album_name: str):
 
 
 @api_albums_controller.route("<album_name>/<filename>", methods=["POST"])
-async def add_to_album(album_name: str, filename: str) -> Response | dict[str,]:
+async def add_to_album(album_name: str, filename: str) -> Response | dict[str, Any]:
     """
     Add a photo to an album.
 
@@ -137,7 +131,10 @@ async def add_to_album(album_name: str, filename: str) -> Response | dict[str,]:
     :param filename: The filename of the photo to add to the album.
     """
 
-    table_client = get_table_client()
+    account_name = current_app.config["account_name"]
+    table_name = current_app.config["albums_table_name"]
+    credential = current_app.config["credential"]
+    table_client = get_table_client(account_name, table_name, credential)
 
     try:
         table_client.get_entity(partition_key=album_name, row_key="")
@@ -149,7 +146,7 @@ async def add_to_album(album_name: str, filename: str) -> Response | dict[str,]:
         "RowKey": filename,
         "Created": datetime.now(timezone.utc),
     }
-    return await table_client.create_entity(new_photo)
+    return await table_client.create_entity(new_photo)  # type: ignore
 
 
 @api_albums_controller.route("<album_name>", methods=["GET"])
@@ -160,7 +157,10 @@ async def list_album(album_name: str) -> Response | list[str]:
     :param album_name: The name of the album to list photos for.
     """
 
-    table_client = get_table_client()
+    account_name = current_app.config["account_name"]
+    table_name = current_app.config["albums_table_name"]
+    credential = current_app.config["credential"]
+    table_client = get_table_client(account_name, table_name, credential)
 
     query = "PartitionKey eq @album_name"
     parameters = {"album_name": album_name}
@@ -186,7 +186,10 @@ async def remove_from_album(album_name: str, filename: str) -> Response:
     :param filename: The filename of the photo to remove from the album.
     """
 
-    table_client = get_table_client()
+    account_name = current_app.config["account_name"]
+    table_name = current_app.config["albums_table_name"]
+    credential = current_app.config["credential"]
+    table_client = get_table_client(account_name, table_name, credential)
 
     await table_client.delete_entity(partition_key=album_name, row_key=filename)
     return Response(status=204)
@@ -209,10 +212,12 @@ async def get_album_thumbnail(album_name: str) -> Response:
         return Response("Internal server error", status=500)
     elif len(album_photos) == 0:
         print("Trying to serve static photo_album-512.webp")
-        return redirect("/static/photo_album-512.webp")
+        return redirect("/static/photo_album-512.webp")  # type: ignore
 
     thumbnail_filename = album_photos[0]
-    return redirect(url_for("api_photos_controller.thumbnail", filename=thumbnail_filename))
+    return redirect(
+        url_for("api_photos_controller.thumbnail", filename=thumbnail_filename)
+    )  # type: ignore
 
 
 async def remove_from_all_albums(filename: str) -> None:
@@ -223,7 +228,10 @@ async def remove_from_all_albums(filename: str) -> None:
     :param filename: The filename of the photo to remove.
     """
 
-    table_client = get_table_client()
+    account_name = current_app.config["account_name"]
+    table_name = current_app.config["albums_table_name"]
+    credential = current_app.config["credential"]
+    table_client = get_table_client(account_name, table_name, credential)
 
     query = "RowKey eq @filename"
     parameters = {"filename": filename}
