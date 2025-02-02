@@ -16,7 +16,7 @@ $(document).ready(() => {
 
     function updateModal(index) {
         const imageUrl = imageUrls[index];
-        fullImage.attr("src", "fullsize/" + imageUrl);
+        fullImage.attr("src", "/fullsize/" + imageUrl);
         modal.modal("show");
     }
 
