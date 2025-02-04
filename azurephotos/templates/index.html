@@ -75,11 +75,11 @@
           <div class="modal-footer mt-1">
             <button type="button" class="btn btn-secondary" id="prevBtn">&lt; Prev</button>
             <div class="dropdown">
-              <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown"
-                aria-expanded="false">Add to Album</button>
+              <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown"
+                aria-expanded="false" id="addToAlbumBtn">Add to Album</button>
               <ul class="dropdown-menu">
                 {% for album in albums %}
-                <li><a class="dropdown-item" href="#">{{album}}</a></li>
+                <li><button type="button" class="dropdown-item">{{album}}</button></li>
                 {% endfor %}
               </ul>
             </div>

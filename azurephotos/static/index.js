@@ -97,6 +97,16 @@ $(document).ready(() => {
             });
     }
 
+    function addToAlbum(album) {
+        const imageUrl = imageUrls[index];
+        fetch(`/api/albums/${album}/${imageUrl}`, { method: "POST" })
+            .then(response => {
+            })
+            .catch(error => {
+                console.log(error)
+            });
+    }
+
     $("#prevBtn").click(prevImage);
 
     $("#nextBtn").click(nextImage);
@@ -108,6 +118,13 @@ $(document).ready(() => {
     $("#deleteAlbumBtn").click(deleteAlbum);
 
     $("#renameAlbumBtn").click(renameAlbum);
+
+    $("#addToAlbumBtn").siblings("ul").find("li .dropdown-item").each(function () {
+        var button = $(this);
+        const albumName = button.text();
+        button.click(() => addToAlbum(albumName))
+        // button.attr("onclick", addToAlbum(albumName))
+    });
 
     modal.on("keydown", function (e) {
         if (!modal.is(":visible")) return;
