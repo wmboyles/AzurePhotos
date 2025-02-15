@@ -50,3 +50,4 @@ __azurite_db*__.json
 # User defined
 .vscode/
 notebooks/
+azurephotos.zip

@@ -1,19 +1,19 @@
-.modal-dialog {
+#imageModal .modal-dialog {
     margin: auto;
     max-height: 94vh;
 }
 
-.modal-content {
+#imageModal .modal-content {
     background-color: transparent;
     border: none;
     align-items: center;
 }
 
-.modal-body {
+#imageModal .modal-body {
     max-height: 94vh;
 }
 
-.modal-footer {
+#imageModal .modal-footer {
     border: none;
 }
 
