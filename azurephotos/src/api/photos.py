@@ -12,7 +12,7 @@ from flask import Blueprint, redirect, request, current_app
 from werkzeug.utils import secure_filename
 from werkzeug.wrappers.response import Response
 
-from .albums import remove_from_all_albums
+from .albums import remove_from_all_albums, add_to_album
 
 api_photos_controller = Blueprint(
     "api_photos_controller",
@@ -58,7 +58,7 @@ async def fullsize(filename: str) -> Response:
 
 
 @api_photos_controller.route("/delete/<filename>", methods=["DELETE"])
-async def delete(filename: str):
+async def delete(filename: str) -> Response:
     """
     Delete a photo from the storage account.
     Removes the photo, thumbnail, and all references to the photo in albums.
@@ -92,13 +92,7 @@ async def delete(filename: str):
     return Response(status=200)
 
 
-@api_photos_controller.route("/upload", methods=["POST"])
-async def upload():
-    """
-    Upload a photo to the storage account.
-    Creating the thumbnail is handled by the resizer function.
-    """
-
+async def _upload() -> str:
     blob_account_url: str = current_app.config["blob_account_url"]
     photos_container_name: str = current_app.config["photos_container_name"]
     credential = current_app.config["credential"]
@@ -112,8 +106,35 @@ async def upload():
             save_filename = secure_filename(str(file.filename))
             await container_client.upload_blob(save_filename, file.stream)
 
-    # TODO: Allow uploading photos with refreshing the page
+    return save_filename
+
+
+@api_photos_controller.route("/upload", methods=["POST"])
+async def upload() -> Response:
+    """
+    Upload a photo to the storage account.
+    Creating the thumbnail is handled by the resizer function.
+    """
+
+    _ = _upload()
+
+    # TODO: Allow uploading photos without refreshing the page
     return redirect("/")
+
+
+@api_photos_controller.route("/upload/<album_name>", methods=["POST"])
+async def upload_to_album(album_name: str) -> Response:
+    upload_filename = await _upload()
+    add_to_album_result = await add_to_album(album_name, upload_filename)
+
+    if (
+        isinstance(add_to_album_result, Response)
+        and add_to_album_result.status_code >= 400
+    ):
+        return add_to_album_result
+
+    # TODO: Allow uploading photos without refreshing the page
+    return redirect(f"/albums/{album_name}")
 
 
 async def list_all_photos() -> AsyncItemPaged[str]:

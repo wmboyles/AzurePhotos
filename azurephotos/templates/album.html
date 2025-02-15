@@ -27,12 +27,21 @@
 
 <body>
   <h1>Azure Photos | {{album}}</h1>
-  <hr />
-
   <div class="">
     <button type="button" class="btn btn-primary" id="renameAlbumBtn">Rename</button>
     <button type="button" class="btn btn-danger" id="deleteAlbumBtn">Delete</button>
   </div>
+  <hr />
+
+  <h2>Upload</h2>
+  <form action="/upload/{{album}}" method="POST" enctype="multipart/form-data" class="mb-3">
+    <!-- TODO: Submit request without refreshing page. Would probably have to update DOM to include new image -->
+    <label for="formFile">File</label>
+    <input class="form-control form-control-lg" id="formFileLg" type="file" required="true" multiple="true"
+      name="upload" />
+    <button class="btn btn-primary" type="submit">Submit</button>
+  </form>
+  <hr />
 
   <div class="image-container">
     {% for image in images %}
