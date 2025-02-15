@@ -4,6 +4,7 @@ API endpoints for handling individual photos.
 :author: William Boyles
 """
 
+from azure.core.async_paging import AsyncItemPaged
 from azure.core.exceptions import ResourceNotFoundError
 from azure.storage.blob.aio import ContainerClient
 from flask import Blueprint, Response, redirect, request, current_app
@@ -18,6 +19,7 @@ api_photos_controller = Blueprint(
     static_folder="static",
     url_prefix="/",
 )
+
 
 @api_photos_controller.route("/thumbnail/<filename>", methods=["GET"])
 async def thumbnail(filename: str) -> Response:
@@ -68,11 +70,15 @@ async def delete(filename: str):
     credential = current_app.config["credential"]
 
     try:
-        thumbnail_container_client = ContainerClient(blob_account_url, thumbnails_container_name, credential)
+        thumbnail_container_client = ContainerClient(
+            blob_account_url, thumbnails_container_name, credential
+        )
         async with thumbnail_container_client:
             await thumbnail_container_client.delete_blob(filename)
 
-        photos_container_client = ContainerClient(blob_account_url, photos_container_name, credential)
+        photos_container_client = ContainerClient(
+            blob_account_url, photos_container_name, credential
+        )
         async with photos_container_client:
             await photos_container_client.delete_blob(filename)
 
@@ -95,7 +101,9 @@ async def upload():
     photos_container_name: str = current_app.config["photos_container_name"]
     credential = current_app.config["credential"]
 
-    container_client = ContainerClient(blob_account_url, photos_container_name, credential)
+    container_client = ContainerClient(
+        blob_account_url, photos_container_name, credential
+    )
     async with container_client:
         files = request.files.getlist("upload")
         for file in files:
@@ -104,3 +112,18 @@ async def upload():
 
     # TODO: Allow uploading photos with refreshing the page
     return redirect("/")
+
+
+async def list_all_photos() -> AsyncItemPaged[str]:
+    """
+    Get all photo names stored in blob storage.
+    """
+
+    credential = current_app.config["credential"]
+    blob_account_url: str = current_app.config["blob_account_url"]
+    photos_container_name: str = current_app.config["photos_container_name"]
+
+    container_client = ContainerClient(
+        blob_account_url, photos_container_name, credential
+    )
+    return container_client.list_blob_names()

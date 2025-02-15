@@ -11,7 +11,7 @@ An empty row key represents the album itself.
 from datetime import datetime, timezone
 from azure.core.exceptions import ResourceNotFoundError, ResourceExistsError
 from flask import Blueprint, Response, current_app, url_for, redirect
-from typing import Any
+from typing import Any, AsyncGenerator
 
 from ..storage_helper import get_table_client
 
@@ -238,3 +238,18 @@ async def remove_from_all_albums(filename: str) -> None:
     entities = table_client.query_entities(query_filter=query, parameters=parameters)
     async for entity in entities:
         await table_client.delete_entity(entity)
+
+
+async def list_all_album_photos() -> AsyncGenerator[str]:
+    """
+    List all photo names in all albums.
+    Note that photos in multiple albums will be listed multiple times.
+    """
+
+    account_name = current_app.config["account_name"]
+    table_name = current_app.config["albums_table_name"]
+    credential = current_app.config["credential"]
+    table_client = get_table_client(account_name, table_name, credential)
+
+    entities = table_client.query_entities(query_filter="RowKey ne ''")
+    return (row["RowKey"] async for row in entities)
