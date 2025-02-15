@@ -100,7 +100,12 @@ $(document).ready(() => {
     function addToAlbum(album) {
         const imageUrl = imageUrls[index];
         fetch(`/api/albums/${album}/${imageUrl}`, { method: "POST" })
-            .then(response => {
+            .then(_ => {
+                modal.modal("hide")
+                thumbnails[index].remove()
+                imageUrls.splice(index, 1)
+                thumbnails.splice(index, 1)
+                index = -1
             })
             .catch(error => {
                 console.log(error)
