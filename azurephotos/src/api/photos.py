@@ -6,9 +6,11 @@ API endpoints for handling individual photos.
 
 from azure.core.async_paging import AsyncItemPaged
 from azure.core.exceptions import ResourceNotFoundError
+from azure.identity.aio import DefaultAzureCredential
 from azure.storage.blob.aio import ContainerClient
-from flask import Blueprint, Response, redirect, request, current_app
+from flask import Blueprint, redirect, request, current_app
 from werkzeug.utils import secure_filename
+from werkzeug.wrappers.response import Response
 
 from .albums import remove_from_all_albums
 
@@ -119,11 +121,11 @@ async def list_all_photos() -> AsyncItemPaged[str]:
     Get all photo names stored in blob storage.
     """
 
-    credential = current_app.config["credential"]
+    credential: DefaultAzureCredential = current_app.config["credential"]
     blob_account_url: str = current_app.config["blob_account_url"]
     photos_container_name: str = current_app.config["photos_container_name"]
 
     container_client = ContainerClient(
-        blob_account_url, photos_container_name, credential
+        blob_account_url, photos_container_name, credential  # type: ignore aio credential
     )
     return container_client.list_blob_names()

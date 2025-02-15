@@ -13,13 +13,13 @@ def build_credential() -> DefaultAzureCredential:
 
 async def get_container_sas(
     account_name: str, container_name: str, credential: DefaultAzureCredential
-):
+) -> str:
     blob_account_url = f"https://{account_name}.blob.core.windows.net"
 
     sas_start = datetime.now(timezone.utc) - timedelta(minutes=1)
     sas_end = datetime.now(timezone.utc) + timedelta(minutes=30)
 
-    bsc = BlobServiceClient(blob_account_url, credential)
+    bsc = BlobServiceClient(blob_account_url, credential)  # type: ignore aio credential
 
     user_delegation_key = await bsc.get_user_delegation_key(
         key_start_time=sas_start,
