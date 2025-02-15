@@ -10,7 +10,7 @@ All commands should be run from the project root unless otherwise specified.
 ### Common Prerequisites
 
 You should have the following installed
-* Python 3.10
+* Python 3.12
 * Azure CLI
 * Azure Functions Core Tools
 
@@ -55,7 +55,7 @@ You should have the following installed
 Run the following PowerShell commands:
 ```ps
 Compress-Archive -Path azurephotos/* -DestinationPath azurephotos.zip
-az webapp deploy --resource-group azure-photos --name azurephotos --src-path .\azurephotos.zip
+az webapp deploy --resource-group azure-photos --name azurephotos --src-path .\azurephotos.zip --type zip
 rm azurephotos.zip
 ```
 

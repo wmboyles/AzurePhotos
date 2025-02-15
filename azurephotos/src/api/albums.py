@@ -240,7 +240,7 @@ async def remove_from_all_albums(filename: str) -> None:
         await table_client.delete_entity(entity)
 
 
-async def list_all_album_photos() -> AsyncGenerator[str]:
+async def list_all_album_photos() -> AsyncGenerator[str, None]:
     """
     List all photo names in all albums.
     Note that photos in multiple albums will be listed multiple times.
