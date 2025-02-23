@@ -1,8 +1,11 @@
-from azure.identity.aio import DefaultAzureCredential
+from azure.identity import DefaultAzureCredential
 from datetime import datetime, timedelta, timezone
-from azure.storage.blob import ContainerSasPermissions, generate_container_sas
-from azure.storage.blob.aio import BlobServiceClient
-from azure.data.tables.aio import TableServiceClient, TableClient
+from azure.storage.blob import (
+    ContainerSasPermissions,
+    generate_container_sas,
+    BlobServiceClient,
+)
+from azure.data.tables import TableServiceClient, TableClient
 
 
 def build_credential() -> DefaultAzureCredential:
@@ -11,7 +14,7 @@ def build_credential() -> DefaultAzureCredential:
     )
 
 
-async def get_container_sas(
+def get_container_sas(
     account_name: str, container_name: str, credential: DefaultAzureCredential
 ) -> str:
     blob_account_url = f"https://{account_name}.blob.core.windows.net"
@@ -19,9 +22,9 @@ async def get_container_sas(
     sas_start = datetime.now(timezone.utc) - timedelta(minutes=1)
     sas_end = datetime.now(timezone.utc) + timedelta(minutes=30)
 
-    bsc = BlobServiceClient(blob_account_url, credential)  # type: ignore aio credential
+    bsc = BlobServiceClient(blob_account_url, credential)
 
-    user_delegation_key = await bsc.get_user_delegation_key(
+    user_delegation_key = bsc.get_user_delegation_key(
         key_start_time=sas_start,
         key_expiry_time=sas_end,
     )

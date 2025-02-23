@@ -1,5 +1,4 @@
-flask[async]
+flask
 azure-identity
 azure-storage-blob
 azure-data-tables
-aiohttp
