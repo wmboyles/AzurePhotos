@@ -11,7 +11,7 @@ An empty row key represents the album itself.
 from datetime import datetime, timezone
 from azure.core.exceptions import ResourceNotFoundError, ResourceExistsError
 from flask import Blueprint, Response, current_app, url_for, redirect
-from typing import Any, AsyncGenerator
+from typing import Any
 
 from ..storage_helper import get_table_client
 
@@ -25,7 +25,7 @@ api_albums_controller = Blueprint(
 
 
 @api_albums_controller.route("/<album_name>", methods=["POST"])
-async def create_album(album_name: str) -> Response | dict[str, Any]:
+def create_album(album_name: str) -> Response | dict[str, Any]:
     """
     Create a new album.
 
@@ -44,13 +44,13 @@ async def create_album(album_name: str) -> Response | dict[str, Any]:
     }
 
     try:
-        return await table_client.create_entity(new_album)  # type: ignore
+        return table_client.create_entity(new_album)  # type: ignore
     except ResourceExistsError:
         return Response("Album already exists", status=409)
 
 
 @api_albums_controller.route("/albums", methods=["GET"])
-async def list_albums() -> list[str]:
+def list_albums() -> list[str]:
     """
     List all album names.
     """
@@ -61,11 +61,11 @@ async def list_albums() -> list[str]:
     table_client = get_table_client(account_name, table_name, credential)
 
     entities = table_client.query_entities(query_filter="RowKey eq ''")
-    return [row["PartitionKey"] async for row in entities]
+    return [row["PartitionKey"] for row in entities]
 
 
 @api_albums_controller.route("/<album_name>/rename/<new_name>", methods=["PUT"])
-async def rename_album(album_name: str, new_name: str) -> Response:
+def rename_album(album_name: str, new_name: str) -> Response:
     """
     Rename an album.
 
@@ -86,20 +86,20 @@ async def rename_album(album_name: str, new_name: str) -> Response:
     query = "PartitionKey eq @album_name"
     parameters = {"album_name": album_name}
     entities = table_client.query_entities(query_filter=query, parameters=parameters)
-    async for entity in entities:
+    for entity in entities:
         photo_copy = {
             "PartitionKey": new_name,
             "RowKey": entity["RowKey"],
             "Created": entity["Created"],
         }
-        await table_client.create_entity(photo_copy)
-        await table_client.delete_entity(entity["PartitionKey"], entity["RowKey"])
+        table_client.create_entity(photo_copy)
+        table_client.delete_entity(entity["PartitionKey"], entity["RowKey"])
 
     return Response(status=204)
 
 
 @api_albums_controller.route("<album_name>", methods=["DELETE"])
-async def delete_album(album_name: str):
+def delete_album(album_name: str):
     """
     Delete an album.
     This does not delete the photos in the album.
@@ -115,15 +115,15 @@ async def delete_album(album_name: str):
     query = "PartitionKey eq @album_name"
     parameters = {"album_name": album_name}
     entities = table_client.query_entities(query_filter=query, parameters=parameters)
-    async for entity in entities:
-        await table_client.delete_entity(entity["PartitionKey"], entity["RowKey"])
+    for entity in entities:
+        table_client.delete_entity(entity["PartitionKey"], entity["RowKey"])
 
     # TODO: Check if the album was actually deleted
     return Response(status=204)
 
 
 @api_albums_controller.route("<album_name>/<filename>", methods=["POST"])
-async def add_to_album(album_name: str, filename: str) -> Response | dict[str, Any]:
+def add_to_album(album_name: str, filename: str) -> Response | dict[str, Any]:
     """
     Add a photo to an album.
 
@@ -146,11 +146,11 @@ async def add_to_album(album_name: str, filename: str) -> Response | dict[str, A
         "RowKey": filename,
         "Created": datetime.now(timezone.utc),
     }
-    return await table_client.create_entity(new_photo)  # type: ignore
+    return table_client.create_entity(new_photo)  # type: ignore
 
 
 @api_albums_controller.route("<album_name>", methods=["GET"])
-async def list_album(album_name: str) -> Response | list[str]:
+def list_album(album_name: str) -> Response | list[str]:
     """
     List the photos in an album.
 
@@ -164,12 +164,9 @@ async def list_album(album_name: str) -> Response | list[str]:
 
     query = "PartitionKey eq @album_name"
     parameters = {"album_name": album_name}
-    entities = [
-        entity
-        async for entity in table_client.query_entities(
-            query_filter=query, parameters=parameters
-        )
-    ]
+    entities = list(
+        table_client.query_entities(query_filter=query, parameters=parameters)
+    )
     if len(entities) == 0:
         return Response("Album does not exist", status=404)
 
@@ -177,7 +174,7 @@ async def list_album(album_name: str) -> Response | list[str]:
 
 
 @api_albums_controller.route("<album_name>/<filename>", methods=["DELETE"])
-async def remove_from_album(album_name: str, filename: str) -> Response:
+def remove_from_album(album_name: str, filename: str) -> Response:
     """
     Remove a photo from an album.
     This does not remove the photo itself or remove it from other albums.
@@ -191,12 +188,12 @@ async def remove_from_album(album_name: str, filename: str) -> Response:
     credential = current_app.config["credential"]
     table_client = get_table_client(account_name, table_name, credential)
 
-    await table_client.delete_entity(partition_key=album_name, row_key=filename)
+    table_client.delete_entity(partition_key=album_name, row_key=filename)
     return Response(status=204)
 
 
 @api_albums_controller.route("thumbnail/<album_name>", methods=["GET"])
-async def get_album_thumbnail(album_name: str) -> Response:
+def get_album_thumbnail(album_name: str) -> Response:
     """
     Get the thumbnail for an album.
 
@@ -204,8 +201,7 @@ async def get_album_thumbnail(album_name: str) -> Response:
     """
 
     # Select a random photo from the album to use as the thumbnail
-    album_photos = await list_album(album_name)
-    print(album_photos)
+    album_photos = list_album(album_name)
     if isinstance(album_photos, Response) and album_photos.status_code == 404:
         return album_photos
     elif not isinstance(album_photos, list):
@@ -220,7 +216,7 @@ async def get_album_thumbnail(album_name: str) -> Response:
     )  # type: ignore
 
 
-async def remove_from_all_albums(filename: str) -> None:
+def remove_from_all_albums(filename: str) -> None:
     """
     Remove a photo from all albums.
     Most likely used when deleting a photo.
@@ -236,11 +232,11 @@ async def remove_from_all_albums(filename: str) -> None:
     query = "RowKey eq @filename"
     parameters = {"filename": filename}
     entities = table_client.query_entities(query_filter=query, parameters=parameters)
-    async for entity in entities:
-        await table_client.delete_entity(entity)
+    for entity in entities:
+        table_client.delete_entity(entity)
 
 
-async def list_all_album_photos() -> AsyncGenerator[str, None]:
+def all_album_photos() -> list[str]:
     """
     List all photo names in all albums.
     Note that photos in multiple albums will be listed multiple times.
@@ -252,4 +248,4 @@ async def list_all_album_photos() -> AsyncGenerator[str, None]:
     table_client = get_table_client(account_name, table_name, credential)
 
     entities = table_client.query_entities(query_filter="RowKey ne ''")
-    return (row["RowKey"] async for row in entities)
+    return [row["RowKey"] for row in entities]

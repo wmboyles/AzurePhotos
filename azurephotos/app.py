@@ -1,4 +1,3 @@
-import asyncio
 from flask import Flask
 from src.storage_helper import get_container_sas, build_credential
 import src.view.view as view
@@ -23,11 +22,11 @@ def create_app():
             thumbnails_container_name=thumbnails_container_name,
             photos_container_name=photos_container_name,
             albums_table_name="Albums2",
-            thumbnails_container_sas=asyncio.run(
-                get_container_sas(account_name, thumbnails_container_name, credential)
+            thumbnails_container_sas=get_container_sas(
+                account_name, thumbnails_container_name, credential
             ),
-            photos_container_sas=asyncio.run(
-                get_container_sas(account_name, photos_container_name, credential)
+            photos_container_sas=get_container_sas(
+                account_name, photos_container_name, credential
             ),
         )
 
