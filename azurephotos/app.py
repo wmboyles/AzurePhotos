@@ -12,8 +12,6 @@ def create_app():
         app.config.update(
             credential=DefaultAzureCredential(exclude_cli_credential=True),
             account_name=account_name,
-            blob_account_url=f"https://{account_name}.blob.core.windows.net",
-            table_account_url=f"https://{account_name}.table.core.windows.net",
             thumbnails_container_name="thumbnails",
             photos_container_name="photos",
             albums_table_name="Albums2",

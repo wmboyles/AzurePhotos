@@ -32,7 +32,7 @@ def thumbnail(filename: str) -> Response:
     """
 
     account_name = current_app.config["account_name"]
-    blob_account_url: str = current_app.config["blob_account_url"]
+    blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
     credential: DefaultAzureCredential = current_app.config["credential"]
     thumbnails_container_name: str = current_app.config["thumbnails_container_name"]
     
@@ -52,7 +52,7 @@ def fullsize(filename: str) -> Response:
     """
 
     account_name = current_app.config["account_name"]
-    blob_account_url: str = current_app.config["blob_account_url"]
+    blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
     credential: DefaultAzureCredential = current_app.config["credential"]
     photos_container_name: str = current_app.config["photos_container_name"]
 
@@ -72,7 +72,8 @@ def delete(filename: str) -> Response:
     :param filename: The name of the photo file.
     """
 
-    blob_account_url: str = current_app.config["blob_account_url"]
+    account_name: str = current_app.config["account_name"]
+    blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
     thumbnails_container_name: str = current_app.config["thumbnails_container_name"]
     photos_container_name: str = current_app.config["photos_container_name"]
     credential = current_app.config["credential"]
@@ -93,7 +94,8 @@ def delete(filename: str) -> Response:
 
 
 def _upload() -> str:
-    blob_account_url: str = current_app.config["blob_account_url"]
+    account_name = current_app.config["account_name"]
+    blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
     photos_container_name: str = current_app.config["photos_container_name"]
     credential = current_app.config["credential"]
 
@@ -143,7 +145,8 @@ def all_photos() -> list[str]:
     """
 
     credential: DefaultAzureCredential = current_app.config["credential"]
-    blob_account_url: str = current_app.config["blob_account_url"]
+    account_name = current_app.config["account_name"]
+    blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
     photos_container_name: str = current_app.config["photos_container_name"]
 
     with ContainerClient(blob_account_url, photos_container_name, credential) as container_client:
