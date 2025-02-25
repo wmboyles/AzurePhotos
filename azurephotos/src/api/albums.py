@@ -13,7 +13,7 @@ from azure.core.exceptions import ResourceNotFoundError, ResourceExistsError
 from flask import Blueprint, Response, current_app, url_for, redirect
 from typing import Any
 
-from ..storage_helper import get_table_client
+from ..lib.storage_helper import get_table_client
 
 api_albums_controller = Blueprint(
     "api_albums_controller",
@@ -207,7 +207,6 @@ def get_album_thumbnail(album_name: str) -> Response:
     elif not isinstance(album_photos, list):
         return Response("Internal server error", status=500)
     elif len(album_photos) == 0:
-        print("Trying to serve static photo_album-512.webp")
         return redirect("/static/photo_album-512.webp")  # type: ignore
 
     thumbnail_filename = album_photos[0]

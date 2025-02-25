@@ -1,33 +1,22 @@
 from flask import Flask
-from src.storage_helper import get_container_sas, build_credential
+from azure.identity import DefaultAzureCredential
 import src.view.view as view
 import src.api.api as api
 
 
 def create_app():
     app = Flask(__name__)
-
-    credential = build_credential()
-
     account_name = "wboylesbackups"
-    thumbnails_container_name = "thumbnails"
-    photos_container_name = "photos"
 
     with app.app_context():
         app.config.update(
-            credential=credential,
+            credential=DefaultAzureCredential(exclude_cli_credential=True),
             account_name=account_name,
             blob_account_url=f"https://{account_name}.blob.core.windows.net",
             table_account_url=f"https://{account_name}.table.core.windows.net",
-            thumbnails_container_name=thumbnails_container_name,
-            photos_container_name=photos_container_name,
+            thumbnails_container_name="thumbnails",
+            photos_container_name="photos",
             albums_table_name="Albums2",
-            thumbnails_container_sas=get_container_sas(
-                account_name, thumbnails_container_name, credential
-            ),
-            photos_container_sas=get_container_sas(
-                account_name, photos_container_name, credential
-            ),
         )
 
         for blueprint in view.blueprints:

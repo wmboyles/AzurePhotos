@@ -6,27 +6,22 @@ from azure.storage.blob import (
     BlobServiceClient,
 )
 from azure.data.tables import TableServiceClient, TableClient
+from .credential_refresher import refreshed
 
-
-def build_credential() -> DefaultAzureCredential:
-    return DefaultAzureCredential(
-        exclude_cli_credential=True, exclude_shared_token_cache_credential=True
-    )
-
-
+@refreshed(every=timedelta(minutes=15))
 def get_container_sas(
     account_name: str, container_name: str, credential: DefaultAzureCredential
 ) -> str:
     blob_account_url = f"https://{account_name}.blob.core.windows.net"
 
-    sas_start = datetime.now(timezone.utc) - timedelta(minutes=1)
-    sas_end = datetime.now(timezone.utc) + timedelta(minutes=30)
+    now = datetime.now(timezone.utc)
+    sas_start = now - timedelta(minutes=1)
+    sas_end = now + timedelta(minutes=30)
 
     bsc = BlobServiceClient(blob_account_url, credential)
 
     user_delegation_key = bsc.get_user_delegation_key(
-        key_start_time=sas_start,
-        key_expiry_time=sas_end,
+        key_start_time=sas_start, key_expiry_time=sas_end
     )
 
     container_sas = generate_container_sas(

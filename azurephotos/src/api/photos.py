@@ -5,12 +5,12 @@ API endpoints for handling individual photos.
 """
 
 from azure.core.exceptions import ResourceNotFoundError
-from azure.core.paging import ItemPaged
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import ContainerClient
 from flask import Blueprint, redirect, request, current_app
 from werkzeug.utils import secure_filename
 from werkzeug.wrappers.response import Response
+from src.lib.storage_helper import get_container_sas
 
 from .albums import remove_from_all_albums, add_to_album
 
@@ -31,9 +31,12 @@ def thumbnail(filename: str) -> Response:
     :param filename: The name of the photo file.
     """
 
+    account_name = current_app.config["account_name"]
     blob_account_url: str = current_app.config["blob_account_url"]
+    credential: DefaultAzureCredential = current_app.config["credential"]
     thumbnails_container_name: str = current_app.config["thumbnails_container_name"]
-    thumbnails_container_sas: str = current_app.config["thumbnails_container_sas"]
+    
+    thumbnails_container_sas: str = get_container_sas(account_name, thumbnails_container_name, credential)
 
     return redirect(
         f"{blob_account_url}/{thumbnails_container_name}/{filename}?{thumbnails_container_sas}"
@@ -48,9 +51,12 @@ def fullsize(filename: str) -> Response:
     :param filename: The name of the photo file.
     """
 
+    account_name = current_app.config["account_name"]
     blob_account_url: str = current_app.config["blob_account_url"]
+    credential: DefaultAzureCredential = current_app.config["credential"]
     photos_container_name: str = current_app.config["photos_container_name"]
-    photos_container_sas: str = current_app.config["photos_container_sas"]
+
+    photos_container_sas: str = get_container_sas(account_name, photos_container_name, credential)
 
     return redirect(
         f"{blob_account_url}/{photos_container_name}/{filename}?{photos_container_sas}"
