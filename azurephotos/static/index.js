@@ -20,22 +20,6 @@ $(document).ready(() => {
     });
 
     // TODO: Reimplement
-    // function prevImage() {
-    //     if (index === 0) return;
-    //     index--;
-
-    //     updateModal(index)
-    // }
-
-    // TODO: Reimplement
-    // function nextImage() {
-    //     if (index === imageUrls.length - 1) return;
-    //     index++;
-
-    //     updateModal(index);
-    // }
-
-    // TODO: Reimplement
     // function deleteImage() {
     //     const isAlbum = typeof (album) !== "undefined";
     //     if (!confirm(isAlbum ?
@@ -107,10 +91,6 @@ $(document).ready(() => {
     //             console.log(error)
     //         });
     // }
-
-    // $("#prevBtn").click(prevImage);
-
-    // $("#nextBtn").click(nextImage);
 
     // $("#deleteBtn").click(deleteImage);
 
