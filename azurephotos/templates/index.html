@@ -38,8 +38,7 @@
     <form action="/upload" method="POST" enctype="multipart/form-data" class="mb-3">
       <!-- TODO: Submit request without refreshing page. Would probably have to update DOM to include new image -->
       <label for="formFile">File</label>
-      <input class="form-control form-control-lg" id="formFileLg" type="file" required="true" multiple="true"
-        name="upload" />
+      <input class="form-control form-control-lg" id="formFileLg" type="file" required="true" multiple="true" name="upload" />
       <button class="btn btn-primary" type="submit">Submit</button>
     </form>
   </div>
@@ -74,8 +73,7 @@
       <div class="col">
         <div class="photo-card position-relative">
           <input class="form-check-input photo-checkbox" type="checkbox" name="selected_photos" value="{{ image }}">
-          <img src="/thumbnail/{{ image }}" class="img-fluid img-thumbnail" loading="lazy" data-bs-toggle="modal"
-            data-bs-target="#imageModal" data-full="/fullsize/{{ image }}">
+          <img src="/thumbnail/{{ image }}" class="img-fluid img-thumbnail" loading="lazy" data-bs-toggle="modal" data-bs-target="#imageModal" data-full="/fullsize/{{ image }}">
         </div>
       </div>
       {% endfor %}
