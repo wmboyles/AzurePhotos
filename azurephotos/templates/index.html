@@ -26,50 +26,60 @@
 </head>
 
 <body>
-  <h1>Azure Photos</h1>
+  <!-- Title -->
+  <div class="container-fluid">
+    <h1 class="display-1">Azure Photos</h1>
+  </div>
   <hr />
-  <h2>Upload</h2>
-  <form action="/upload" method="POST" enctype="multipart/form-data" class="mb-3">
-    <!-- TODO: Submit request without refreshing page. Would probably have to update DOM to include new image -->
-    <label for="formFile">File</label>
-    <input class="form-control form-control-lg" id="formFileLg" type="file" required="true" multiple="true"
-      name="upload" />
-    <button class="btn btn-primary" type="submit">Submit</button>
-  </form>
+  
+  <!-- Upload -->
+  <div class="container-fluid">
+    <h2 class="display-6">Upload</h2>
+    <form action="/upload" method="POST" enctype="multipart/form-data" class="mb-3">
+      <!-- TODO: Submit request without refreshing page. Would probably have to update DOM to include new image -->
+      <label for="formFile">File</label>
+      <input class="form-control form-control-lg" id="formFileLg" type="file" required="true" multiple="true"
+        name="upload" />
+      <button class="btn btn-primary" type="submit">Submit</button>
+    </form>
+  </div>
   <hr />
 
-  <h2>Albums</h2>
-  <div class="album-container">
+  <!-- Albums -->
+  <div class="container-fluid">
+    <h2 class="display-6">Albums</h2>
     <!-- Button trigger modal -->
-    <button type="button" class="btn btn-primary" id="createAlbumBtn">
-      New Album
-    </button>
+    <button type="button" class="btn btn-primary" id="createAlbumBtn">New Album</button>
 
-
-    <div class="row">
+    <div class="row row-cols-3 row-cols-lg-4 grid">
       {% for album in albums %}
-      <div class="col-6 col-md-4 col-lg-3">
-        <a href="/albums/{{album}}">
-          <h3>{{album}}</h3>
-          <img src="/api/albums/thumbnail/{{album}}" class="img-thumbnail" width="370" height="280">
-        </a>
+      <div class="col">
+        <div class="photo-card position-relative">
+          <a href="/albums/{{album}}">
+            <h3>{{album}}</h3>
+            <img src="/api/albums/thumbnail/{{album}}" class="img-fluid img-thumbnail">
+          </a>
+        </div>
       </div>
       {% endfor %}
     </div>
   </div>
   <hr />
 
-  <h2 class="mb-4">My Photos</h2>
-  <div class="row row-cols-4 row-cols-lg-6 grid gx-0">
-    {% for image in images %}
-    <div class="col">
-      <div class="photo-card shadow-sm position-relative">
-        <input class="form-check-input photo-checkbox" type="checkbox" name="selected_photos" value="{{ image }}">
-        <img src="/thumbnail/{{ image }}" alt="Photo" class="img-thumbnail" loading="lazy" data-bs-toggle="modal"
-          data-bs-target="#imageModal" data-full="/fullsize/{{ image }}">
+  <!-- Photos -->
+  <div class="container-fluid">
+    <h2 class="display-6">My Photos</h2>
+    <div class="row row-cols-4 row-cols-lg-6 grid g-0">
+      {% for image in images %}
+      <div class="col">
+        <div class="photo-card position-relative">
+          <input class="form-check-input photo-checkbox" type="checkbox" name="selected_photos" value="{{ image }}">
+          <img src="/thumbnail/{{ image }}" class="img-fluid img-thumbnail" loading="lazy" data-bs-toggle="modal"
+            data-bs-target="#imageModal" data-full="/fullsize/{{ image }}">
+        </div>
       </div>
+      {% endfor %}
     </div>
-    {% endfor %}
   </div>
 
   <!-- Modal -->
