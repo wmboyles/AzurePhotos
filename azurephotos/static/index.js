@@ -29,8 +29,7 @@ $(document).ready(() => {
 
         fetch(deleteUrl, { method: "DELETE" })
             .then(response => {
-                if(response.ok)
-                {
+                if(response.ok) {
                     const deletedThumbnail = document.querySelector(`[data-full="/fullsize/${modalPhotoName}"]`)
                     if (deletedThumbnail) {
                         deletedThumbnail.closest(".col").remove();
@@ -78,21 +77,24 @@ $(document).ready(() => {
             });
     }
 
-    // TODO: Reimplement
-    // function addToAlbum(album) {
-    //     const imageUrl = imageUrls[index];
-    //     fetch(`/api/albums/${album}/${imageUrl}`, { method: "POST" })
-    //         .then(_ => {
-    //             modal.modal("hide")
-    //             thumbnails[index].remove()
-    //             imageUrls.splice(index, 1)
-    //             thumbnails.splice(index, 1)
-    //             index = -1
-    //         })
-    //         .catch(error => {
-    //             console.log(error)
-    //         });
-    // }
+    function addToAlbum(album) {
+        fetch(`/api/albums/${album}/${modalPhotoName}`, { method: "POST" })
+            .then(response => {
+                if (response.ok){
+                    const movedThumbnail = document.querySelector(`[data-full="/fullsize/${modalPhotoName}"]`)
+                    if (movedThumbnail) {
+                        movedThumbnail.closest(".col").remove();
+                    }
+                    bootstrap.Modal.getInstance(imageModal).hide();
+                    modalPhotoName = null;
+                } else {
+                    alert(response);
+                }
+            })
+            .catch(error => {
+                console.log(error)
+            });
+    }
 
     $("#deleteBtn").click(deleteImage);
 
@@ -102,10 +104,10 @@ $(document).ready(() => {
 
     $("#renameAlbumBtn").click(renameAlbum);
 
-    // $("#addToAlbumBtn").siblings("ul").find("li .dropdown-item").each(function () {
-    //     var button = $(this);
-    //     const albumName = button.text();
-    //     button.click(() => addToAlbum(albumName))
-    //     // button.attr("onclick", addToAlbum(albumName))
-    // });
+    $("#addToAlbumBtn").siblings("ul").find("li .dropdown-item").each(function () {
+        const button = $(this);
+        const albumName = button.text();
+        button.click(() => addToAlbum(albumName))
+        // button.attr("onclick", addToAlbum(albumName))
+    });
 });
