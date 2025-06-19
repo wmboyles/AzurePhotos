@@ -55,12 +55,10 @@
   width: 100%;
   padding: 0;
   color: white;
-  font-weight: bold;
   text-align: center;
   background: rgba(0, 0, 0, 0.5);
   border-bottom-left-radius: 0.5rem;
   border-bottom-right-radius: 0.5rem;
-  font-size: 1.5rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
