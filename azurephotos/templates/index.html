@@ -53,12 +53,12 @@
     <div class="row row-cols-3 row-cols-lg-4 grid">
       {% for album in albums %}
       <div class="col">
-        <div class="photo-card position-relative">
-          <a href="/albums/{{album}}">
-            <h3>{{album}}</h3>
-            <img src="/api/albums/thumbnail/{{album}}" class="img-fluid img-thumbnail">
-          </a>
-        </div>
+        <a href="/albums/{{album}}" title="{{album}}">
+          <div class="photo-card position-relative">
+              <img src="/api/albums/thumbnail/{{album}}" class="img-fluid img-thumbnail">
+              <div class="album-title-overlay">{{album}}</div>
+          </div>
+        </a>
       </div>
       {% endfor %}
     </div>
