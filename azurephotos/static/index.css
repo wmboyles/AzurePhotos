@@ -1,6 +1,6 @@
 #imageModal .modal-dialog {
     margin: auto;
-    max-height: 94vh;
+    max-height: 97vh;
 }
 
 #imageModal .modal-content {
@@ -9,19 +9,57 @@
     align-items: center;
 }
 
-#imageModal .modal-body {
-    max-height: 94vh;
-}
-
 #imageModal .modal-footer {
     border: none;
 }
 
-.img-thumbnail {
+#modalImage {
+    max-width: 90vw;
+    max-height: 90vh;
+}
+
+.photo-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 0.5rem;
+    transition: transform 0.2s;
     border: none;
 }
 
-#fullImage {
-    max-width: 94vw;
-    max-height: 94vh;
+.photo-card:hover {
+    transform: scale(1.02);
+}
+
+.photo-checkbox {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background-color: rgba(255, 255, 255, 0.8);
+    border-radius: 0.25rem;
+    padding: 0.25rem;
+}
+
+.img-thumbnail {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: block;
+  object-fit: cover;
+  aspect-ratio: 1;
+}
+
+.album-title-overlay {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  padding: 0;
+  color: white;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.5);
+  border-bottom-left-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

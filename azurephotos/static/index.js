@@ -1,45 +1,20 @@
 // imageUrls is passed here from HTML from Flask
+// We'll also have albums on the main page and album on an album page
 $(document).ready(() => {
+    // Last viewed photo in modal
+    let modalPhotoName = null;
 
-    const LEFT_ARROW = 37;
-    const RIGHT_ARROW = 39;
-    const DELETE = 127;
+    // Modal for viewing images
+    const imageModal = document.getElementById('imageModal');
 
-    // let imageUrls = {{ images | tojson}};
-    let thumbnails = $(".image-container img");
+    // Open modal when clicking on a thumbnail
+    imageModal.addEventListener('show.bs.modal', function (event) {
+        const trigger = event.relatedTarget;
+        const fullSrc = trigger.getAttribute('data-full');
 
-    const modal = $("#imageModal");
-    const fullImage = $("#fullImage");
-
-    // Index of image last displayed in modal
-    let index = -1;
-
-    function updateModal(index) {
-        const imageUrl = imageUrls[index];
-        fullImage.attr("src", "/fullsize/" + imageUrl);
-        modal.modal("show");
-    }
-
-    thumbnails.on("click", function (e) {
-        if (modal.is(":visible")) return;
-
-        index = $(this).index();
-        updateModal(index);
+        document.getElementById('modalImage').src = fullSrc;
+        modalPhotoName = fullSrc.slice("/fullsize/".length);
     });
-
-    function prevImage() {
-        if (index === 0) return;
-        index--;
-
-        updateModal(index)
-    }
-
-    function nextImage() {
-        if (index === imageUrls.length - 1) return;
-        index++;
-
-        updateModal(index);
-    }
 
     function deleteImage() {
         const isAlbum = typeof (album) !== "undefined";
@@ -49,16 +24,21 @@ $(document).ready(() => {
             return
         }
 
-        const imageUrl = imageUrls[index];
-        const deleteUrl = isAlbum ? `/api/albums/${album}/${imageUrl}` : `/delete/${imageUrl}`
+        // TODO: Need to test deleting from album
+        const deleteUrl = isAlbum ? `/api/albums/${album}/${modalPhotoName}` : `/delete/${modalPhotoName}`
 
         fetch(deleteUrl, { method: "DELETE" })
-            .then(_ => {
-                modal.modal("hide")
-                thumbnails[index].remove()
-                imageUrls.splice(index, 1)
-                thumbnails.splice(index, 1)
-                index = -1
+            .then(response => {
+                if(response.ok) {
+                    const deletedThumbnail = document.querySelector(`[data-full="/fullsize/${modalPhotoName}"]`)
+                    if (deletedThumbnail) {
+                        deletedThumbnail.closest(".col").remove();
+                    }
+                    bootstrap.Modal.getInstance(imageModal).hide();
+                    modalPhotoName = null;
+                } else {
+                    console.log(response);
+                }
             })
             .catch(error => {
                 console.log(error);
@@ -79,7 +59,7 @@ $(document).ready(() => {
     function deleteAlbum() {
         alert("Are you sure you want to delete this album?");
         fetch(`/api/albums/${album}`, { method: "DELETE" })
-            .then(response => {
+            .then(_ => {
                 window.location.href = "/";
             }).catch(error => {
                 console.log(error);
@@ -98,23 +78,23 @@ $(document).ready(() => {
     }
 
     function addToAlbum(album) {
-        const imageUrl = imageUrls[index];
-        fetch(`/api/albums/${album}/${imageUrl}`, { method: "POST" })
-            .then(_ => {
-                modal.modal("hide")
-                thumbnails[index].remove()
-                imageUrls.splice(index, 1)
-                thumbnails.splice(index, 1)
-                index = -1
+        fetch(`/api/albums/${album}/${modalPhotoName}`, { method: "POST" })
+            .then(response => {
+                if (response.ok){
+                    const movedThumbnail = document.querySelector(`[data-full="/fullsize/${modalPhotoName}"]`)
+                    if (movedThumbnail) {
+                        movedThumbnail.closest(".col").remove();
+                    }
+                    bootstrap.Modal.getInstance(imageModal).hide();
+                    modalPhotoName = null;
+                } else {
+                    console.log(response);
+                }
             })
             .catch(error => {
                 console.log(error)
             });
     }
-
-    $("#prevBtn").click(prevImage);
-
-    $("#nextBtn").click(nextImage);
 
     $("#deleteBtn").click(deleteImage);
 
@@ -125,21 +105,9 @@ $(document).ready(() => {
     $("#renameAlbumBtn").click(renameAlbum);
 
     $("#addToAlbumBtn").siblings("ul").find("li .dropdown-item").each(function () {
-        var button = $(this);
+        const button = $(this);
         const albumName = button.text();
         button.click(() => addToAlbum(albumName))
         // button.attr("onclick", addToAlbum(albumName))
-    });
-
-    modal.on("keydown", function (e) {
-        if (!modal.is(":visible")) return;
-
-        if (e.keyCode === LEFT_ARROW) {
-            prevImage();
-        } else if (e.keyCode === RIGHT_ARROW) {
-            nextImage();
-        } else if (e.keyCode === DELETE) {
-            deleteImage()
-        }
     });
 });
