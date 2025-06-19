@@ -79,15 +79,19 @@ def delete(filename: str) -> Response:
     credential = current_app.config["credential"]
 
     try:
-        with ContainerClient(blob_account_url, thumbnails_container_name, credential) as thumbnail_container_client:
-            thumbnail_container_client.delete_blob(filename)
-
         with ContainerClient(blob_account_url, photos_container_name, credential) as photos_container_client:
             photos_container_client.delete_blob(filename)
 
         remove_from_all_albums(filename)
     except ResourceNotFoundError as e:
         return Response(e.message, status=404)
+
+    # Ignore if removing thumbnail fails 
+    try:
+        with ContainerClient(blob_account_url, thumbnails_container_name, credential) as thumbnail_container_client:
+            thumbnail_container_client.delete_blob(filename)
+    except ResourceNotFoundError as e:
+        pass
 
     # Client JS code should remove image from view
     return Response(status=200)

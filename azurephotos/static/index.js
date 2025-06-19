@@ -37,7 +37,7 @@ $(document).ready(() => {
                     bootstrap.Modal.getInstance(imageModal).hide();
                     modalPhotoName = null;
                 } else {
-                    alert(response);
+                    console.log(response);
                 }
             })
             .catch(error => {
@@ -59,7 +59,7 @@ $(document).ready(() => {
     function deleteAlbum() {
         alert("Are you sure you want to delete this album?");
         fetch(`/api/albums/${album}`, { method: "DELETE" })
-            .then(response => {
+            .then(_ => {
                 window.location.href = "/";
             }).catch(error => {
                 console.log(error);
@@ -88,7 +88,7 @@ $(document).ready(() => {
                     bootstrap.Modal.getInstance(imageModal).hide();
                     modalPhotoName = null;
                 } else {
-                    alert(response);
+                    console.log(response);
                 }
             })
             .catch(error => {
