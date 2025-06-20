@@ -113,8 +113,7 @@ def _upload() -> str:
             fullsize_container_client.upload_blob(save_filename, file.stream)
 
             thumbnail_bytes = compute_thumbnail(file.stream)
-            thumbnails_container_client.upload_blob(save_filename, thumbnail_bytes)
-
+            thumbnails_container_client.upload_blob(save_filename, thumbnail_bytes.getvalue())
 
     if save_filename is None:
         raise Exception("Could not upload file")
