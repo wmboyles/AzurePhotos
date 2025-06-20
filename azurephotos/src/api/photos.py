@@ -11,6 +11,7 @@ from flask import Blueprint, redirect, request, current_app
 from werkzeug.utils import secure_filename
 from werkzeug.wrappers.response import Response
 from src.lib.storage_helper import get_container_sas
+from src.lib.thumbnails import thumbnail as compute_thumbnail
 
 from .albums import remove_from_all_albums, add_to_album
 
@@ -101,13 +102,19 @@ def _upload() -> str:
     account_name = current_app.config["account_name"]
     blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
     photos_container_name: str = current_app.config["photos_container_name"]
+    thumbnails_container_name: str = current_app.config["thumbnails_container_name"]
     credential = current_app.config["credential"]
 
     save_filename: str | None = None
-    with ContainerClient(blob_account_url, photos_container_name, credential) as container_client:
+    with ContainerClient(blob_account_url, photos_container_name, credential) as fullsize_container_client, ContainerClient(blob_account_url, thumbnails_container_name, credential) as thumbnails_container_client:
         for file in request.files.getlist("upload"):
             save_filename = secure_filename(str(file.filename))
-            container_client.upload_blob(save_filename, file.stream)
+            
+            fullsize_container_client.upload_blob(save_filename, file.stream)
+
+            thumbnail_bytes = compute_thumbnail(file.stream)
+            thumbnails_container_client.upload_blob(save_filename, thumbnail_bytes)
+
 
     if save_filename is None:
         raise Exception("Could not upload file")
