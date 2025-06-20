@@ -29,7 +29,7 @@ def health() -> Response:
 
     try:
         with BlobServiceClient(blob_account_url, credential, retry_policy=LinearRetry(retry_total=0)) as blob_client:
-            _ = blob_client.get_account_information()
+            _ = blob_client.get_service_properties()
         return Response("ok", status=200, content_type="text/plain")
     except Exception as e:
         return Response(str(e), status=503, content_type="text/plain")
