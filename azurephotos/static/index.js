@@ -4,17 +4,14 @@ $(document).ready(() => {
     // Last viewed photo in modal
     let modalPhotoName = null;
 
-    // Modal for viewing images
-    const imageModal = document.getElementById('imageModal');
-
     // Open modal when clicking on a thumbnail
-    imageModal.addEventListener('show.bs.modal', function (event) {
+    function showModal(event) {
         const trigger = event.relatedTarget;
         const fullSrc = trigger.getAttribute('data-full');
 
         document.getElementById('modalImage').src = fullSrc;
         modalPhotoName = fullSrc.slice("/fullsize/".length);
-    });
+    }
 
     function deleteImage() {
         const isAlbum = typeof (album) !== "undefined";
@@ -24,12 +21,11 @@ $(document).ready(() => {
             return
         }
 
-        // TODO: Need to test deleting from album
         const deleteUrl = isAlbum ? `/api/albums/${album}/${modalPhotoName}` : `/delete/${modalPhotoName}`
 
         fetch(deleteUrl, { method: "DELETE" })
             .then(response => {
-                if(response.ok) {
+                if (response.ok) {
                     const deletedThumbnail = document.querySelector(`[data-full="/fullsize/${modalPhotoName}"]`)
                     if (deletedThumbnail) {
                         deletedThumbnail.closest(".col").remove();
@@ -80,7 +76,7 @@ $(document).ready(() => {
     function addToAlbum(album) {
         fetch(`/api/albums/${album}/${modalPhotoName}`, { method: "POST" })
             .then(response => {
-                if (response.ok){
+                if (response.ok) {
                     const movedThumbnail = document.querySelector(`[data-full="/fullsize/${modalPhotoName}"]`)
                     if (movedThumbnail) {
                         movedThumbnail.closest(".col").remove();
@@ -95,6 +91,46 @@ $(document).ready(() => {
                 console.log(error)
             });
     }
+
+    function uploadPhotos(event) {
+        event.preventDefault();
+
+        const isAlbum = typeof (album) !== "undefined";
+        const path = isAlbum ? `/upload/${album}` : `/upload`
+
+        const input = document.getElementById("formFileLg");
+        const files = input.files;
+        const formData = new FormData();
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            formData.append("upload", file);
+
+            // Get last modified
+            const dateTaken = new Date(file.lastModified);
+            formData.append("dateTaken", dateTaken.toISOString());
+        }
+
+        $("#submitUpload").prop("disabled", true); // disable before upload
+        fetch(path, { method: "POST", body: formData })
+            .then(response => {
+                if (!response.ok) {
+                    alert("Upload failed");
+                    console.log(response);
+                } else {
+                    location.reload();
+                }
+            })
+            .catch(error => {
+                console.log(error);
+                $("#submitUpload").prop("disabled", false); // re-enable submit
+            });
+        // Submit button should be re-enabled on page refresh.
+    }
+
+    $("#imageModal").on('show.bs.modal', showModal);
+
+    $("#uploadForm").on('submit', uploadPhotos);
 
     $("#deleteBtn").click(deleteImage);
 

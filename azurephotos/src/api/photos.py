@@ -10,8 +10,10 @@ from azure.storage.blob import ContainerClient
 from flask import Blueprint, redirect, request, current_app
 from werkzeug.utils import secure_filename
 from werkzeug.wrappers.response import Response
+from werkzeug.datastructures.file_storage import FileStorage
 from src.lib.storage_helper import get_container_sas
 from src.lib.thumbnails import thumbnail as compute_thumbnail
+from datetime import datetime
 
 from .albums import remove_from_all_albums, add_to_album
 
@@ -95,58 +97,79 @@ def delete(filename: str) -> Response:
         pass
 
     # Client JS code should remove image from view
-    return Response(status=200)
+    return Response(status=204)
 
 
-def _upload() -> str:
+def _upload(*file_info: tuple[FileStorage, datetime]) -> list[str]:
+    """
+    Upload photos to blob storage.
+    Also, compute and upload thunbnails.
+
+    :returns: List of uploaded file names
+    """
+
+    if not file_info:
+        raise Exception("No files to upload")
+
     account_name = current_app.config["account_name"]
     blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
     photos_container_name: str = current_app.config["photos_container_name"]
     thumbnails_container_name: str = current_app.config["thumbnails_container_name"]
     credential = current_app.config["credential"]
 
-    save_filename: str | None = None
+    save_filenames = list[str]()
     with ContainerClient(blob_account_url, photos_container_name, credential) as fullsize_container_client, ContainerClient(blob_account_url, thumbnails_container_name, credential) as thumbnails_container_client:
-        for file in request.files.getlist("upload"):
+        for (file, modified_date) in file_info:
             save_filename = secure_filename(str(file.filename))
-            
             fullsize_container_client.upload_blob(save_filename, file.stream)
 
             thumbnail_bytes = compute_thumbnail(file.stream)
             thumbnails_container_client.upload_blob(save_filename, thumbnail_bytes.getvalue())
 
-    if save_filename is None:
+            save_filenames.append(save_filename)
+
+    if not save_filenames:
         raise Exception("Could not upload file")
     
-    return save_filename
+    return save_filenames
 
 
 @api_photos_controller.route("/upload", methods=["POST"])
 def upload() -> Response:
     """
-    Upload a photo to the storage account.
-    Creating the thumbnail is handled by the resizer function.
+    Upload photos to the storage account.
     """
 
-    _ = _upload()
+    files = request.files.getlist("upload")
 
-    # TODO: Allow uploading photos without refreshing the page
-    return redirect("/")
+    datesTakenStr = request.form.getlist("dateTaken")
+    datesTaken = [datetime.fromisoformat(dateStr) for dateStr in datesTakenStr]
+
+    _ = _upload(*list(zip(files,datesTaken)))
+
+    return Response(status=201)
 
 
 @api_photos_controller.route("/upload/<album_name>", methods=["POST"])
 def upload_to_album(album_name: str) -> Response:
-    upload_filename = _upload()
-    add_to_album_result = add_to_album(album_name, upload_filename)
+    """
+    Upload photos and add it to an album together
+    """
+    
+    files = request.files.getlist("upload")
+    
+    datesTakenStr = request.form.getlist("dateTaken")
+    datesTaken = [datetime.fromisoformat(dateStr) for dateStr in datesTakenStr]
+    
+    upload_filenames = _upload(*list(zip(files,datesTaken)))
 
-    if (
-        isinstance(add_to_album_result, Response)
-        and add_to_album_result.status_code >= 400
-    ):
-        return add_to_album_result
+    for upload_filename in upload_filenames:
+        add_to_album_result = add_to_album(album_name, upload_filename)
 
-    # TODO: Allow uploading photos without refreshing the page
-    return redirect(f"/albums/{album_name}")
+        if isinstance(add_to_album_result, Response) and add_to_album_result.status_code >= 400:
+            return add_to_album_result
+
+    return Response(status=201)
 
 
 def all_photos() -> list[str]:
