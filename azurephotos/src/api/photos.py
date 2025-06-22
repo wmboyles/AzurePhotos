@@ -6,7 +6,7 @@ API endpoints for handling individual photos.
 
 from azure.core.exceptions import ResourceNotFoundError
 from azure.identity import DefaultAzureCredential
-from azure.storage.blob import ContainerClient
+from azure.storage.blob import ContainerClient, BlobProperties
 from flask import Blueprint, redirect, request, current_app
 from werkzeug.utils import secure_filename
 from werkzeug.wrappers.response import Response
@@ -174,9 +174,10 @@ def upload_to_album(album_name: str) -> Response:
     return Response(status=201)
 
 
-def all_photos() -> list[str]:
+def all_photos() -> list[tuple[datetime, str]]:
     """
-    Get all photo names stored in blob storage.
+    Get all photos stored in blob storage and their last modified time.
+    Photos are ordered by their last modified time.
     """
 
     credential: DefaultAzureCredential = current_app.config["credential"]
@@ -184,5 +185,14 @@ def all_photos() -> list[str]:
     blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
     photos_container_name: str = current_app.config["photos_container_name"]
 
+    
     with ContainerClient(blob_account_url, photos_container_name, credential) as container_client:
-        return list(container_client.list_blob_names())
+        blobs = list(container_client.list_blobs(include="metadata"))
+
+        def last_modified(blob_properties: BlobProperties) -> datetime:
+            if not blob_properties.metadata or not isinstance(blob_properties.metadata, dict) or not blob_properties.metadata.get("lastModified"):
+                return blob_properties.last_modified # type: ignore
+            
+            return datetime.fromisoformat(blob_properties.metadata["lastModified"])
+
+        return sorted(((last_modified(blob), str(blob.name)) for blob in blobs))

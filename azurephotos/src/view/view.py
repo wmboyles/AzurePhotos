@@ -28,13 +28,11 @@ blueprints = {
 def non_album_photos() -> list[str]:
     """
     Get all photos that are not in any photo album.
+    Photos are sorted in order of their lastModified date.
     """
 
     album_photos = set(all_album_photos())
-    photos = set(all_photos())
-
-    return list(photos - album_photos)
-
+    return [photo for (_, photo) in all_photos() if photo not in album_photos]
 
 @landing_view_controller.route("/")
 def index() -> str:
