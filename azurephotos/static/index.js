@@ -123,7 +123,9 @@ $(document).ready(() => {
             })
             .catch(error => {
                 console.log(error);
-                $("#submitUpload").prop("disabled", false); // re-enable submit
+            })
+            .finally(() => {
+                $("#submitUpload").prop("disabled", false) // re-enable submit
             });
         // Submit button should be re-enabled on page refresh.
     }

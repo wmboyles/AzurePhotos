@@ -100,10 +100,12 @@ def delete(filename: str) -> Response:
     return Response(status=204)
 
 
-def _upload(*file_info: tuple[FileStorage, datetime]) -> list[str]:
+def _upload(*file_info: tuple[FileStorage, str]) -> list[str]:
     """
     Upload photos to blob storage.
     Also, compute and upload thunbnails.
+
+    :param file_info: Collection of files and their last modified time as an ISO-formatted datetime
 
     :returns: List of uploaded file names
     """
@@ -121,10 +123,14 @@ def _upload(*file_info: tuple[FileStorage, datetime]) -> list[str]:
     with ContainerClient(blob_account_url, photos_container_name, credential) as fullsize_container_client, ContainerClient(blob_account_url, thumbnails_container_name, credential) as thumbnails_container_client:
         for (file, modified_date) in file_info:
             save_filename = secure_filename(str(file.filename))
-            fullsize_container_client.upload_blob(save_filename, file.stream)
+            metadata = {
+                "lastModified": modified_date # ISO timestamp
+            }
+
+            fullsize_container_client.upload_blob(save_filename, file.stream, metadata=metadata)
 
             thumbnail_bytes = compute_thumbnail(file.stream)
-            thumbnails_container_client.upload_blob(save_filename, thumbnail_bytes.getvalue())
+            thumbnails_container_client.upload_blob(save_filename, thumbnail_bytes.getvalue(), metadata=metadata)
 
             save_filenames.append(save_filename)
 
@@ -141,11 +147,9 @@ def upload() -> Response:
     """
 
     files = request.files.getlist("upload")
+    datesTaken = request.form.getlist("dateTaken")
 
-    datesTakenStr = request.form.getlist("dateTaken")
-    datesTaken = [datetime.fromisoformat(dateStr) for dateStr in datesTakenStr]
-
-    _ = _upload(*list(zip(files,datesTaken)))
+    _ = _upload(*zip(files,datesTaken))
 
     return Response(status=201)
 
@@ -157,11 +161,9 @@ def upload_to_album(album_name: str) -> Response:
     """
     
     files = request.files.getlist("upload")
+    datesTaken = request.form.getlist("dateTaken")
     
-    datesTakenStr = request.form.getlist("dateTaken")
-    datesTaken = [datetime.fromisoformat(dateStr) for dateStr in datesTakenStr]
-    
-    upload_filenames = _upload(*list(zip(files,datesTaken)))
+    upload_filenames = _upload(*zip(files,datesTaken))
 
     for upload_filename in upload_filenames:
         add_to_album_result = add_to_album(album_name, upload_filename)
