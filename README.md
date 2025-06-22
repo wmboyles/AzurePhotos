@@ -45,6 +45,7 @@ You should have all the required software from dev setup before deploying.
 ### AzurePhotos WebApp
 
 ```ps
+az login --scope https://management.core.windows.net//.default 
 Compress-Archive -Path azurephotos/* -DestinationPath azurephotos.zip
 az webapp deploy --resource-group azure-photos --name azurephotos --src-path .\azurephotos.zip --type zip
 rm azurephotos.zip
