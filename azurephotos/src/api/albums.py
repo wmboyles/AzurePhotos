@@ -150,11 +150,16 @@ def add_to_album(album_name: str, filename: str) -> Response | dict[str, Any]:
 
 
 @api_albums_controller.route("<album_name>", methods=["GET"])
-def list_album(album_name: str) -> Response | list[str]:
+def list_album(album_name: str):
+    return _list_album(album_name, time_sorted=True)
+
+def _list_album(album_name: str, time_sorted: bool) -> Response | list[str]:
     """
     List the photos in an album.
 
     :param album_name: The name of the album to list photos for.
+    :param time_sorted: Whether to sort photo names by last modified date.
+        Otherwise, photos are sorted by just their name.
     """
 
     account_name = current_app.config["account_name"]
@@ -164,13 +169,19 @@ def list_album(album_name: str) -> Response | list[str]:
 
     query = "PartitionKey eq @album_name"
     parameters = {"album_name": album_name}
-    entities = list(
+    album_photo_names = set[str](
+        entity["RowKey"] for entity in
         table_client.query_entities(query_filter=query, parameters=parameters)
+        if len(entity["RowKey"]) > 0 # excludes row indicating album existence
     )
-    if len(entities) == 0:
+    if len(album_photo_names) == 0:
         return Response("Album does not exist", status=404)
 
-    return [entity["RowKey"] for entity in entities if entity["RowKey"] != ""]
+    if time_sorted:
+        from .photos import all_photos # Needed here to avoid circular import
+        return [photo for (_,photo) in all_photos() if photo in album_photo_names]
+    else:
+        return sorted(album_photo_names)
 
 
 @api_albums_controller.route("<album_name>/<filename>", methods=["DELETE"])
@@ -201,7 +212,7 @@ def get_album_thumbnail(album_name: str) -> Response:
     """
 
     # Select a random photo from the album to use as the thumbnail
-    album_photos = list_album(album_name)
+    album_photos = _list_album(album_name, time_sorted=False)
     if isinstance(album_photos, Response) and album_photos.status_code == 404:
         return album_photos
     elif not isinstance(album_photos, list):

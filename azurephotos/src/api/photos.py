@@ -176,7 +176,8 @@ def upload_to_album(album_name: str) -> Response:
 
 def all_photos() -> list[tuple[datetime, str]]:
     """
-    Get all photo names stored in blob storage.
+    Get all photos stored in blob storage and their last modified time.
+    Photos are ordered by their last modified time.
     """
 
     credential: DefaultAzureCredential = current_app.config["credential"]
