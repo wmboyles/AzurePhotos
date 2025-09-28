@@ -13,25 +13,23 @@ $(document).ready(() => {
         modalPhotoName = fullSrc.slice("/fullsize/".length);
     }
 
-    function deleteImage() {
-        const isAlbum = typeof (album) !== "undefined";
+    function deleteImage(photoName) {
+        const isAlbum = (typeof album) !== "undefined";
         if (!confirm(isAlbum ?
-            "Are you sure you want to remove from this album?" :
-            "Are you sure you want to delete?")) {
-            return
+            `Are you sure you want to remove ${photoName} from this album?` :
+            `Are you sure you want to delete ${photoName}?`)) {
+            return;
         }
 
-        const deleteUrl = isAlbum ? `/api/albums/${album}/${modalPhotoName}` : `/delete/${modalPhotoName}`
+        const deleteUrl = isAlbum ? `/api/albums/${album}/${photoName}` : `/delete/${photoName}`
 
         fetch(deleteUrl, { method: "DELETE" })
             .then(response => {
                 if (response.ok) {
-                    const deletedThumbnail = document.querySelector(`[data-full="/fullsize/${modalPhotoName}"]`)
+                    const deletedThumbnail = document.querySelector(`[data-full="/fullsize/${photoName}"]`)
                     if (deletedThumbnail) {
                         deletedThumbnail.closest(".col").remove();
                     }
-                    bootstrap.Modal.getInstance(imageModal).hide();
-                    modalPhotoName = null;
                 } else {
                     console.log(response);
                 }
@@ -134,7 +132,11 @@ $(document).ready(() => {
 
     $("#uploadForm").on('submit', uploadPhotos);
 
-    $("#deleteBtn").click(deleteImage);
+    $("#deleteBtn").click(function() {
+        deleteImage(modalPhotoName);
+        bootstrap.Modal.getInstance(imageModal).hide();
+        modalPhotoName = null;
+    });
 
     $("#createAlbumBtn").click(createAlbum);
 
@@ -147,5 +149,10 @@ $(document).ready(() => {
         const albumName = button.text();
         button.click(() => addToAlbum(albumName))
         // button.attr("onclick", addToAlbum(albumName))
+    });
+
+    $(".photo-action.delete-btn").click(function() {
+        const photo = $(this).data("photo");
+        deleteImage(photo);
     });
 });

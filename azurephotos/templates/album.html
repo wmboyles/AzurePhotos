@@ -23,6 +23,7 @@
   </script>
 
   <link rel="stylesheet" href="/static/index.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
 </head>
 
 <body>
@@ -53,8 +54,12 @@
       {% for image in images %}
       <div class="col">
         <div class="photo-card position-relative">
-          <!-- <input class="form-check-input photo-checkbox" type="checkbox" name="selected_photos" value="{{ image }}"> -->
           <img src="/thumbnail/{{ image }}" title="{{image}}" class="img-fluid img-thumbnail" loading="lazy" data-bs-toggle="modal" data-bs-target="#imageModal" data-full="/fullsize/{{ image }}">
+          <!-- TODO: Enable this later once we can select multiple images -->
+          <!-- <input class="form-check-input photo-checkbox" type="checkbox" name="selected_photos" value="{{ image }}"> -->
+          <button type="button" class="btn btn-sm btn-danger photo-action delete-btn" data-photo="{{ image }}">
+            <i class="bi bi-trash"></i>
+          </button>
         </div>
       </div>
       {% endfor %}
