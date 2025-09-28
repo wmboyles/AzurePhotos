@@ -195,4 +195,4 @@ def all_photos() -> list[tuple[datetime, str]]:
             
             return datetime.fromisoformat(blob_properties.metadata["lastModified"])
 
-        return sorted(((last_modified(blob), str(blob.name)) for blob in blobs))
+        return sorted(((last_modified(blob), str(blob.name)) for blob in blobs), reverse=True)
