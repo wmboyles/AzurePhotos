@@ -32,6 +32,7 @@ $(document).ready(() => {
                     if (deletedThumbnail) {
                         deletedThumbnail.closest(".col").remove();
                     }
+                    selectedPhotos.delete(photoName)
                 } else {
                     console.log(response);
                 }
@@ -83,15 +84,30 @@ $(document).ready(() => {
 
     $("#uploadForm").on('submit', uploadPhotos);
 
-    $("#deleteBtn").click(function() {
-        deleteImage(modalPhotoName);
-        bootstrap.Modal.getInstance(imageModal).hide();
-        modalPhotoName = null;
+    $("#modalDeleteBtn").click(function() {
+        if (modalPhotoName !== null)
+        {
+            deleteImage(modalPhotoName);
+            _ = selectedPhotos.delete(modalPhotoName);
+            bootstrap.Modal.getInstance(imageModal).hide();
+            modalPhotoName = null;
+        }
     });
 
     $(".photo-action.delete-btn").click(function() {
+        // Add photo to selection
         const photo = $(this).data("photo");
-        deleteImage(photo);
+        $(`.photo-checkbox[value='${photo}']`)
+            .prop("checked", true)
+            .trigger("change")
+        
+        if (!confirm(`Are you sure you want to delete ${selectedPhotos.size} photos?`)) {
+            return;
+        }
+
+        selectedPhotos.forEach(selectedPhoto => {
+            deleteImage(selectedPhoto)
+        })
     });
 
     $(".photo-checkbox").on("change", function() {
@@ -100,6 +116,19 @@ $(document).ready(() => {
             selectedPhotos.add(photo)
         } else {
             selectedPhotos.delete(photo)
+        }
+    });
+
+    $(document).on("keydown", function(event) {
+        if (event.key === "Escape") {
+            // If the view image modal is open and we hit ESC,
+            // Bootstrap's own event handler will call event.stopPropogation()
+            // So this function never sees that event; we don't need to handle it
+
+            $(".photo-checkbox")
+                .prop("checked", false)
+                .trigger("change")
+            selectedPhotos.clear();
         }
     });
 

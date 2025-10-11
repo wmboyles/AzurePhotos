@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 
 <head>
@@ -18,8 +18,8 @@
     crossorigin="anonymous"></script>
 
   <script type="text/javascript">
-    album = "{{album}}";
     imageUrls = {{ images | tojson }};
+    album = "{{album}}";
   </script>
 
   <link rel="stylesheet" href="/static/index.css">
@@ -73,12 +73,11 @@
           <img id="modalImage" src="" alt="Full Size" class="img-fluid">
         </div>
         <div class="modal-footer m-0 p-0">
-          <button type="button" class="btn btn-danger" id="deleteBtn">Remove</button>
+          <button type="button" class="btn btn-danger" id="modalDeleteBtn">Remove</button>
         </div>
       </div>
     </div>
   </div>
-
 
   <script src="/static/index.js"></script>
 </body>
