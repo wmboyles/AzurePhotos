@@ -121,9 +121,11 @@ $(document).ready(() => {
 
     $(document).on("keydown", function(event) {
         if (event.key === "Escape") {
-            // If the view image modal is open and we hit ESC,
-            // Bootstrap's own event handler will call event.stopPropogation()
-            // So this function never sees that event; we don't need to handle it
+            // Do not uncheck anything if the modal was closing
+            if (event.target.id === "imageModal")
+            {
+                return;
+            }
 
             $(".photo-checkbox")
                 .prop("checked", false)
