@@ -1,8 +1,10 @@
 // imageUrls is passed here from HTML from Flask
-// We'll also have albums on the main page and album on an album page
+// We'll also have `albums` on the main page and `album` on an album page
 $(document).ready(() => {
     // Last viewed photo in modal
     let modalPhotoName = null;
+    // Photos selected by checkbox
+    let selectedPhotos = new Set();
 
     // Open modal when clicking on a thumbnail
     function showModal(event) {
@@ -36,57 +38,6 @@ $(document).ready(() => {
             })
             .catch(error => {
                 console.log(error);
-            });
-    }
-
-    function createAlbum() {
-        const albumName = prompt("Enter album name");
-        fetch(`/api/albums/${albumName}`, { method: "POST" })
-            .then(response => {
-                albums.push(albumName);
-                window.location.reload();
-            }).catch(error => {
-                console.log(error);
-            });
-    }
-
-    function deleteAlbum() {
-        alert("Are you sure you want to delete this album?");
-        fetch(`/api/albums/${album}`, { method: "DELETE" })
-            .then(_ => {
-                window.location.href = "/";
-            }).catch(error => {
-                console.log(error);
-            });
-    }
-
-    function renameAlbum() {
-        const newAlbumName = prompt("Enter new album name");
-        fetch(`/api/albums/${album}/rename/${newAlbumName}`, { method: "PUT" })
-            .then(response => {
-                album = newAlbumName;
-                window.location.href = `/albums/${newAlbumName}`;
-            }).catch(error => {
-                console.log(error);
-            });
-    }
-
-    function addToAlbum(album) {
-        fetch(`/api/albums/${album}/${modalPhotoName}`, { method: "POST" })
-            .then(response => {
-                if (response.ok) {
-                    const movedThumbnail = document.querySelector(`[data-full="/fullsize/${modalPhotoName}"]`)
-                    if (movedThumbnail) {
-                        movedThumbnail.closest(".col").remove();
-                    }
-                    bootstrap.Modal.getInstance(imageModal).hide();
-                    modalPhotoName = null;
-                } else {
-                    console.log(response);
-                }
-            })
-            .catch(error => {
-                console.log(error)
             });
     }
 
@@ -138,6 +89,72 @@ $(document).ready(() => {
         modalPhotoName = null;
     });
 
+    $(".photo-action.delete-btn").click(function() {
+        const photo = $(this).data("photo");
+        deleteImage(photo);
+    });
+
+    $(".photo-checkbox").on("change", function() {
+        const photo = $(this).val()
+        if (this.checked) {
+            selectedPhotos.add(photo)
+        } else {
+            selectedPhotos.delete(photo)
+        }
+    });
+
+    /* ALBUMS */
+    function createAlbum() {
+        const albumName = prompt("Enter album name");
+        fetch(`/api/albums/${albumName}`, { method: "POST" })
+            .then(response => {
+                albums.push(albumName);
+                window.location.reload();
+            }).catch(error => {
+                console.log(error);
+            });
+    }
+
+    function deleteAlbum() {
+        alert("Are you sure you want to delete this album?");
+        fetch(`/api/albums/${album}`, { method: "DELETE" })
+            .then(_ => {
+                window.location.href = "/";
+            }).catch(error => {
+                console.log(error);
+            });
+    }
+
+    function renameAlbum() {
+        const newAlbumName = prompt("Enter new album name");
+        fetch(`/api/albums/${album}/rename/${newAlbumName}`, { method: "PUT" })
+            .then(response => {
+                album = newAlbumName;
+                window.location.href = `/albums/${newAlbumName}`;
+            }).catch(error => {
+                console.log(error);
+            });
+    }
+
+    function addToAlbum(album) {
+        fetch(`/api/albums/${album}/${modalPhotoName}`, { method: "POST" })
+            .then(response => {
+                if (response.ok) {
+                    const movedThumbnail = document.querySelector(`[data-full="/fullsize/${modalPhotoName}"]`)
+                    if (movedThumbnail) {
+                        movedThumbnail.closest(".col").remove();
+                    }
+                    bootstrap.Modal.getInstance(imageModal).hide();
+                    modalPhotoName = null;
+                } else {
+                    console.log(response);
+                }
+            })
+            .catch(error => {
+                console.log(error)
+            });
+    }
+
     $("#createAlbumBtn").click(createAlbum);
 
     $("#deleteAlbumBtn").click(deleteAlbum);
@@ -149,10 +166,5 @@ $(document).ready(() => {
         const albumName = button.text();
         button.click(() => addToAlbum(albumName))
         // button.attr("onclick", addToAlbum(albumName))
-    });
-
-    $(".photo-action.delete-btn").click(function() {
-        const photo = $(this).data("photo");
-        deleteImage(photo);
     });
 });

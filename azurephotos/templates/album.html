@@ -55,8 +55,7 @@
       <div class="col">
         <div class="photo-card position-relative">
           <img src="/thumbnail/{{ image }}" title="{{image}}" class="img-fluid img-thumbnail" loading="lazy" data-bs-toggle="modal" data-bs-target="#imageModal" data-full="/fullsize/{{ image }}">
-          <!-- TODO: Enable this later once we can select multiple images -->
-          <!-- <input class="form-check-input photo-checkbox" type="checkbox" name="selected_photos" value="{{ image }}"> -->
+          <input class="form-check-input photo-checkbox" type="checkbox" name="selected_photos" value="{{ image }}">
           <button type="button" class="btn btn-sm btn-danger photo-action delete-btn" data-photo="{{ image }}">
             <i class="bi bi-trash"></i>
           </button>
