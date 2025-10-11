@@ -15,9 +15,10 @@ $(document).ready(() => {
         modalPhotoName = fullSrc.slice("/fullsize/".length);
     }
 
-    function deleteImage(photoName) {
+    // Delete image, or remove it from an album
+    function deleteImage(photoName, confirm=true) {
         const isAlbum = (typeof album) !== "undefined";
-        if (!confirm(isAlbum ?
+        if (confirm && !confirm(isAlbum ?
             `Are you sure you want to remove ${photoName} from this album?` :
             `Are you sure you want to delete ${photoName}?`)) {
             return;
@@ -101,13 +102,43 @@ $(document).ready(() => {
             .prop("checked", true)
             .trigger("change")
         
-        if (!confirm(`Are you sure you want to delete ${selectedPhotos.size} photos?`)) {
+        const isAlbum = (typeof album) !== "undefined";
+        if (!confirm(isAlbum ?
+            `Are you sure you want to remove ${selectedPhotos.size} photos from this album?`: 
+            `Are you sure you want to delete ${selectedPhotos.size} photos?`)) {
             return;
         }
 
         selectedPhotos.forEach(selectedPhoto => {
-            deleteImage(selectedPhoto)
+            // Do not confirm deletion again since we did that in bulk already
+            deleteImage(selectedPhoto, false)
         })
+        // deleteImage will took care of clearing selectedPhotos
+    });
+
+    $(".photo-action.album-btn").siblings("ul").find("li .dropdown-item").each(function() {
+        const li = $(this);
+        const album = li.text()
+
+        li.click(() => {
+            const photo = li.closest("ul.dropdown-menu")
+                .siblings(".photo-action.album-btn")
+                .data("photo")
+
+            // Add photo to selection
+            $(`.photo-checkbox[value='${photo}']`)
+                .prop("checked", true)
+                .trigger("change")
+
+            if (!confirm(`Are you sure you want to move ${selectedPhotos.size} photos to ${album}?`)) {
+                return;
+            }
+            
+            selectedPhotos.forEach(selectedPhoto => {
+                addToAlbum(selectedPhoto, album)
+            })
+            // addToAlbum will took care of clearing selectedPhotos
+        });
     });
 
     $(".photo-checkbox").on("change", function() {
@@ -167,16 +198,19 @@ $(document).ready(() => {
             });
     }
 
-    function addToAlbum(album) {
-        fetch(`/api/albums/${album}/${modalPhotoName}`, { method: "POST" })
+    function addToAlbum(photo, album) {
+        fetch(`/api/albums/${album}/${photo}`, { method: "POST" })
             .then(response => {
                 if (response.ok) {
-                    const movedThumbnail = document.querySelector(`[data-full="/fullsize/${modalPhotoName}"]`)
+                    const movedThumbnail = document.querySelector(`[data-full="/fullsize/${photo}"]`)
                     if (movedThumbnail) {
                         movedThumbnail.closest(".col").remove();
                     }
-                    bootstrap.Modal.getInstance(imageModal).hide();
-                    modalPhotoName = null;
+                    if (modalPhotoName !== null) {
+                        bootstrap.Modal.getInstance(imageModal).hide();
+                        modalPhotoName = null;
+                    }
+                    selectedPhotos.delete(photo)
                 } else {
                     console.log(response);
                 }
@@ -195,7 +229,6 @@ $(document).ready(() => {
     $("#addToAlbumBtn").siblings("ul").find("li .dropdown-item").each(function () {
         const button = $(this);
         const albumName = button.text();
-        button.click(() => addToAlbum(albumName))
-        // button.attr("onclick", addToAlbum(albumName))
+        button.click(() => addToAlbum(modalPhotoName, albumName))
     });
 });
