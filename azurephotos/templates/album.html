@@ -28,7 +28,7 @@
 
 <body>
   <!-- Title -->
-   <div class="container-fluid">
+  <div class="container-fluid">
     <h1 class="display-1">Azure Photos | {{album}}</h1>
     <button type="button" class="btn btn-primary" id="renameAlbumBtn">Rename</button>
     <button type="button" class="btn btn-danger" id="deleteAlbumBtn">Delete</button>
@@ -41,7 +41,8 @@
     <form class="mb-3" id="uploadForm">
       <!-- TODO: Submit request without refreshing page. Would probably have to update DOM to include new image -->
       <label for="formFile">File</label>
-      <input class="form-control form-control-lg" id="formFileLg" type="file" required="true" multiple="true" name="upload" />
+      <input class="form-control form-control-lg" id="formFileLg" type="file" required="true" multiple="true"
+        name="upload" />
       <button class="btn btn-primary" type="submit" id="submitUpload">Submit</button>
     </form>
   </div>
@@ -54,7 +55,8 @@
       {% for image in images %}
       <div class="col">
         <div class="photo-card position-relative">
-          <img src="/thumbnail/{{ image }}" title="{{image}}" class="img-fluid img-thumbnail" loading="lazy" data-bs-toggle="modal" data-bs-target="#imageModal" data-full="/fullsize/{{ image }}">
+          <img src="/thumbnail/{{ image }}" title="{{image}}" class="img-fluid img-thumbnail" loading="lazy"
+            data-bs-toggle="modal" data-bs-target="#imageModal" data-full="/fullsize/{{ image }}">
           <input class="form-check-input photo-checkbox" type="checkbox" name="selected_photos" value="{{ image }}">
           <button type="button" class="btn btn-sm btn-danger photo-action delete-btn" data-photo="{{ image }}">
             <i class="bi bi-trash"></i>
@@ -66,7 +68,8 @@
   </div>
 
   <!-- Modal -->
-  <div class="modal fade" id="imageModal" tabindex="-1" role="dialog" aria-labelledby="imageModalLabel" aria-hidden="true">
+  <div class="modal fade" id="imageModal" tabindex="-1" role="dialog" aria-labelledby="imageModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
       <div class="modal-content">
         <div class="modal-body">

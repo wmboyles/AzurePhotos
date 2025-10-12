@@ -20,14 +20,16 @@
 
 .photo-card {
     position: relative;
-    overflow: hidden;
     border-radius: 0.5rem;
     transition: transform 0.2s;
     border: none;
 }
 
-.photo-card:hover img {
-    transform: scale(1.02);
+/* Hover and selected scaling */
+/* TODO: How to keep image scaled when checkbox is checked? */
+.photo-card:hover img,
+.photo-card:has(.photo-checkbox:checked) img { 
+    transform: scale(0.96);
 }
 
 /* Initially hide the checkbox and action buttons */
@@ -64,8 +66,8 @@
 /* Keep checkbox and action buttons visible when checkbox is checked */
 .photo-card:hover .photo-checkbox,
 .photo-card:hover .photo-action,
-.photo-checkbox:checked,
-.photo-checkbox:checked ~ .photo-action {
+.photo-card .photo-checkbox:checked,
+.photo-card .photo-checkbox:checked ~ .photo-action {
     opacity: 1;
 }
 
