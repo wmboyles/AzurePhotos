@@ -51,5 +51,5 @@ az webapp deploy --resource-group azure-photos --name azurephotos --src-path .\a
 rm azurephotos.zip
 ```
 
-The command _should_ complete successfullly. However, sometimes you may get a 504 (Gateway Timeout) when the deployment eventually succeeds.
-In this case, you'll need to view the recently deployments in the Azure portal to get the correct status.
+The command _should_ complete successfully. However, sometimes you may get a 504 (Gateway Timeout) when the deployment eventually succeeds.
+In this case, you'll need to view the recent deployments in the Azure portal to get the correct status.
