@@ -178,7 +178,10 @@ $(document).ready(() => {
 
     // Delete album
     $("#deleteAlbumBtn").click(function (_) {
-        alert("Are you sure you want to delete this album?");
+        if (!confirm("Are you sure you want to delete this album?")) {
+            return;
+        }
+
         fetch(`/api/albums/${album}`, { method: "DELETE" })
             .then(response => {
                 if (response.ok) {
