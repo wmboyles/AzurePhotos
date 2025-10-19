@@ -104,17 +104,6 @@
           <img id="modalImage" src="" alt="Full Size" class="img-fluid">
         </div>
         <div class="modal-footer m-0 p-0">
-          <button id="addToAlbumBtn" class="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown">
-            <i class="bi bi-journal-album"></i> Add to Album
-          </button>
-          <ul class="dropdown-menu">
-            {% for album in albums %}
-            <li><a class="dropdown-item" href="#">{{ album }}</a></li>
-            {% endfor %}
-          </ul>
-          <button class="btn btn-danger" id="modalDeleteBtn">
-            <i class="bi bi-trash"></i> Delete
-          </button>
         </div>
       </div>
     </div>
