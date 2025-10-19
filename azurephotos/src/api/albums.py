@@ -177,6 +177,7 @@ def _list_album(album_name: str, time_sorted: bool) -> Response | list[str]:
     if len(album_photo_names) == 0:
         return Response("Album does not exist", status=404)
 
+    # TODO: Can we avoid querying all photos just to get the last modified date?
     if time_sorted:
         from .photos import all_photos # Needed here to avoid circular import
         return [photo for (_,photo) in all_photos() if photo in album_photo_names]

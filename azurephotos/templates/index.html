@@ -32,14 +32,15 @@
     <h1 class="display-1">Azure Photos</h1>
   </div>
   <hr />
-  
+
   <!-- Upload -->
   <div class="container-fluid">
     <h2 class="display-6">Upload</h2>
     <form class="mb-3" id="uploadForm">
       <!-- TODO: Submit request without refreshing page. Would probably have to update DOM to include new image -->
       <label for="formFile">File</label>
-      <input class="form-control form-control-lg" id="formFileLg" type="file" required="true" multiple="true" name="upload" />
+      <input class="form-control form-control-lg" id="formFileLg" type="file" required="true" multiple="true"
+        name="upload" />
       <button class="btn btn-primary" type="submit" id="submitUpload">Submit</button>
     </form>
   </div>
@@ -56,8 +57,8 @@
       <div class="col">
         <a href="/albums/{{album}}" title="{{album}}">
           <div class="photo-card position-relative">
-              <img src="/api/albums/thumbnail/{{album}}" class="img-fluid img-thumbnail">
-              <div class="album-title-overlay fw-bold fs-6 fs-lg-3">{{album}}</div>
+            <img src="/api/albums/thumbnail/{{album}}" class="img-fluid img-thumbnail">
+            <div class="album-title-overlay fw-bold fs-6 fs-lg-3">{{album}}</div>
           </div>
         </a>
       </div>
@@ -73,12 +74,21 @@
       {% for image in images %}
       <div class="col">
         <div class="photo-card position-relative">
-          <img src="/thumbnail/{{ image }}" title="{{image}}" class="img-fluid img-thumbnail" loading="lazy" data-bs-toggle="modal" data-bs-target="#imageModal" data-full="/fullsize/{{ image }}">
-          <!-- TODO: Enable this later once we can select multiple images -->
-          <!-- <input class="form-check-input photo-checkbox" type="checkbox" name="selected_photos" value="{{ image }}"> -->
+          <img src="/thumbnail/{{ image }}" title="{{image}}" class="img-fluid img-thumbnail" loading="lazy"
+            data-bs-toggle="modal" data-bs-target="#imageModal" data-full="/fullsize/{{ image }}">
+          <input class="form-check-input photo-checkbox" type="checkbox" name="selected_photos" value="{{ image }}">
           <button type="button" class="btn btn-sm btn-danger photo-action delete-btn" data-photo="{{ image }}">
             <i class="bi bi-trash"></i>
           </button>
+          <button type="button" class="btn btn-sm btn-secondary dropdown-toggle photo-action album-btn"
+            data-photo="{{ image }}" data-bs-toggle="dropdown">
+            <i class="bi bi-journal-album"></i>
+          </button>
+          <ul class="dropdown-menu">
+            {% for album in albums %}
+            <li><a class="dropdown-item" href="#">{{ album }}</a></li>
+            {% endfor %}
+          </ul>
         </div>
       </div>
       {% endfor %}
@@ -86,20 +96,25 @@
   </div>
 
   <!-- Modal -->
-  <div class="modal fade" id="imageModal" tabindex="-1" role="dialog" aria-labelledby="imageModalLabel" aria-hidden="true">
+  <div class="modal fade" id="imageModal" tabindex="-1" role="dialog" aria-labelledby="imageModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
       <div class="modal-content">
         <div class="modal-body">
           <img id="modalImage" src="" alt="Full Size" class="img-fluid">
         </div>
         <div class="modal-footer m-0 p-0">
-          <button id="addToAlbumBtn" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown">Add to Album</button>
+          <button id="addToAlbumBtn" class="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown">
+            <i class="bi bi-journal-album"></i> Add to Album
+          </button>
           <ul class="dropdown-menu">
             {% for album in albums %}
             <li><a class="dropdown-item" href="#">{{ album }}</a></li>
             {% endfor %}
           </ul>
-          <button class="btn btn-danger" id="deleteBtn">Delete</button>
+          <button class="btn btn-danger" id="modalDeleteBtn">
+            <i class="bi bi-trash"></i> Delete
+          </button>
         </div>
       </div>
     </div>
