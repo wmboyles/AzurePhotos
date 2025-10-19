@@ -56,19 +56,19 @@ $(document).ready(() => {
 
     // Delete photo
     $(".photo-action.delete-btn").click(function (event) {
-        const isAlbum = (typeof album) !== "undefined";
-        if (!confirm(isAlbum ?
-            `Are you sure you want to remove ${selectedPhotos.size} photos from this album?` :
-            `Are you sure you want to delete ${selectedPhotos.size} photos?`)) {
-            return;
-        }
-
         const photo = event.currentTarget.dataset.photo
 
         // Add photo to selection
         $(`.photo-checkbox[value='${photo}']`)
             .prop("checked", true)
             .trigger("change")
+
+        const isAlbum = (typeof album) !== "undefined";
+        if (!confirm(isAlbum ?
+            `Are you sure you want to remove ${selectedPhotos.size} photos from this album?` :
+            `Are you sure you want to delete ${selectedPhotos.size} photos?`)) {
+            return;
+        }
 
         selectedPhotos.forEach(selectedPhoto => {
             const deleteUrl = isAlbum ? `/api/albums/${album}/${selectedPhoto}` : `/delete/${selectedPhoto}`
