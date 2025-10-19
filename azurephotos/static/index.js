@@ -85,16 +85,6 @@ $(document).ready(() => {
 
     $("#uploadForm").on('submit', uploadPhotos);
 
-    $("#modalDeleteBtn").click(function() {
-        if (modalPhotoName !== null)
-        {
-            deleteImage(modalPhotoName);
-            _ = selectedPhotos.delete(modalPhotoName);
-            bootstrap.Modal.getInstance(imageModal).hide();
-            modalPhotoName = null;
-        }
-    });
-
     $(".photo-action.delete-btn").click(function() {
         // Add photo to selection
         const photo = $(this).data("photo");
@@ -225,10 +215,4 @@ $(document).ready(() => {
     $("#deleteAlbumBtn").click(deleteAlbum);
 
     $("#renameAlbumBtn").click(renameAlbum);
-
-    $("#addToAlbumBtn").siblings("ul").find("li .dropdown-item").each(function () {
-        const button = $(this);
-        const albumName = button.text();
-        button.click(() => addToAlbum(modalPhotoName, albumName))
-    });
 });

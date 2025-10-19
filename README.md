@@ -50,3 +50,6 @@ Compress-Archive -Path azurephotos/* -DestinationPath azurephotos.zip
 az webapp deploy --resource-group azure-photos --name azurephotos --src-path .\azurephotos.zip --type zip
 rm azurephotos.zip
 ```
+
+The command _should_ complete successfullly. However, sometimes you may get a 504 (Gateway Timeout) when the deployment eventually succeeds.
+In this case, you'll need to view the recently deployments in the Azure portal to get the correct status.
