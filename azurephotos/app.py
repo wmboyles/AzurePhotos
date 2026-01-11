@@ -14,6 +14,7 @@ def create_app():
             account_name=account_name,
             thumbnails_container_name="thumbnails",
             photos_container_name="photos",
+            videos_container_name="videos",
             albums_table_name="Albums2",
         )
 
