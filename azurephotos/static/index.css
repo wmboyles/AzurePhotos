@@ -25,15 +25,44 @@
     border: none;
 }
 
+.video-card {
+    position: relative;
+    border-radius: 0.5rem;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    background: black;
+    overflow: hidden;
+}
+
+/* One shouldn't put transforms on immediate ancestors of a <video>.
+Otherwise, it causes issues in fullscreen.
+This is mostly a browser quirk. */
+.video-card-wrapper {
+    transition: transform 0.2s;
+}
+
+.video-card-wrapper:hover {
+    transform: scale(0.96);
+}
+
+.video-card video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
 /* Hover and selected scaling */
 /* TODO: How to keep image scaled when checkbox is checked? */
 .photo-card:hover img,
-.photo-card:has(.photo-checkbox:checked) img { 
+.photo-card:has(.photo-checkbox:checked) img,
+.video-card:hover video,
+.video-card:has(.photo-checkbox:checked) video {
     transform: scale(0.96);
 }
 
 /* Initially hide the checkbox and action buttons */
-.photo-card .photo-checkbox {
+.photo-card .photo-checkbox,
+.video-card .photo-checkbox {
     opacity: 0;
     position: absolute;
     top: 0.5rem;
@@ -67,31 +96,37 @@
 .photo-card:hover .photo-checkbox,
 .photo-card:hover .photo-action,
 .photo-card .photo-checkbox:checked,
-.photo-card .photo-checkbox:checked ~ .photo-action {
+.photo-card .photo-checkbox:checked~.photo-action,
+.video-card:hover .photo-checkbox,
+.video-card:hover .photo-action,
+.video-card video:hover ~ .photo-checkbox,
+.video-card video:hover ~ .photo-action,
+.video-card .photo-checkbox:checked,
+.video-card .photo-checkbox:checked~.photo-action {
     opacity: 1;
 }
 
 .img-thumbnail {
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  display: block;
-  object-fit: cover;
-  aspect-ratio: 1;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    display: block;
+    object-fit: cover;
+    aspect-ratio: 1;
 }
 
 .album-title-overlay {
-  position: absolute;
-  bottom: 0;
-  width: 100%;
-  padding: 0;
-  color: white;
-  text-align: center;
-  background: rgba(0, 0, 0, 0.5);
-  border-bottom-left-radius: 0.5rem;
-  border-bottom-right-radius: 0.5rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    padding: 0;
+    color: white;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.5);
+    border-bottom-left-radius: 0.5rem;
+    border-bottom-right-radius: 0.5rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }

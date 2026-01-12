@@ -59,4 +59,5 @@ def album(album_name: str):
 @videos_view_controller.route("/")
 def video():
     videos = [video for (_, video) in all_videos()]
-    return render_template("videos.html", videos=videos)
+    album_names = list_albums()
+    return render_template("videos.html", videos=videos, albums=album_names)
