@@ -1,5 +1,5 @@
-// imageUrls is passed here from HTML from Flask
-// We'll also have `albums` on the main page and `album` on an album page
+// Some variables are passed here from HTML from Flask.
+// We'll have `albums` on the main page and `album` on an album page.
 $(document).ready(() => {
     // Last viewed photo in modal
     let modalPhotoName = null;
