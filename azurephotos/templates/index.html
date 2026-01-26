@@ -77,7 +77,7 @@
           <img src="/thumbnail/{{ image }}" title="{{image}}" class="img-fluid img-thumbnail" loading="lazy"
             data-bs-toggle="modal" data-bs-target="#imageModal" data-full="/fullsize/{{ image }}">
           <input class="form-check-input photo-checkbox" type="checkbox" name="selected_photos" value="{{ image }}">
-          <button type="button" class="btn btn-sm btn-danger photo-action delete-btn" data-photo="{{ image }}">
+          <button type="button" class="btn btn-sm btn-danger photo-action delete-btn" data-selected="{{ image }}">
             <i class="bi bi-trash"></i>
           </button>
           <button type="button" class="btn btn-sm btn-secondary dropdown-toggle photo-action album-btn"

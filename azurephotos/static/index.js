@@ -1,10 +1,12 @@
-// imageUrls is passed here from HTML from Flask
-// We'll also have `albums` on the main page and `album` on an album page
+// `imageUrls` or `videoUrls` is passed here from HTML from Flask
+// We'll also have:
+// * `albums` on the main page
+// * `album` on an album page
 $(document).ready(() => {
     // Last viewed photo in modal
     let modalPhotoName = null;
-    // Photos selected by checkbox
-    let selectedPhotos = new Set();
+    // Photos or videos selected by checkbox
+    let selectedItems = new Set();
 
     // Open modal when clicking on a thumbnail
     $("#imageModal").on('show.bs.modal', function (event) {
@@ -15,12 +17,15 @@ $(document).ready(() => {
         modalPhotoName = fullSrc.slice("/fullsize/".length);
     });
 
-    // Submit photos for upload
+    // Submit photos and videos for upload
     $("#uploadForm").on('submit', function (event) {
         event.preventDefault();
 
         const isAlbum = typeof (album) !== "undefined";
-        const path = isAlbum ? `/upload/${album}` : `/upload`
+        const isVideos = typeof (videoUrls) !== "undefined";
+        const path = isAlbum  ? `/upload/${album}` :
+                     isVideos ? "/api/videos/upload" :
+                     `/upload`;
 
         const input = document.getElementById("formFileLg");
         const files = input.files;
@@ -54,33 +59,38 @@ $(document).ready(() => {
         // Submit button should be re-enabled on page refresh.
     });
 
-    // Delete photo
+    // Delete photo or video
     $(".photo-action.delete-btn").click(function (event) {
-        const photo = event.currentTarget.dataset.photo
-
-        // Add photo to selection
-        $(`.photo-checkbox[value='${photo}']`)
+        const isAlbum = (typeof album) !== "undefined";
+        const isVideos = typeof (videoUrls) !== "undefined";
+        
+        // If we clicked the delete button on an unchecked item, add it to selected items
+        const selected = event.currentTarget.dataset.selected;
+        $(`.photo-checkbox[value='${selected}']`)
             .prop("checked", true)
             .trigger("change")
 
-        const isAlbum = (typeof album) !== "undefined";
-        if (!confirm(isAlbum ?
-            `Are you sure you want to remove ${selectedPhotos.size} photos from this album?` :
-            `Are you sure you want to delete ${selectedPhotos.size} photos?`)) {
+        const confirmMessage = isAlbum  ? `Are you sure you want to remove ${selectedItems.size} photos from this album?` :
+                               isVideos ?  `Are you sure you want to remove ${selectedItems.size} videos?` :
+                               `Are you sure you want to delete ${selectedItems.size} photos?`;
+        if (!confirm(confirmMessage)) {
             return;
         }
 
-        selectedPhotos.forEach(selectedPhoto => {
-            const deleteUrl = isAlbum ? `/api/albums/${album}/${selectedPhoto}` : `/delete/${selectedPhoto}`
-
+        selectedItems.forEach(selectedItem => {
+            const deleteUrl = isAlbum  ? `/api/albums/${album}/${selectedItem}` :
+                          isVideos ? `/api/videos/delete/${selectedItem}` :
+                          `/delete/${selectedItem}`;
             fetch(deleteUrl, { method: "DELETE" })
                 .then(response => {
                     if (response.ok) {
-                        const deletedThumbnail = document.querySelector(`[data-full="/fullsize/${selectedPhoto}"]`)
-                        if (deletedThumbnail) {
-                            deletedThumbnail.closest(".col").remove();
+                        if (!isVideos) {
+                            const deletedThumbnail = document.querySelector(`[data-full="/fullsize/${selectedItem}"]`)
+                            if (deletedThumbnail) {
+                                deletedThumbnail.closest(".col").remove();
+                            }
                         }
-                        selectedPhotos.delete(selectedPhoto)
+                        selectedItems.delete(selectedItem)
                     } else {
                         console.log(response);
                     }
@@ -88,7 +98,7 @@ $(document).ready(() => {
                 .catch(error => {
                     console.log(error);
                 });
-        })
+        });
     });
 
     // Place photo in album
@@ -106,11 +116,11 @@ $(document).ready(() => {
                 .prop("checked", true)
                 .trigger("change")
 
-            if (!confirm(`Are you sure you want to move ${selectedPhotos.size} photos to ${album}?`)) {
+            if (!confirm(`Are you sure you want to move ${selectedItems.size} photos to ${album}?`)) {
                 return;
             }
 
-            selectedPhotos.forEach(selectedPhoto => {
+            selectedItems.forEach(selectedPhoto => {
                 fetch(`/api/albums/${album}/${selectedPhoto}`, { method: "POST" })
                     .then(response => {
                         if (response.ok) {
@@ -122,7 +132,7 @@ $(document).ready(() => {
                                 bootstrap.Modal.getInstance(imageModal).hide();
                                 modalPhotoName = null;
                             }
-                            selectedPhotos.delete(selectedPhoto)
+                            selectedItems.delete(selectedPhoto)
                         } else {
                             console.log(response);
                         }
@@ -134,17 +144,17 @@ $(document).ready(() => {
         });
     });
 
-    // Select photo(s)
+    // Select photo(s) or video(s)
     $(".photo-checkbox").on("change", function (_) {
-        const photo = $(this).val()
+        const selected = $(this).val()
         if (this.checked) {
-            selectedPhotos.add(photo)
+            selectedItems.add(selected)
         } else {
-            selectedPhotos.delete(photo)
+            selectedItems.delete(selected)
         }
     });
 
-    // Clear selected photos
+    // Clear selected photo(s) or video(s)
     $(document).on("keydown", function (event) {
         if (event.key === "Escape") {
             // Do not uncheck anything if the modal was closing
@@ -155,7 +165,7 @@ $(document).ready(() => {
             $(".photo-checkbox")
                 .prop("checked", false)
                 .trigger("change")
-            selectedPhotos.clear();
+            selectedItems.clear();
         }
     });
 

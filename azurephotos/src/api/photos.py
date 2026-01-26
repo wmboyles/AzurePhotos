@@ -72,7 +72,10 @@ def delete(filename: str) -> Response:
     Delete a photo from the storage account.
     Removes the photo, thumbnail, and all references to the photo in albums.
 
-    :param filename: The name of the photo file.
+    :param filename: The name of the photo file
+    :type filename: str
+    :return: 204 Response if successful; 404 for missing file; throws otherwise
+    :rtype: Response
     """
 
     account_name: str = current_app.config["account_name"]
@@ -106,14 +109,15 @@ def _upload(*file_info: tuple[FileStorage, str]) -> list[str]:
     Also, compute and upload thunbnails.
 
     :param file_info: Collection of files and their last modified time as an ISO-formatted datetime
-
-    :returns: List of uploaded file names
+    :type file_info: tuple[FileStorage, str]
+    :return: List of uploaded file names
+    :rtype: list[str]
     """
 
     if not file_info:
         raise Exception("No files to upload")
 
-    account_name = current_app.config["account_name"]
+    account_name: str = current_app.config["account_name"]
     blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
     photos_container_name: str = current_app.config["photos_container_name"]
     thumbnails_container_name: str = current_app.config["thumbnails_container_name"]
