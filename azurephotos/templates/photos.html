@@ -2,12 +2,8 @@
 
 {% block jsinit %}
 <script type="text/javascript">
-  album = "{{album}}";
+  albums = {{ albums | tojson }};
 </script>
-{% endblock %}
-
-<!-- Don't need to list other albums on album page -->
-{% block albums %}
 {% endblock %}
 
 {% block media %}
@@ -23,6 +19,15 @@
         <button type="button" class="btn btn-sm btn-danger photo-action delete-btn" data-selected="{{ image }}">
           <i class="bi bi-trash"></i>
         </button>
+        <button type="button" class="btn btn-sm btn-secondary dropdown-toggle photo-action album-btn"
+          data-photo="{{ image }}" data-bs-toggle="dropdown">
+          <i class="bi bi-journal-album"></i>
+        </button>
+        <ul class="dropdown-menu">
+          {% for album in albums %}
+          <li><a class="dropdown-item" href="#">{{ album }}</a></li>
+          {% endfor %}
+        </ul>
       </div>
     </div>
     {% endfor %}

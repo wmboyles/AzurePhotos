@@ -45,10 +45,10 @@ def non_album_photos() -> list[str]:
     return [photo for (_, photo) in all_photos() if photo not in album_photos]
 
 @landing_view_controller.route("/")
-def index() -> str:
+def photos() -> str:
     image_names = non_album_photos()
     album_names = list_albums()
-    return render_template("index.html", images=image_names, albums=album_names)
+    return render_template("photos.html", images=image_names, albums=album_names)
 
 
 @albums_view_controller.route("/<album_name>", methods=["GET"])
@@ -57,7 +57,7 @@ def album(album_name: str) -> str:
     return render_template("album.html", album=album_name, images=images_in_album)
 
 @videos_view_controller.route("/")
-def video() -> str:
+def videos() -> str:
     videos = [video for (_, video) in all_videos()]
 
     # TODO: Albums with videos
