@@ -1,6 +1,7 @@
 # Azure Photos
 
-Azure Photos is my personal photo storage solution since I had Azure credits through work and didn't want to pay for Google Photos.
+Azure Photos is my personal cloud-based photo and video storage solution.
+I have Azure credits through work, and I don't want to pay for Google Photos.
 It leverages Azure App Service and of course Azure Blob Storage.
 
 ## Dev Setup
@@ -20,8 +21,6 @@ Log in to Azure using the Azure CLI
 Connect-AzAccount -TenantId 15a87ef6-f442-4382-96fc-8003a45ef258
 ```
 
-#### AzurePhotos WebApp
-
 Everything is inside the `azurephotos` directory.
 ```ps
 cd azurephotos
@@ -33,7 +32,7 @@ Install all requirements
 pip install -r requirements.txt
 ```
 
-Run the app locally:
+Run the app locally
 ```ps
 flask run --debug --host=localhost --port=5000
 ```
@@ -41,8 +40,6 @@ flask run --debug --host=localhost --port=5000
 ## Deployment
 
 You should have all the required software from dev setup before deploying.
-
-### AzurePhotos WebApp
 
 ```ps
 az login --scope https://management.core.windows.net//.default 
