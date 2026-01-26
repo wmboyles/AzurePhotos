@@ -17,7 +17,7 @@ All commands should be run from the project root unless otherwise specified.
 
 Log in to Azure using the Azure CLI
 ```ps
-Connect-AzAccount
+Connect-AzAccount -TenantId 15a87ef6-f442-4382-96fc-8003a45ef258
 ```
 
 #### AzurePhotos WebApp
