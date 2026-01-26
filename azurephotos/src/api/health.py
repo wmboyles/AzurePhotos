@@ -24,7 +24,7 @@ def health() -> Response:
     """
 
     credential: DefaultAzureCredential = current_app.config["credential"]
-    account_name = current_app.config["account_name"]
+    account_name: str = current_app.config["account_name"]
     blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
 
     try:

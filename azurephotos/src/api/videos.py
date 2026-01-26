@@ -31,7 +31,7 @@ def video(filename: str) -> Response:
     :param filename: The name of the video file.
     """
 
-    account_name = current_app.config["account_name"]
+    account_name: str = current_app.config["account_name"]
     blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
     credential: DefaultAzureCredential = current_app.config["credential"]
     videos_container_name: str = current_app.config["videos_container_name"]
@@ -52,9 +52,7 @@ def all_videos() -> list[tuple[datetime, str]]:
     blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
     videos_container_name: str = current_app.config["videos_container_name"]
 
-    with ContainerClient(
-        blob_account_url, videos_container_name, credential
-    ) as container_client:
+    with ContainerClient(blob_account_url, videos_container_name, credential) as container_client:
         blobs = list(container_client.list_blobs(include="metadata"))
 
         def last_modified(blob_properties: BlobProperties) -> datetime:
@@ -88,13 +86,15 @@ def _upload(*file_info: tuple[FileStorage, str]) -> list[str]:
     account_name: str = current_app.config["account_name"]
     blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
     videos_container_name: str = current_app.config["videos_container_name"]
-    credential = current_app.config["credential"]
+    credential: DefaultAzureCredential = current_app.config["credential"]
 
     save_filenames = list[str]()
     with ContainerClient(blob_account_url, videos_container_name, credential) as container_client:
         for file, modified_date in file_info:
             save_filename = secure_filename(str(file.filename))
-            metadata = {"lastModified": modified_date}  # ISO timestamp
+            metadata = {
+                "lastModified": modified_date # ISO timestamp
+            }
 
             container_client.upload_blob(save_filename, file.stream, metadata=metadata)
 
@@ -133,7 +133,7 @@ def delete(filename: str) -> Response:
     account_name: str = current_app.config["account_name"]
     blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
     videos_container_name: str = current_app.config["videos_container_name"]
-    credential = current_app.config["credential"]
+    credential: DefaultAzureCredential = current_app.config["credential"]
 
     try:
         with ContainerClient(blob_account_url, videos_container_name, credential) as container_client:

@@ -34,7 +34,7 @@ def thumbnail(filename: str) -> Response:
     :param filename: The name of the photo file.
     """
 
-    account_name = current_app.config["account_name"]
+    account_name: str = current_app.config["account_name"]
     blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
     credential: DefaultAzureCredential = current_app.config["credential"]
     thumbnails_container_name: str = current_app.config["thumbnails_container_name"]
@@ -54,7 +54,7 @@ def fullsize(filename: str) -> Response:
     :param filename: The name of the photo file.
     """
 
-    account_name = current_app.config["account_name"]
+    account_name: str = current_app.config["account_name"]
     blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
     credential: DefaultAzureCredential = current_app.config["credential"]
     photos_container_name: str = current_app.config["photos_container_name"]
@@ -82,7 +82,7 @@ def delete(filename: str) -> Response:
     blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
     thumbnails_container_name: str = current_app.config["thumbnails_container_name"]
     photos_container_name: str = current_app.config["photos_container_name"]
-    credential = current_app.config["credential"]
+    credential: DefaultAzureCredential = current_app.config["credential"]
 
     try:
         with ContainerClient(blob_account_url, photos_container_name, credential) as photos_container_client:
@@ -121,7 +121,7 @@ def _upload(*file_info: tuple[FileStorage, str]) -> list[str]:
     blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
     photos_container_name: str = current_app.config["photos_container_name"]
     thumbnails_container_name: str = current_app.config["thumbnails_container_name"]
-    credential = current_app.config["credential"]
+    credential: DefaultAzureCredential = current_app.config["credential"]
 
     save_filenames = list[str]()
     with ContainerClient(blob_account_url, photos_container_name, credential) as fullsize_container_client, ContainerClient(blob_account_url, thumbnails_container_name, credential) as thumbnails_container_client:

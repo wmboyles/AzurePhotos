@@ -52,14 +52,13 @@ def index() -> str:
 
 
 @albums_view_controller.route("/<album_name>", methods=["GET"])
-def album(album_name: str):
+def album(album_name: str) -> str:
     images_in_album = list_album(album_name)
     return render_template("album.html", album=album_name, images=images_in_album)
 
 @videos_view_controller.route("/")
-def video():
+def video() -> str:
     videos = [video for (_, video) in all_videos()]
-    album_names = list_albums()
 
     # TODO: Albums with videos
     return render_template("videos.html", videos=videos)
