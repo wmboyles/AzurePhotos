@@ -6,12 +6,11 @@ import src.api.api as api
 
 def create_app():
     app = Flask(__name__)
-    account_name = "wboylesbackups"
 
     with app.app_context():
         app.config.update(
             credential=DefaultAzureCredential(exclude_cli_credential=True),
-            account_name=account_name,
+            account_name="wboylesbackups",
             thumbnails_container_name="thumbnails",
             photos_container_name="photos",
             videos_container_name="videos",
