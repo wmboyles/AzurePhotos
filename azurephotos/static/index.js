@@ -71,7 +71,7 @@ $(document).ready(() => {
             .trigger("change")
 
         const confirmMessage = isAlbum  ? `Are you sure you want to remove ${selectedItems.size} photos from this album?` :
-                               isVideos ?  `Are you sure you want to remove ${selectedItems.size} videos?` :
+                               isVideos ? `Are you sure you want to remove ${selectedItems.size} videos?` :
                                `Are you sure you want to delete ${selectedItems.size} photos?`;
         if (!confirm(confirmMessage)) {
             return;
@@ -79,16 +79,15 @@ $(document).ready(() => {
 
         selectedItems.forEach(selectedItem => {
             const deleteUrl = isAlbum  ? `/api/albums/${album}/${selectedItem}` :
-                          isVideos ? `/api/videos/delete/${selectedItem}` :
-                          `/delete/${selectedItem}`;
+                              isVideos ? `/api/videos/delete/${selectedItem}` :
+                              `/delete/${selectedItem}`;
             fetch(deleteUrl, { method: "DELETE" })
                 .then(response => {
                     if (response.ok) {
-                        if (!isVideos) {
-                            const deletedThumbnail = document.querySelector(`[data-full="/fullsize/${selectedItem}"]`)
-                            if (deletedThumbnail) {
-                                deletedThumbnail.closest(".col").remove();
-                            }
+                        const selectedItemQuery = isVideos ? `[src="/api/videos/${selectedItem}"]` : `[src="/thumbnail/${selectedItem}"]`
+                        const deletedThumbnail = document.querySelector(selectedItemQuery)
+                        if (deletedThumbnail) {
+                            deletedThumbnail.closest(".col").remove();
                         }
                         selectedItems.delete(selectedItem)
                     } else {
