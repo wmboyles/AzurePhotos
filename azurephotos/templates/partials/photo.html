@@ -1,0 +1,19 @@
+<div class="col">
+    <div class="photo-card position-relative">
+    <img src="/thumbnail/{{ media.filename }}" title="{{ media.filename }}" class="img-fluid img-thumbnail" loading="lazy"
+        data-bs-toggle="modal" data-bs-target="#imageModal" data-full="/fullsize/{{ media.filename }}">
+    <input class="form-check-input photo-checkbox" type="checkbox" name="selected_photos" value="{{ media.filename }}">
+    <button type="button" class="btn btn-sm btn-danger photo-action delete-btn" data-selected="{{ media.filename }}">
+        <i class="bi bi-trash"></i>
+    </button>
+    <button type="button" class="btn btn-sm btn-secondary dropdown-toggle photo-action album-btn"
+        data-photo="{{ media.filename }}" data-bs-toggle="dropdown">
+        <i class="bi bi-journal-album"></i>
+    </button>
+    <ul class="dropdown-menu">
+        {% for album in albums %}
+        <li><a class="dropdown-item" href="#">{{ album }}</a></li>
+        {% endfor %}
+    </ul>
+    </div>
+</div>
