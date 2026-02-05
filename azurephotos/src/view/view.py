@@ -21,18 +21,9 @@ albums_view_controller = Blueprint(
     url_prefix="/albums",
 )
 
-videos_view_controller = Blueprint(
-    "video_view_controller",
-    __name__,
-    template_folder="templates",
-    static_folder="static",
-    url_prefix="/videos"
-)
-
 blueprints = {
     landing_view_controller,
     albums_view_controller,
-    videos_view_controller
 }
 
 
@@ -60,10 +51,7 @@ def non_album_videos() -> list[tuple[datetime, str]]:
     album_videos = set[str]() # TODO: Allow videos in photo albums
     return [(last_modified, video) for (last_modified, video) in all_videos() if video not in album_videos]
 
-@landing_view_controller.route("/")
-def photos() -> str:
-    # Merge photos and videos together
-    photos, videos = non_album_photos(), non_album_videos()
+def merge_photos_videos(photos: list[tuple[datetime, str]], videos: list[tuple[datetime, str]]):
     media = []
     photos_index, videos_index = 0, 0
     while photos_index < len(photos) and videos_index < len(videos):
@@ -101,22 +89,15 @@ def photos() -> str:
             })
         videos_index += 1
 
+    return media
+
+@landing_view_controller.route("/", methods=["GET"])
+def main() -> str:
+    media = merge_photos_videos(non_album_photos(), non_album_videos())
     album_names = list_albums()
     return render_template("photos.html", medias=media, albums=album_names)
-
 
 @albums_view_controller.route("/<album_name>", methods=["GET"])
 def album(album_name: str) -> str:
     images_in_album = list_album(album_name)
     return render_template("album.html", album=album_name, images=images_in_album)
-
-@videos_view_controller.route("/")
-def videos() -> str:
-    videos = [{
-        "filename": video_name,
-        "type": "video",
-        "last_modified": video_last_modified
-    } for video_last_modified, video_name in non_album_videos()]
-
-    # TODO: Albums with videos
-    return render_template("videos.html", medias=videos)
