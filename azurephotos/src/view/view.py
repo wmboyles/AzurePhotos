@@ -112,7 +112,11 @@ def album(album_name: str) -> str:
 
 @videos_view_controller.route("/")
 def videos() -> str:
-    videos = [video for (_, video) in non_album_videos()]
+    videos = [{
+        "filename": video_name,
+        "type": "video",
+        "last_modified": video_last_modified
+    } for video_last_modified, video_name in non_album_videos()]
 
     # TODO: Albums with videos
-    return render_template("videos.html", videos=videos)
+    return render_template("videos.html", medias=videos)

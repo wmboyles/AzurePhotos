@@ -2,7 +2,7 @@
 
 {% block jsinit %}
 <script type="text/javascript">
-  videoUrls = {{ videos | tojson }};
+  videoUrls = {{ medias | tojson }};
 </script>
 {% endblock %}
 
@@ -14,19 +14,10 @@
 <div class="container-fluid">
   <h2 class="display-6">My Videos</h2>
   <div class="row row-cols-4 row-cols-lg-6 grid g-0">
-    {% for video in videos %}
+    {% for media in medias %}
     <div class="col video-card-wrapper">
       <div class="video-card">
-        <!-- TODO: Find a way to put a thumbnail here, add a modal, and have that stream the video
-        Otherwise, the preload=metadata could become slow with lots (>100) videos on one page -->
-        <video controls preload="metadata" title="{{video}}">
-          <source src="/api/videos/{{video}}" type="video/mp4" />
-        </video>
-        <input class="form-check-input photo-checkbox" type="checkbox" name="selected_photos" value="{{ video }}">
-        <button type="button" class="btn btn-sm btn-danger photo-action delete-btn" data-selected="{{ video }}">
-          <i class="bi bi-trash"></i>
-        </button>
-        <!-- TODO: add to album calls show 200 but don't seem to do anything -->
+         {% include "partials/video.html" %}
       </div>
     </div>
     {% endfor %}
