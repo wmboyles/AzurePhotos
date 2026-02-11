@@ -7,12 +7,14 @@ API endpoints for handling videos.
 from azure.core.exceptions import ResourceNotFoundError
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import ContainerClient, BlobProperties
+from datetime import datetime
 from flask import Blueprint, redirect, request, current_app
 from werkzeug.utils import secure_filename
 from werkzeug.wrappers.response import Response
 from werkzeug.datastructures.file_storage import FileStorage
-from src.lib.storage_helper import get_container_sas
-from datetime import datetime
+
+from ..lib.storage_helper import get_container_sas
+from ..lib.models.media import VideoRecord
 
 api_videos_controller = Blueprint(
     "api_videos_controller",
@@ -41,7 +43,7 @@ def video(filename: str) -> Response:
     return redirect(f"{blob_account_url}/{videos_container_name}/{filename}?{videos_container_sas}")
 
 
-def all_videos() -> list[tuple[datetime, str]]:
+def all_videos() -> list[VideoRecord]:
     """
     Get all vidoes stored in blob storage and their last modified time.
     Videos are ordered by their last modified time.
@@ -66,7 +68,11 @@ def all_videos() -> list[tuple[datetime, str]]:
             return datetime.fromisoformat(blob_properties.metadata["lastModified"])
 
         return sorted(
-            ((last_modified(blob), str(blob.name)) for blob in blobs), reverse=True
+            (
+                VideoRecord(last_modified=last_modified(blob), filename=str(blob.name))
+                for blob in blobs
+            ),
+            reverse=True,
         )
 
 

@@ -7,14 +7,15 @@ API endpoints for handling individual photos.
 from azure.core.exceptions import ResourceNotFoundError
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import ContainerClient, BlobProperties
+from datetime import datetime
 from flask import Blueprint, redirect, request, current_app
 from werkzeug.utils import secure_filename
 from werkzeug.wrappers.response import Response
 from werkzeug.datastructures.file_storage import FileStorage
-from src.lib.storage_helper import get_container_sas
-from src.lib.thumbnails import thumbnail as compute_thumbnail
-from datetime import datetime
 
+from ..lib.storage_helper import get_container_sas
+from ..lib.thumbnails import thumbnail as compute_thumbnail
+from ..lib.models.media import PhotoRecord
 from .albums import remove_from_all_albums, add_to_album
 
 api_photos_controller = Blueprint(
@@ -178,7 +179,7 @@ def upload_to_album(album_name: str) -> Response:
     return Response(status=201)
 
 
-def all_photos() -> list[tuple[datetime, str]]:
+def all_photos() -> list[PhotoRecord]:
     """
     Get all photos stored in blob storage and their last modified time.
     Photos are ordered by their last modified time.
@@ -189,14 +190,19 @@ def all_photos() -> list[tuple[datetime, str]]:
     blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
     photos_container_name: str = current_app.config["photos_container_name"]
 
-    
     with ContainerClient(blob_account_url, photos_container_name, credential) as container_client:
         blobs = list(container_client.list_blobs(include="metadata"))
 
-        def last_modified(blob_properties: BlobProperties) -> datetime:
-            if not blob_properties.metadata or not isinstance(blob_properties.metadata, dict) or not blob_properties.metadata.get("lastModified"):
-                return blob_properties.last_modified # type: ignore
-            
-            return datetime.fromisoformat(blob_properties.metadata["lastModified"])
+    def last_modified(blob_properties: BlobProperties) -> datetime:
+        if not blob_properties.metadata or not isinstance(blob_properties.metadata, dict) or not blob_properties.metadata.get("lastModified"):
+            return blob_properties.last_modified # type: ignore
 
-        return sorted(((last_modified(blob), str(blob.name)) for blob in blobs), reverse=True)
+        return datetime.fromisoformat(blob_properties.metadata["lastModified"])
+
+    return sorted(
+        (
+            PhotoRecord(last_modified=last_modified(blob), filename=str(blob.name))
+            for blob in blobs
+        ),
+        reverse=True,
+    )

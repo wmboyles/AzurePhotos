@@ -14,17 +14,13 @@
 <div class="container-fluid">
   <h2 class="display-6">My Photos</h2>
   <div class="row row-cols-4 row-cols-lg-6 grid g-0">
-    {% for image in images %}
-    <div class="col">
-      <div class="photo-card position-relative">
-        <img src="/thumbnail/{{ image }}" title="{{image}}" class="img-fluid img-thumbnail" loading="lazy"
-          data-bs-toggle="modal" data-bs-target="#imageModal" data-full="/fullsize/{{ image }}">
-        <input class="form-check-input photo-checkbox" type="checkbox" name="selected_photos" value="{{ image }}">
-        <button type="button" class="btn btn-sm btn-danger photo-action delete-btn" data-selected="{{ image }}">
-          <i class="bi bi-trash"></i>
-        </button>
-      </div>
-    </div>
+    {% for media in medias %}
+    <!-- TODO: Remove add to album buttons here -->
+      {% if media.type == "photo" %}
+        {% include "partials/photo.html" %}
+      {% elif media.type == "video" %}
+        {% include "partials/video.html" %}
+      {% endif %}
     {% endfor %}
   </div>
 </div>

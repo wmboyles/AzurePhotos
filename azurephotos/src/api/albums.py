@@ -8,13 +8,15 @@ An empty row key represents the album itself.
 :author: William Boyles
 """
 
-from datetime import datetime, timezone
 from azure.core.exceptions import ResourceNotFoundError, ResourceExistsError
 from azure.identity import DefaultAzureCredential
+from datetime import datetime, timezone
 from flask import Blueprint, Response, current_app, url_for, redirect
-from typing import Any
+from typing import Any, Sequence
 
 from ..lib.storage_helper import TableClient, get_table_client
+from ..lib.models.media import MediaRecord
+from ..lib.sorting import merge
 
 api_albums_controller = Blueprint(
     "api_albums_controller",
@@ -126,10 +128,10 @@ def delete_album(album_name: str):
 @api_albums_controller.route("<album_name>/<filename>", methods=["POST"])
 def add_to_album(album_name: str, filename: str) -> Response | dict[str, Any]:
     """
-    Add a photo to an album.
+    Add a file to an album.
 
-    :param album_name: The name of the album to add the photo to.
-    :param filename: The filename of the photo to add to the album.
+    :param album_name: The name of the album to add the file to.
+    :param filename: The filename to add to the album.
     """
 
     account_name: str = current_app.config["account_name"]
@@ -151,16 +153,11 @@ def add_to_album(album_name: str, filename: str) -> Response | dict[str, Any]:
 
 
 @api_albums_controller.route("<album_name>", methods=["GET"])
-def list_album(album_name: str) -> Response | list[str]:
-    return _list_album(album_name, time_sorted=True)
-
-def _list_album(album_name: str, time_sorted: bool) -> Response | list[str]:
+def list_album(album_name: str) -> Response | list[MediaRecord]:
     """
-    List the photos in an album.
+    List the files in an album, sorted by last modified time.
 
-    :param album_name: The name of the album to list photos for.
-    :param time_sorted: Whether to sort photo names by last modified date.
-        Otherwise, photos are sorted by just their name.
+    :param album_name: The name of the album to list files for.
     """
 
     account_name: str = current_app.config["account_name"]
@@ -170,20 +167,24 @@ def _list_album(album_name: str, time_sorted: bool) -> Response | list[str]:
 
     query = "PartitionKey eq @album_name"
     parameters = {"album_name": album_name}
-    album_photo_names = set[str](
+    album_file_names = set[str](
         entity["RowKey"] for entity in
         table_client.query_entities(query_filter=query, parameters=parameters)
         if len(entity["RowKey"]) > 0 # excludes row indicating album existence
     )
-    if len(album_photo_names) == 0:
+    if len(album_file_names) == 0:
         return Response("Album does not exist", status=404)
 
-    # TODO: Can we avoid querying all photos just to get the last modified date?
-    if time_sorted:
-        from .photos import all_photos # Needed here to avoid circular import
-        return [photo for (_,photo) in all_photos() if photo in album_photo_names]
-    else:
-        return sorted(album_photo_names)
+    # TODO: Can we avoid querying all files just to get the last modified date?
+    from .photos import all_photos # Needed here to avoid circular import
+    from .videos import all_videos
+
+    medias: Sequence[MediaRecord] = merge(
+        all_photos(),
+        all_videos(),
+        key=lambda m: m.last_modified,
+        reverse=True)
+    return [media for media in medias if media.filename in album_file_names]
 
 
 @api_albums_controller.route("<album_name>/<filename>", methods=["DELETE"])
@@ -214,7 +215,7 @@ def get_album_thumbnail(album_name: str) -> Response:
     """
 
     # Select a random photo from the album to use as the thumbnail
-    album_photos = _list_album(album_name, time_sorted=False)
+    album_photos = list_album(album_name)
     if isinstance(album_photos, Response) and album_photos.status_code == 404:
         return album_photos
     elif not isinstance(album_photos, list):
@@ -248,7 +249,7 @@ def remove_from_all_albums(filename: str) -> None:
         table_client.delete_entity(entity)
 
 
-def all_album_photos() -> list[str]:
+def all_album_file_names() -> list[str]:
     """
     List all photo names in all albums.
     Note that photos in multiple albums will be listed multiple times.
