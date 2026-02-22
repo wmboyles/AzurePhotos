@@ -15,7 +15,7 @@ from flask import Blueprint, Response, current_app, url_for, redirect
 from typing import Any, Sequence
 
 from ..lib.storage_helper import TableClient, get_table_client
-from ..lib.models.media import MediaRecord
+from ..lib.models.media import MediaRecord, PHOTO_EXTENSIONS
 from ..lib.sorting import merge
 
 api_albums_controller = Blueprint(
@@ -175,7 +175,7 @@ def list_album(album_name: str) -> Response | list[MediaRecord]:
     if len(album_file_names) == 0:
         return Response("Album does not exist", status=404)
 
-    # TODO: Can we avoid querying all files just to get the last modified date?
+    # TODO: Can we avoid querying all files just to get the last modified date and media type? Include in albums table?
     from .photos import all_photos # Needed here to avoid circular import
     from .videos import all_videos
 
@@ -220,10 +220,24 @@ def get_album_thumbnail(album_name: str) -> Response:
         return album_photos
     elif not isinstance(album_photos, list):
         return Response("Internal server error", status=500)
-    elif len(album_photos) == 0:
+
+    # Get first entry that isn't a video
+    # TODO: Handle video thumbnails
+    thumbnail_filename: str | None = None
+    for album_photo in album_photos:
+        extension_index = album_photo.filename.rfind(".")
+        if extension_index < 0:
+            continue
+        extension = album_photo.filename[extension_index:]
+        if extension not in PHOTO_EXTENSIONS:
+            continue
+
+        thumbnail_filename = album_photo.filename
+        break
+
+    if thumbnail_filename is None:
         return redirect("/static/photo_album-512.webp")  # type: ignore
 
-    thumbnail_filename = album_photos[0]
     return redirect(
         url_for("api_photos_controller.thumbnail", filename=thumbnail_filename)
     )  # type: ignore
