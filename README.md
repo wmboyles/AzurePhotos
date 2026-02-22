@@ -7,7 +7,7 @@ It leverages Azure App Service and of course Azure Blob Storage.
 
 ### Software to Install
 
-* Python 3.12+
+* Python 3.14
 * Azure CLI
 * (Optional): Jupyter, ipykernel for notebooks
 
