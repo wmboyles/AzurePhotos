@@ -12,7 +12,6 @@ from azure.core.exceptions import ResourceNotFoundError, ResourceExistsError
 from azure.identity import DefaultAzureCredential
 from datetime import datetime, timezone
 from flask import Blueprint, Response, current_app, url_for, redirect
-from itertools import tee
 from typing import Any, Sequence
 
 from ..lib.storage_helper import TableClient, get_table_client
