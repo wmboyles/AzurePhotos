@@ -104,6 +104,8 @@ def _upload(*file_info: tuple[FileStorage, str]) -> list[str]:
 
             container_client.upload_blob(save_filename, file.stream, metadata=metadata)
 
+            # TODO: Compute video thumbnail
+
             save_filenames.append(save_filename)
 
     if not save_filenames:
@@ -117,6 +119,8 @@ def upload() -> Response:
     """
     Uploads videos to the storage account.
     """
+
+    # TODO: Is this method needed anymore?
 
     files = request.files.getlist("upload")
     datesTaken = request.form.getlist("dateTaken")

@@ -12,10 +12,11 @@ from azure.core.exceptions import ResourceNotFoundError, ResourceExistsError
 from azure.identity import DefaultAzureCredential
 from datetime import datetime, timezone
 from flask import Blueprint, Response, current_app, url_for, redirect
+from itertools import tee
 from typing import Any, Sequence
 
 from ..lib.storage_helper import TableClient, get_table_client
-from ..lib.models.media import MediaRecord, PHOTO_EXTENSIONS
+from ..lib.models.media import MediaRecord, MediaType, media_type_from_file_extension
 from ..lib.sorting import merge
 
 api_albums_controller = Blueprint(
@@ -26,6 +27,7 @@ api_albums_controller = Blueprint(
     url_prefix="/api/albums",
 )
 
+DEFAULT_ALBUM_THUMBNAIL: str = "/static/photo_album-512.webp"
 
 @api_albums_controller.route("/<album_name>", methods=["POST"])
 def create_album(album_name: str) -> Response | dict[str, Any]:
@@ -144,12 +146,12 @@ def add_to_album(album_name: str, filename: str) -> Response | dict[str, Any]:
     except ResourceNotFoundError:
         return Response("Album does not exist", status=404)
 
-    new_photo = {
+    new_file = {
         "PartitionKey": album_name,
         "RowKey": filename,
         "Created": datetime.now(timezone.utc),
     }
-    return table_client.create_entity(new_photo)  # type: ignore
+    return table_client.create_entity(new_file)  # type: ignore
 
 
 @api_albums_controller.route("<album_name>", methods=["GET"])
@@ -167,13 +169,20 @@ def list_album(album_name: str) -> Response | list[MediaRecord]:
 
     query = "PartitionKey eq @album_name"
     parameters = {"album_name": album_name}
-    album_file_names = set[str](
-        entity["RowKey"] for entity in
-        table_client.query_entities(query_filter=query, parameters=parameters)
-        if len(entity["RowKey"]) > 0 # excludes row indicating album existence
-    )
-    if len(album_file_names) == 0:
+    query_results = table_client.query_entities(query_filter=query, parameters=parameters)
+    album_file_names = set[str]()
+    album_exists = False
+    for entity in query_results:
+        if len(entity["RowKey"]) > 0: # excluded row indicating album existence
+            album_file_names.add(entity["RowKey"])
+        
+        album_exists = True
+    
+    if not album_exists:
         return Response("Album does not exist", status=404)
+    if len(album_file_names) == 0:
+        return []
+    
 
     # TODO: Can we avoid querying all files just to get the last modified date and media type? Include in albums table?
     from .photos import all_photos # Needed here to avoid circular import
@@ -214,29 +223,26 @@ def get_album_thumbnail(album_name: str) -> Response:
     :param album_name: The name of the album to get the thumbnail for.
     """
 
-    # Select a random photo from the album to use as the thumbnail
-    album_photos = list_album(album_name)
-    if isinstance(album_photos, Response) and album_photos.status_code == 404:
-        return album_photos
-    elif not isinstance(album_photos, list):
+    # Select a random entry from the album to use as the thumbnail
+    album_files = list_album(album_name)
+    if isinstance(album_files, Response) and album_files.status_code == 404:
+        return album_files
+    elif not isinstance(album_files, list):
         return Response("Internal server error", status=500)
 
-    # Get first entry that isn't a video
+    # Get first entry that's a photo
     # TODO: Handle video thumbnails
     thumbnail_filename: str | None = None
-    for album_photo in album_photos:
-        extension_index = album_photo.filename.rfind(".")
-        if extension_index < 0:
-            continue
-        extension = album_photo.filename[extension_index:]
-        if extension not in PHOTO_EXTENSIONS:
+    for album_file in album_files:
+        album_file_media_type = media_type_from_file_extension(album_file.filename)
+        if album_file_media_type is not MediaType.PHOTO:
             continue
 
-        thumbnail_filename = album_photo.filename
+        thumbnail_filename = album_file.filename
         break
 
     if thumbnail_filename is None:
-        return redirect("/static/photo_album-512.webp")  # type: ignore
+        return redirect(DEFAULT_ALBUM_THUMBNAIL)  # type: ignore
 
     return redirect(
         url_for("api_photos_controller.thumbnail", filename=thumbnail_filename)

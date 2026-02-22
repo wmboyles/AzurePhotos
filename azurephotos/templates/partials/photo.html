@@ -6,8 +6,9 @@
     <button type="button" class="btn btn-sm btn-danger photo-action delete-btn" data-selected="{{ media.filename }}">
         <i class="bi bi-trash"></i>
     </button>
+    {% if albums|length > 0 %}
     <button type="button" class="btn btn-sm btn-secondary dropdown-toggle photo-action album-btn"
-        data-photo="{{ media.filename }}" data-bs-toggle="dropdown">
+        data-name="{{ media.filename }}" data-bs-toggle="dropdown">
         <i class="bi bi-journal-album"></i>
     </button>
     <ul class="dropdown-menu">
@@ -15,5 +16,6 @@
         <li><a class="dropdown-item" href="#">{{ album }}</a></li>
         {% endfor %}
     </ul>
+    {% endif %}
     </div>
 </div>

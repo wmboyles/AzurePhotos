@@ -20,10 +20,7 @@ $(document).ready(() => {
         event.preventDefault();
 
         const isAlbum = typeof (album) !== "undefined";
-        const isVideos = typeof (videoUrls) !== "undefined";
-        const path = isAlbum  ? `/upload/${album}` :
-                     isVideos ? "/api/videos/upload" :
-                     `/upload`;
+        const path = isAlbum  ? `/upload/${album}` : `/upload`;
 
         const input = document.getElementById("formFileLg");
         const files = input.files;
@@ -60,7 +57,6 @@ $(document).ready(() => {
     // Delete photo or video
     $(".photo-action.delete-btn").click(function (event) {
         const isAlbum = (typeof album) !== "undefined";
-        const isVideos = typeof (videoUrls) !== "undefined";
         
         // If we clicked the delete button on an unchecked item, add it to selected items
         const selected = event.currentTarget.dataset.selected;
@@ -68,21 +64,18 @@ $(document).ready(() => {
             .prop("checked", true)
             .trigger("change")
 
-        const confirmMessage = isAlbum  ? `Are you sure you want to remove ${selectedItems.size} photos from this album?` :
-                               isVideos ? `Are you sure you want to remove ${selectedItems.size} videos?` :
-                               `Are you sure you want to delete ${selectedItems.size} photos?`;
+        const confirmMessage = `Are you sure you want to remove ${selectedItems.size} items${isAlbum ? ' from this album' : ''}?`;
         if (!confirm(confirmMessage)) {
             return;
         }
 
         selectedItems.forEach(selectedItem => {
-            const deleteUrl = isAlbum  ? `/api/albums/${album}/${selectedItem}` :
-                              isVideos ? `/api/videos/delete/${selectedItem}` :
-                              `/delete/${selectedItem}`;
+            const deleteUrl = isAlbum  ? `/api/albums/${album}/${selectedItem}` : `/delete/${selectedItem}`;
+            const isVideo = String(selectedItem).endsWith(".mp4") // TODO: Handle other video types
             fetch(deleteUrl, { method: "DELETE" })
                 .then(response => {
                     if (response.ok) {
-                        const selectedItemQuery = isVideos ? `[src="/api/videos/${selectedItem}"]` : `[src="/thumbnail/${selectedItem}"]`
+                        const selectedItemQuery = isVideo ? `[src="/api/videos/${selectedItem}"]` : `[src="/thumbnail/${selectedItem}"]`
                         const deletedThumbnail = document.querySelector(selectedItemQuery)
                         if (deletedThumbnail) {
                             deletedThumbnail.closest(".col").remove();
@@ -104,24 +97,26 @@ $(document).ready(() => {
         const album = li.text()
 
         li.click((_) => {
-            const photo = li.closest("ul.dropdown-menu")
+            const name = li.closest("ul.dropdown-menu")
                 .siblings(".photo-action.album-btn")
-                .data("photo")
+                .data("name")
 
             // Add photo to selection
-            $(`.photo-checkbox[value='${photo}']`)
+            $(`.photo-checkbox[value='${name}']`)
                 .prop("checked", true)
                 .trigger("change")
 
-            if (!confirm(`Are you sure you want to move ${selectedItems.size} photos to ${album}?`)) {
+            if (!confirm(`Are you sure you want to move ${selectedItems.size} items to '${album}?'`)) {
                 return;
             }
 
-            selectedItems.forEach(selectedPhoto => {
-                fetch(`/api/albums/${album}/${selectedPhoto}`, { method: "POST" })
+            selectedItems.forEach(selectedItem => {
+                fetch(`/api/albums/${album}/${selectedItem}`, { method: "POST" })
                     .then(response => {
                         if (response.ok) {
-                            const movedThumbnail = document.querySelector(`[data-full="/fullsize/${selectedPhoto}"]`)
+                            const isVideo = String(selectedItem).endsWith(".mp4"); // TODO: Handle other video types
+                            const selectedItemsQuery = isVideo ? `[src="/api/videos/${selectedItem}"]` : `[data-full="/fullsize/${selectedItem}"]`;
+                            const movedThumbnail = document.querySelector(selectedItemsQuery);
                             if (movedThumbnail) {
                                 movedThumbnail.closest(".col").remove();
                             }
@@ -129,7 +124,7 @@ $(document).ready(() => {
                                 bootstrap.Modal.getInstance(imageModal).hide();
                                 modalPhotoName = null;
                             }
-                            selectedItems.delete(selectedPhoto)
+                            selectedItems.delete(selectedItem)
                         } else {
                             console.log(response);
                         }

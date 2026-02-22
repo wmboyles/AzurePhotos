@@ -15,8 +15,9 @@ from werkzeug.datastructures.file_storage import FileStorage
 
 from ..lib.storage_helper import get_container_sas
 from ..lib.thumbnails import thumbnail as compute_thumbnail
-from ..lib.models.media import PhotoRecord
+from ..lib.models.media import PhotoRecord, MediaType, media_type_from_file_extension
 from .albums import remove_from_all_albums, add_to_album
+from .videos import _upload as upload_video
 
 api_photos_controller = Blueprint(
     "api_photos_controller",
@@ -121,18 +122,30 @@ def _upload(*file_info: tuple[FileStorage, str]) -> list[str]:
     account_name: str = current_app.config["account_name"]
     blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
     photos_container_name: str = current_app.config["photos_container_name"]
+    videos_container_name: str = current_app.config["videos_container_name"]
     thumbnails_container_name: str = current_app.config["thumbnails_container_name"]
     credential: DefaultAzureCredential = current_app.config["credential"]
 
     save_filenames = list[str]()
-    with ContainerClient(blob_account_url, photos_container_name, credential) as fullsize_container_client, ContainerClient(blob_account_url, thumbnails_container_name, credential) as thumbnails_container_client:
+    with ContainerClient(blob_account_url, photos_container_name, credential) as photos_container_client, \
+         ContainerClient(blob_account_url, thumbnails_container_name, credential) as thumbnails_container_client, \
+         ContainerClient(blob_account_url, videos_container_name, credential) as videos_container_client:
         for (file, modified_date) in file_info:
             save_filename = secure_filename(str(file.filename))
+            
+            media_type = media_type_from_file_extension(save_filename)
+            if media_type is None:
+                # TODO: Should we log some error?
+                continue
+            elif media_type == MediaType.VIDEO:
+                save_filenames += upload_video()
+                continue
+
             metadata = {
                 "lastModified": modified_date # ISO timestamp
             }
 
-            fullsize_container_client.upload_blob(save_filename, file.stream, metadata=metadata)
+            photos_container_client.upload_blob(save_filename, file.stream, metadata=metadata)
 
             thumbnail_bytes = compute_thumbnail(file.stream)
             thumbnails_container_client.upload_blob(save_filename, thumbnail_bytes.getvalue(), metadata=metadata)
@@ -174,6 +187,7 @@ def upload_to_album(album_name: str) -> Response:
         add_to_album_result = add_to_album(album_name, upload_filename)
 
         if isinstance(add_to_album_result, Response) and add_to_album_result.status_code >= 400:
+            # TODO: Should we instead aggregate results at the end?
             return add_to_album_result
 
     return Response(status=201)
