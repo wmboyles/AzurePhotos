@@ -113,22 +113,6 @@ def _upload(*file_info: tuple[FileStorage, str]) -> list[str]:
 
     return save_filenames
 
-
-@api_videos_controller.route("/upload", methods=["POST"])
-def upload() -> Response:
-    """
-    Uploads videos to the storage account.
-    """
-
-    # TODO: Is this method needed anymore?
-
-    files = request.files.getlist("upload")
-    datesTaken = request.form.getlist("dateTaken")
-
-    _ = _upload(*zip(files, datesTaken))
-
-    return Response(status=201)
-
 @api_videos_controller.route("/delete/<filename>", methods=["DELETE"])
 def delete(filename: str) -> Response:
     """
