@@ -4,6 +4,8 @@ set -e
 echo "----- Custom startup: ensuring ffmpeg is installed -----"
 
 if ! command -v ffmpeg >/dev/null 2>&1; then
+    # We can either do this or bundle an ffmpeg binary in our bin folder
+    # Or, we could be real professionals and use Docker
     echo "Installing ffmpeg..."
     apt-get update
     apt-get install -y ffmpeg
