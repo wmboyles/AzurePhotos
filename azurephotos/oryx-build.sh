@@ -10,7 +10,3 @@ if ! command -v ffmpeg >/dev/null 2>&1; then
 else
     echo "ffmpeg already installed."
 fi
-
-echo "----- Handing off to Azure Oryx startup -----"
-
-exec /opt/startup/startup.sh
