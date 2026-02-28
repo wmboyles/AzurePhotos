@@ -86,8 +86,8 @@ def delete(filename: str) -> Response:
     photos_container_name: str = current_app.config["photos_container_name"]
     credential: DefaultAzureCredential = current_app.config["credential"]
 
+    media_type = media_type_from_file_extension(filename)
     try:
-        media_type = media_type_from_file_extension(filename)
         if media_type == MediaType.PHOTO:
             with ContainerClient(blob_account_url, photos_container_name, credential) as photos_container_client:
                 photos_container_client.delete_blob(filename)
@@ -102,6 +102,9 @@ def delete(filename: str) -> Response:
 
     # Ignore if removing thumbnail fails 
     try:
+        if media_type == MediaType.VIDEO:
+            filename = f"{filename}.jpg"
+
         with ContainerClient(blob_account_url, thumbnails_container_name, credential) as thumbnail_container_client:
             thumbnail_container_client.delete_blob(filename)
     except ResourceNotFoundError as e:
