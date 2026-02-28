@@ -8,13 +8,14 @@ from azure.core.exceptions import ResourceNotFoundError
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import ContainerClient, BlobProperties
 from datetime import datetime
-from flask import Blueprint, redirect, request, current_app
+from flask import Blueprint, redirect, current_app
 from werkzeug.utils import secure_filename
 from werkzeug.wrappers.response import Response
 from werkzeug.datastructures.file_storage import FileStorage
 
 from ..lib.storage_helper import get_container_sas
-from ..lib.models.media import VideoRecord
+from ..lib.thumbnails import video_thumbnail as compute_thumnail
+from ..lib.models.media import MediaType, VideoRecord, media_type_from_file_extension
 
 api_videos_controller = Blueprint(
     "api_videos_controller",
@@ -76,7 +77,7 @@ def all_videos() -> list[VideoRecord]:
         )
 
 
-def _upload(*file_info: tuple[FileStorage, str]) -> list[str]:
+def upload(*file_info: tuple[FileStorage, str]) -> list[str]:
     """
     Upload videos to blob storage.
 
@@ -92,19 +93,29 @@ def _upload(*file_info: tuple[FileStorage, str]) -> list[str]:
     account_name: str = current_app.config["account_name"]
     blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
     videos_container_name: str = current_app.config["videos_container_name"]
+    thumbnails_container_name: str = current_app.config["thumbnails_container_name"]
     credential: DefaultAzureCredential = current_app.config["credential"]
 
     save_filenames = list[str]()
-    with ContainerClient(blob_account_url, videos_container_name, credential) as container_client:
+    with ContainerClient(blob_account_url, videos_container_name, credential) as container_client, \
+         ContainerClient(blob_account_url, thumbnails_container_name, credential) as thumbnails_container_client:
         for file, modified_date in file_info:
             save_filename = secure_filename(str(file.filename))
+            media_type = media_type_from_file_extension(save_filename)
+            if media_type != MediaType.VIDEO:
+                raise Exception(f"{save_filename} is not a video file.")
             metadata = {
                 "lastModified": modified_date # ISO timestamp
             }
 
             container_client.upload_blob(save_filename, file.stream, metadata=metadata)
-
-            # TODO: Compute video thumbnail
+            
+            thumbnail_bytes = compute_thumnail(file.stream)
+            thumbnail_filename = f"{save_filename}.jpg"
+            thumbnails_container_client.upload_blob(
+                thumbnail_filename,
+                data=thumbnail_bytes,
+                metadata=metadata)
 
             save_filenames.append(save_filename)
 
@@ -113,7 +124,7 @@ def _upload(*file_info: tuple[FileStorage, str]) -> list[str]:
 
     return save_filenames
 
-@api_videos_controller.route("/delete/<filename>", methods=["DELETE"])
+
 def delete(filename: str) -> Response:
     """
     Delete a video from the storage account.

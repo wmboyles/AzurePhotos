@@ -70,7 +70,7 @@ $(document).ready(() => {
         }
 
         selectedItems.forEach(selectedItem => {
-            const deleteUrl = isAlbum  ? `/api/albums/${album}/${selectedItem}` : `/delete/${selectedItem}`;
+            const deleteUrl = isAlbum ? `/api/albums/${album}/${selectedItem}` : `/delete/${selectedItem}`;
             const isVideo = String(selectedItem).endsWith(".mp4") // TODO: Handle other video types
             fetch(deleteUrl, { method: "DELETE" })
                 .then(response => {

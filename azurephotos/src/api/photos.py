@@ -17,7 +17,7 @@ from ..lib.storage_helper import get_container_sas
 from ..lib.thumbnails import thumbnail as compute_thumbnail
 from ..lib.models.media import PhotoRecord, MediaType, media_type_from_file_extension
 from .albums import remove_from_all_albums, add_to_album
-from .videos import _upload as upload_video
+from .videos import upload as upload_video, delete as delete_video
 
 api_photos_controller = Blueprint(
     "api_photos_controller",
@@ -87,8 +87,14 @@ def delete(filename: str) -> Response:
     credential: DefaultAzureCredential = current_app.config["credential"]
 
     try:
-        with ContainerClient(blob_account_url, photos_container_name, credential) as photos_container_client:
-            photos_container_client.delete_blob(filename)
+        media_type = media_type_from_file_extension(filename)
+        if media_type == MediaType.PHOTO:
+            with ContainerClient(blob_account_url, photos_container_name, credential) as photos_container_client:
+                photos_container_client.delete_blob(filename)
+        elif media_type == MediaType.VIDEO:
+            delete_video(filename)
+        else:
+            raise Exception(f"Unrecognized media type {media_type=}")
 
         remove_from_all_albums(filename)
     except ResourceNotFoundError as e:
@@ -122,35 +128,35 @@ def _upload(*file_info: tuple[FileStorage, str]) -> list[str]:
     account_name: str = current_app.config["account_name"]
     blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
     photos_container_name: str = current_app.config["photos_container_name"]
-    videos_container_name: str = current_app.config["videos_container_name"]
     thumbnails_container_name: str = current_app.config["thumbnails_container_name"]
     credential: DefaultAzureCredential = current_app.config["credential"]
 
     save_filenames = list[str]()
     with ContainerClient(blob_account_url, photos_container_name, credential) as photos_container_client, \
-         ContainerClient(blob_account_url, thumbnails_container_name, credential) as thumbnails_container_client, \
-         ContainerClient(blob_account_url, videos_container_name, credential) as videos_container_client:
+         ContainerClient(blob_account_url, thumbnails_container_name, credential) as thumbnails_container_client:
         for (file, modified_date) in file_info:
             save_filename = secure_filename(str(file.filename))
-            
             media_type = media_type_from_file_extension(save_filename)
             if media_type is None:
                 # TODO: Should we log some error?
                 continue
             elif media_type == MediaType.VIDEO:
-                save_filenames += upload_video()
+                save_filenames += upload_video((file, modified_date))
                 continue
+            elif media_type == MediaType.PHOTO:
+                metadata = {
+                    "lastModified": modified_date # ISO timestamp
+                }
 
-            metadata = {
-                "lastModified": modified_date # ISO timestamp
-            }
+                photos_container_client.upload_blob(save_filename, file.stream, metadata=metadata)
 
-            photos_container_client.upload_blob(save_filename, file.stream, metadata=metadata)
+                thumbnail_bytes = compute_thumbnail(file.stream)
+                thumbnails_container_client.upload_blob(save_filename, thumbnail_bytes.getvalue(), metadata=metadata)
 
-            thumbnail_bytes = compute_thumbnail(file.stream)
-            thumbnails_container_client.upload_blob(save_filename, thumbnail_bytes.getvalue(), metadata=metadata)
+                save_filenames.append(save_filename)
+            else:
+                raise Exception(f"Unrecognized media type {media_type=}.")
 
-            save_filenames.append(save_filename)
 
     if not save_filenames:
         raise Exception("Could not upload file")
