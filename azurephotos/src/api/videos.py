@@ -8,41 +8,13 @@ from azure.core.exceptions import ResourceNotFoundError
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import ContainerClient, BlobProperties
 from datetime import datetime
-from flask import Blueprint, redirect, current_app
+from flask import current_app
 from werkzeug.utils import secure_filename
 from werkzeug.wrappers.response import Response
 from werkzeug.datastructures.file_storage import FileStorage
 
-from ..lib.storage_helper import get_container_sas
 from ..lib.thumbnails import video_thumbnail as compute_thumnail
 from ..lib.models.media import MediaType, VideoRecord, media_type_from_file_extension
-
-api_videos_controller = Blueprint(
-    "api_videos_controller",
-    __name__,
-    template_folder="templates",
-    static_folder="static",
-    url_prefix="/api/videos",
-)
-
-
-@api_videos_controller.route("/<filename>", methods=["GET"])
-def video(filename: str) -> Response:
-    """
-    Get the SAS for the full-size video.
-
-    :param filename: The name of the video file.
-    """
-
-    account_name: str = current_app.config["account_name"]
-    blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
-    credential: DefaultAzureCredential = current_app.config["credential"]
-    videos_container_name: str = current_app.config["videos_container_name"]
-
-    videos_container_sas: str = get_container_sas(account_name, videos_container_name, credential)
-
-    return redirect(f"{blob_account_url}/{videos_container_name}/{filename}?{videos_container_sas}")
-
 
 def all_videos() -> list[VideoRecord]:
     """
