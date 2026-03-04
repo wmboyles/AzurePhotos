@@ -1,21 +1,24 @@
-#imageModal .modal-dialog {
+#fullsizeModal .modal-dialog {
     margin: auto;
     max-height: 97vh;
 }
 
-#imageModal .modal-content {
+#fullsizeModal .modal-content {
     background-color: transparent;
     border: none;
     align-items: center;
 }
 
-#imageModal .modal-footer {
+#fullsizeModal .modal-footer {
     border: none;
 }
 
-#modalImage {
+#fullsizeModalBody img,
+#fullsizeModalBody video {
     max-width: 90vw;
     max-height: 90vh;
+    width: auto;
+    height: auto;
 }
 
 .photo-card {

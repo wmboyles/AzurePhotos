@@ -7,12 +7,76 @@ $(document).ready(() => {
     let selectedItems = new Set();
 
     // Open modal when clicking on a thumbnail
-    $("#imageModal").on('show.bs.modal', function (event) {
+    $("#fullsizeModal").on('show.bs.modal', function (event) {
         const trigger = event.relatedTarget;
         const fullSrc = trigger.getAttribute('data-full');
-
-        document.getElementById('modalImage').src = fullSrc;
         modalPhotoName = fullSrc.slice("/fullsize/".length);
+
+        const fullsizeModalBody = document.getElementById("fullsizeModalBody");
+
+        // Clear any existing parts of the modal body
+        fullsizeModalBody.innerHTML = "";
+        
+        // Build a new img or video inside the modal body
+        const isVideo = String(fullSrc).endsWith(".mp4"); // TODO: Handle other video types
+        if (isVideo) {
+            const video = document.createElement("video");
+            video.className = "img-fluid";
+            video.controls = true;
+            video.title = modalPhotoName;
+
+            const source = document.createElement("source");
+            source.src = fullSrc;
+            source.type = "video/mp4";
+
+            video.appendChild(source);
+            fullsizeModalBody.appendChild(video);
+            video.load();
+        } else {
+            const img = document.createElement("img");
+            img.className = "img-fluid";
+            img.src = fullSrc;
+            img.alt = modalPhotoName;
+
+            fullsizeModalBody.appendChild(img);
+        }
+    });
+
+    // Close modal
+    $("#fullsizeModal").on("hidden.bs.modal", async function () {
+        // Clear any existing parts of the modal body
+        // This should also stop a video that was playing
+        const fullsizeModalBody = document.getElementById("fullsizeModalBody");
+        const video = fullsizeModalBody.querySelector("video");
+
+        if (video)
+        {
+            // Try to exit picture-in-picture if active
+            try {
+                if (document.pictureInPictureElement) {
+                    await document.exitPictureInPicture();
+                }
+            } catch (err) {
+                console.warn("Could not exit Picture-in-picture:", err);
+            }
+
+            // Pause video playback
+            video.pause();
+
+            // Remove video source to stop buffering/audio
+            video.removeAttribute("src");
+            const source = video.querySelector("source");
+            if (source) {
+                source.removeAttribute("src");
+            }
+
+            // Force reload of (non) video
+            video.load();
+        }
+
+        // Clear modal body
+        fullsizeModalBody.innerHTML = "";
+        modalPhotoName = null;
     });
 
     // Submit photos and videos for upload
@@ -121,7 +185,7 @@ $(document).ready(() => {
                                 movedThumbnail.closest(".col").remove();
                             }
                             if (modalPhotoName !== null) {
-                                bootstrap.Modal.getInstance(imageModal).hide();
+                                bootstrap.Modal.getInstance(fullsizeModal).hide();
                                 modalPhotoName = null;
                             }
                             selectedItems.delete(selectedItem)
@@ -150,7 +214,7 @@ $(document).ready(() => {
     $(document).on("keydown", function (event) {
         if (event.key === "Escape") {
             // Do not uncheck anything if the modal was closing
-            if (event.target.id === "imageModal") {
+            if (event.target.id === "fullsizeModal") {
                 return;
             }
 

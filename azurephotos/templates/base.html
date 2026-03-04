@@ -68,15 +68,23 @@
   {% endblock %}
 
   {% block media %}
+  <div class="container-fluid">
+    <h2 class="display-6">My Files</h2>
+    <div class="row row-cols-4 row-cols-lg-6 grid g-0">
+      {% for media in medias %}
+        {% include "partials/thumbnail.html" %}
+      {% endfor %}
+    </div>
+  </div>
   {% endblock %}
 
   {% block modal %}
-  <div class="modal fade" id="imageModal" tabindex="-1" role="dialog" aria-labelledby="imageModalLabel"
+  <div class="modal fade" id="fullsizeModal" tabindex="-1" role="dialog" aria-labelledby="fullsizeModalLabel"
     aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
       <div class="modal-content">
-        <div class="modal-body">
-          <img id="modalImage" src="" alt="Full Size" class="img-fluid">
+        <div class="modal-body" id="fullsizeModalBody">
+          <!-- Img or video vill be added here -->
         </div>
         <div class="modal-footer m-0 p-0">
         </div>

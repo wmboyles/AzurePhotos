@@ -31,15 +31,21 @@ api_photos_controller = Blueprint(
 @api_photos_controller.route("/thumbnail/<filename>", methods=["GET"])
 def thumbnail(filename: str) -> Response:
     """
-    Get the thumbnail image for a photo.
+    Get the thumbnail image for a photo or video.
 
-    :param filename: The name of the photo file.
+    :param filename: The name of the file.
     """
 
     account_name: str = current_app.config["account_name"]
     blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
     credential: DefaultAzureCredential = current_app.config["credential"]
     thumbnails_container_name: str = current_app.config["thumbnails_container_name"]
+
+    media_type = media_type_from_file_extension(filename)
+    if media_type == MediaType.VIDEO:
+        filename += ".jpg"
+    elif media_type is None:
+        raise Exception(f"Unregognized media type for {filename=}")
     
     thumbnails_container_sas: str = get_container_sas(account_name, thumbnails_container_name, credential)
 
@@ -52,20 +58,30 @@ def thumbnail(filename: str) -> Response:
 def fullsize(filename: str) -> Response:
     """
     Get the full-size image for a photo.
+    Get the full-length video for a video.
 
-    :param filename: The name of the photo file.
+    :param filename: The name of the file.
     """
 
     account_name: str = current_app.config["account_name"]
     blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
     credential: DefaultAzureCredential = current_app.config["credential"]
-    photos_container_name: str = current_app.config["photos_container_name"]
 
-    photos_container_sas: str = get_container_sas(account_name, photos_container_name, credential)
-
-    return redirect(
-        f"{blob_account_url}/{photos_container_name}/{filename}?{photos_container_sas}"
-    )
+    media_type = media_type_from_file_extension(filename)
+    if media_type == MediaType.PHOTO:
+        photos_container_name: str = current_app.config["photos_container_name"]
+        photos_container_sas: str = get_container_sas(account_name, photos_container_name, credential)
+        return redirect(
+            f"{blob_account_url}/{photos_container_name}/{filename}?{photos_container_sas}"
+        )
+    elif media_type == MediaType.VIDEO:
+        videos_container_name: str = current_app.config["videos_container_name"]
+        videos_container_sas = get_container_sas(account_name, videos_container_name, credential)
+        return redirect(
+            f"{blob_account_url}/{videos_container_name}/{filename}?{videos_container_sas}"
+        )
+    else:
+        raise Exception(f"Unknown media type for {filename=}")
 
 
 @api_photos_controller.route("/delete/<filename>", methods=["DELETE"])

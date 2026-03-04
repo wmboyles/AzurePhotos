@@ -5,18 +5,3 @@
   albums = {{ albums | tojson }};
 </script>
 {% endblock %}
-
-{% block media %}
-<div class="container-fluid">
-  <h2 class="display-6">My Files</h2>
-  <div class="row row-cols-4 row-cols-lg-6 grid g-0">
-    {% for media in medias %}
-      {% if media.type == "photo" %}
-        {% include "partials/photo.html" %}
-      {% elif media.type == "video" %}
-        {% include "partials/video.html" %}
-      {% endif %}
-    {% endfor %}
-  </div>
-</div>
-{% endblock %}
