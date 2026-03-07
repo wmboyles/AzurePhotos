@@ -11,7 +11,7 @@ import tempfile
 WIDTH = 370
 HEIGHT = 280
 SIZE = (WIDTH, HEIGHT)
-OUTPUT_FORMAT = "WEBP"
+OUTPUT_FORMAT = "WEBP" # TODO: WEBP for video thumbnails possible?
 
 # Protect against maliciously large images
 # TODO: Should this be enforced before the call to thumbnail in upload logic?
