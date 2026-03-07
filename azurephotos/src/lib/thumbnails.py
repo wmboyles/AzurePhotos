@@ -40,7 +40,7 @@ def thumbnail(photo_bytes: IO[bytes]) -> BytesIO:
     Create a compressed thumbnail of an image.
 
     - Maintains EXIF orientation
-    - Converts of an efficient output format
+    - Converts to an efficient output format
     - Strips other metadata
     """
     
