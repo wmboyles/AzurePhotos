@@ -157,8 +157,7 @@ def _upload(*file_info: tuple[FileStorage, str]) -> list[str]:
             save_filename = secure_filename(str(file.filename))
             media_type = media_type_from_file_extension(save_filename)
             if media_type is None:
-                # TODO: Should we log some error?
-                continue
+                raise Exception(f"Image type of {file.filename} is not supported")
             elif media_type == MediaType.VIDEO:
                 save_filenames += upload_video((file, modified_date))
                 continue

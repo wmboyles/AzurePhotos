@@ -3,7 +3,6 @@ from azure.identity import DefaultAzureCredential
 import src.view.view as view
 import src.api.api as api
 
-
 def create_app() -> Flask:
     app = Flask(__name__)
 

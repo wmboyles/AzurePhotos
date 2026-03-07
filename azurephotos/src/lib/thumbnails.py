@@ -22,6 +22,8 @@ def thumbnail(photo_bytes: BytesIO | IO[bytes]) -> BytesIO:
             (THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT),
             Image.Resampling.LANCZOS)
         
+        # We always save a JPEG for the best compression
+        # The caller can choose whether or not to change the file extension
         buffer = BytesIO()
         img.save(buffer, format="JPEG", quality=85, optimize=True)
         buffer.seek(0)

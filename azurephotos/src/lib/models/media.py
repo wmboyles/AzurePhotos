@@ -4,6 +4,7 @@ from datetime import datetime
 from enum import Enum
 
 
+# TODO: Support PNG once you can handle transparent backgrounds
 PHOTO_EXTENSIONS: frozenset[str] = frozenset([".jpg", ".jpeg", ".bmp", ".webp"])
 
 VIDEO_EXTENSIONS: frozenset[str] = frozenset([".mp4"])
@@ -22,7 +23,7 @@ def media_type_from_file_extension(filename: str | None) -> MediaType | None:
     if extension_index < 0:
         return None
 
-    extension = filename[extension_index:]
+    extension = str(filename[extension_index:]).lower
     if extension in PHOTO_EXTENSIONS:
         return MediaType.PHOTO
     elif extension in VIDEO_EXTENSIONS:
