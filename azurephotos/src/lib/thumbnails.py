@@ -130,9 +130,10 @@ def video_thumbnail(video_bytes: IO[bytes]) -> bytes:
         "-vf",
         f"scale={WIDTH}:{HEIGHT}:"
         f"force_original_aspect_ratio=increase,crop={WIDTH}:{HEIGHT}",
-        "-q:v", "2",
+        "-vcodec", "libwebp",
+        "-quality", "82",
+        "-compression_level", "6",
         "-f", "image2",
-        "-vcodec", "mjpeg",
         "pipe:1",
     ]
     try:
