@@ -43,7 +43,7 @@ def thumbnail(filename: str) -> Response:
 
     media_type = media_type_from_file_extension(filename)
     if media_type == MediaType.VIDEO:
-        filename += ".jpg"
+        filename += ".webp"
     elif media_type is None:
         raise Exception(f"Unregognized media type for {filename=}")
     
@@ -119,7 +119,7 @@ def delete(filename: str) -> Response:
     # Ignore if removing thumbnail fails 
     try:
         if media_type == MediaType.VIDEO:
-            filename = f"{filename}.jpg"
+            filename = f"{filename}.webp"
 
         with ContainerClient(blob_account_url, thumbnails_container_name, credential) as thumbnail_container_client:
             thumbnail_container_client.delete_blob(filename)
@@ -157,7 +157,7 @@ def _upload(*file_info: tuple[FileStorage, str]) -> list[str]:
             save_filename = secure_filename(str(file.filename))
             media_type = media_type_from_file_extension(save_filename)
             if media_type is None:
-                raise Exception(f"Image type of {file.filename} is not supported")
+                raise Exception(f"Extension of {file.filename} is not supported")
             elif media_type == MediaType.VIDEO:
                 save_filenames += upload_video((file, modified_date))
                 continue

@@ -1,3 +1,49 @@
+// Should match src.lib.models.media.PHOTO_EXTENSIONS
+const PHOTO_EXTENSIONS = new Set([
+    ".jpg", ".jpeg", ".jpe", ".jfif",
+    ".png",
+    ".webp",
+    ".bmp", ".dib",
+    ".tif", ".tiff",
+    ".gif",
+    ".mpo",
+    ".heic", ".heif",
+]);
+
+// Should match src.lib.models.media.VIDEO_EXTENSIONS
+const VIDEO_EXTENSIONS = new Set([
+    ".mp4",
+    ".mov",
+    ".mkv",
+    ".webm",
+    ".avi",
+    ".m4v",
+    ".3gp",
+    ".3g2",
+    ".ts",
+    ".m2ts",
+]);
+
+function getExtension(filename) {
+    if (typeof filename !== 'string') {
+        return null;
+    }
+
+    const lastIdx = filename.lastIndexOf(".");
+    const extension = filename.slice(lastIdx).trim().toLowerCase();
+    return extension;
+}
+
+function isPhoto(filename) {
+    const extension = getExtension(filename);
+    return PHOTO_EXTENSIONS.has(extension);
+}
+
+function isVideo(filename) {
+    const extension = getExtension(filename);
+    return VIDEO_EXTENSIONS.has(extension);
+}
+
 // Some variables are passed here from HTML from Flask.
 // We'll have `albums` on the main page, `album` on an album page, and `videoUrls` on the video page.
 $(document).ready(() => {
@@ -18,8 +64,7 @@ $(document).ready(() => {
         fullsizeModalBody.innerHTML = "";
         
         // Build a new img or video inside the modal body
-        const isVideo = String(fullSrc).endsWith(".mp4"); // TODO: Handle other video types
-        if (isVideo) {
+        if (isVideo(fullSrc)) {
             const video = document.createElement("video");
             video.className = "img-fluid";
             video.controls = true;
@@ -92,6 +137,19 @@ $(document).ready(() => {
 
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
+
+            const filename = file.name;
+            if (!isPhoto(filename) && !isVideo(filename)) {
+                alert(`${filename} is not a supported extension`);
+                return;
+            }
+
+            const fileType = file.type;
+            if (!fileType.startsWith("image/") && !fileType.startsWith("video/")) {
+                alert(`${filename} is not a photo nor a video`);
+                return;
+            }
+
             formData.append("upload", file);
 
             // Get last modified
@@ -135,12 +193,11 @@ $(document).ready(() => {
 
         selectedItems.forEach(selectedItem => {
             const deleteUrl = isAlbum ? `/api/albums/${album}/${selectedItem}` : `/delete/${selectedItem}`;
-            const isVideo = String(selectedItem).endsWith(".mp4") // TODO: Handle other video types
             fetch(deleteUrl, { method: "DELETE" })
                 .then(response => {
                     if (response.ok) {
-                        const selectedItemQuery = isVideo ? `[src="/api/videos/${selectedItem}"]` : `[src="/thumbnail/${selectedItem}"]`
-                        const deletedThumbnail = document.querySelector(selectedItemQuery)
+                        const selectedItemQuery = `[src="/thumbnail/${selectedItem}"]`;
+                        const deletedThumbnail = document.querySelector(selectedItemQuery);
                         if (deletedThumbnail) {
                             deletedThumbnail.closest(".col").remove();
                         }
@@ -178,8 +235,7 @@ $(document).ready(() => {
                 fetch(`/api/albums/${album}/${selectedItem}`, { method: "POST" })
                     .then(response => {
                         if (response.ok) {
-                            const isVideo = String(selectedItem).endsWith(".mp4"); // TODO: Handle other video types
-                            const selectedItemsQuery = isVideo ? `[src="/api/videos/${selectedItem}"]` : `[data-full="/fullsize/${selectedItem}"]`;
+                            const selectedItemsQuery = `[data-full="/fullsize/${selectedItem}"]`;
                             const movedThumbnail = document.querySelector(selectedItemsQuery);
                             if (movedThumbnail) {
                                 movedThumbnail.closest(".col").remove();

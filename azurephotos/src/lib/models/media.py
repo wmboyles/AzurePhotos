@@ -20,7 +20,16 @@ Should align with :obj:`thumbnails.SUPPORTED_FORMATS`.
 """
 
 VIDEO_EXTENSIONS: frozenset[str] = frozenset({
-    ".mp4"
+    ".mp4",
+    ".mov",
+    ".mkv",
+    ".webm",
+    ".avi",
+    ".m4v",
+    ".3gp",
+    ".3g2",
+    ".ts",
+    ".m2ts",
 })
 """
 Collection of supported file extensions for video upload.

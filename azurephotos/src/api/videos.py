@@ -83,7 +83,7 @@ def upload(*file_info: tuple[FileStorage, str]) -> list[str]:
             container_client.upload_blob(save_filename, file.stream, metadata=metadata)
             
             thumbnail_bytes = compute_thumnail(file.stream)
-            thumbnail_filename = f"{save_filename}.jpg"
+            thumbnail_filename = f"{save_filename}.webp"
             thumbnails_container_client.upload_blob(
                 thumbnail_filename,
                 data=thumbnail_bytes,

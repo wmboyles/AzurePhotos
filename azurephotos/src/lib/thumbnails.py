@@ -1,15 +1,16 @@
+from flask import current_app
 from io import BytesIO
-from typing import IO
 from PIL import Image, ImageFile, ImageOps
 from PIL.Image import DecompressionBombError
+from typing import IO
 
 import os
 import shutil
 import subprocess
 import tempfile
 
-WIDTH = 370
-HEIGHT = 280
+WIDTH = 384
+HEIGHT = 384
 SIZE = (WIDTH, HEIGHT)
 OUTPUT_FORMAT = "WEBP" # TODO: WEBP for video thumbnails possible?
 
@@ -110,6 +111,11 @@ def video_thumbnail(video_bytes: IO[bytes]) -> bytes:
     if ffmpeg_path is None:
         raise Exception("Cannot find ffmpeg")
     
+    # find video icon
+    video_icon_path = os.path.join(str(current_app.static_folder), "video_icon.png")
+    if not os.path.exists(video_icon_path):
+        raise Exception("Cannot find video icon")
+
     if video_bytes.seekable():
         video_bytes.seek(0)
 
@@ -126,10 +132,13 @@ def video_thumbnail(video_bytes: IO[bytes]) -> bytes:
         "-loglevel", "error",
         "-ss", "1",
         "-i", temp_video_path,
+        "-i", video_icon_path,
         "-frames:v", "1",
-        "-vf",
-        f"scale={WIDTH}:{HEIGHT}:"
-        f"force_original_aspect_ratio=increase,crop={WIDTH}:{HEIGHT}",
+        "-filter_complex",
+        f"[0:v]scale={WIDTH}:{HEIGHT}:force_original_aspect_ratio=increase," # extending string over multiple lines
+            f"crop={WIDTH}:{HEIGHT}[thumb];"
+            "[1:v]format=rgba,scale=64:-1:flags=lanczos[icon];"
+            "[thumb][icon]overlay=10:10", # top-left corner
         "-vcodec", "libwebp",
         "-quality", "82",
         "-compression_level", "6",
