@@ -47,9 +47,9 @@ function isVideo(filename) {
 // Some variables are passed here from HTML from Flask.
 // We'll have `albums` on the main page, `album` on an album page, and `videoUrls` on the video page.
 $(document).ready(() => {
-    // Last viewed photo in modal
+    // Last viewed photo or video in modal
     let modalPhotoName = null;
-    // Photos or videos selected by checkbox
+    // Photo or video selected by checkbox
     let selectedItems = new Set();
 
     // Open modal when clicking on a thumbnail
@@ -212,7 +212,7 @@ $(document).ready(() => {
         });
     });
 
-    // Place photo in album
+    // Place photo or video in album
     $(".photo-action.album-btn").siblings("ul").find("li .dropdown-item").each(function () {
         const li = $(this);
         const album = li.text()
@@ -256,7 +256,7 @@ $(document).ready(() => {
         });
     });
 
-    // Select photo(s) or video(s)
+    // Select photos and videos
     $(".photo-checkbox").on("change", function (_) {
         const selected = $(this).val()
         if (this.checked) {
@@ -266,7 +266,7 @@ $(document).ready(() => {
         }
     });
 
-    // Clear selected photo(s) or video(s)
+    // Clear selected photos and videos
     $(document).on("keydown", function (event) {
         if (event.key === "Escape") {
             // Do not uncheck anything if the modal was closing
@@ -287,6 +287,7 @@ $(document).ready(() => {
         fetch(`/api/albums/${albumName}`, { method: "POST" })
             .then(response => {
                 if (response.ok) {
+                    // TODO: Instead of reloading, can we just append to the albums list with a thumbnail of /static/album_thumbnail
                     albums.push(albumName);
                     window.location.reload();
                 } else {
