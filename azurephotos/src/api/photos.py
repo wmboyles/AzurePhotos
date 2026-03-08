@@ -4,57 +4,19 @@ API endpoints for handling individual photos.
 :author: William Boyles
 """
 
-from azure.core.exceptions import ResourceNotFoundError
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import ContainerClient, BlobProperties
 from datetime import datetime
-from flask import Blueprint, redirect, request, current_app
+from flask import redirect, current_app
 from werkzeug.utils import secure_filename
 from werkzeug.wrappers.response import Response
 from werkzeug.datastructures.file_storage import FileStorage
 
 from ..lib.storage_helper import get_container_sas
 from ..lib.thumbnails import thumbnail as compute_thumbnail
-from ..lib.models.media import PhotoRecord, MediaType, media_type_from_file_extension
-from .albums import remove_from_all_albums, add_to_album
-from .videos import upload as upload_video, delete as delete_video
-
-api_photos_controller = Blueprint(
-    "api_photos_controller",
-    __name__,
-    template_folder="templates",
-    static_folder="static",
-    url_prefix="/",
-)
+from ..lib.models.media import PhotoRecord
 
 
-@api_photos_controller.route("/thumbnail/<filename>", methods=["GET"])
-def thumbnail(filename: str) -> Response:
-    """
-    Get the thumbnail image for a photo or video.
-
-    :param filename: The name of the file.
-    """
-
-    account_name: str = current_app.config["account_name"]
-    blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
-    credential: DefaultAzureCredential = current_app.config["credential"]
-    thumbnails_container_name: str = current_app.config["thumbnails_container_name"]
-
-    media_type = media_type_from_file_extension(filename)
-    if media_type == MediaType.VIDEO:
-        filename += ".webp"
-    elif media_type is None:
-        raise Exception(f"Unregognized media type for {filename=}")
-    
-    thumbnails_container_sas: str = get_container_sas(account_name, thumbnails_container_name, credential)
-
-    return redirect(
-        f"{blob_account_url}/{thumbnails_container_name}/{filename}?{thumbnails_container_sas}"
-    )
-
-
-@api_photos_controller.route("/fullsize/<filename>", methods=["GET"])
 def fullsize(filename: str) -> Response:
     """
     Get the full-size image for a photo.
@@ -66,83 +28,56 @@ def fullsize(filename: str) -> Response:
     account_name: str = current_app.config["account_name"]
     blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
     credential: DefaultAzureCredential = current_app.config["credential"]
+    photos_container_name: str = current_app.config["photos_container_name"]
 
-    media_type = media_type_from_file_extension(filename)
-    if media_type == MediaType.PHOTO:
-        photos_container_name: str = current_app.config["photos_container_name"]
-        photos_container_sas: str = get_container_sas(account_name, photos_container_name, credential)
-        return redirect(
-            f"{blob_account_url}/{photos_container_name}/{filename}?{photos_container_sas}"
-        )
-    elif media_type == MediaType.VIDEO:
-        videos_container_name: str = current_app.config["videos_container_name"]
-        videos_container_sas = get_container_sas(account_name, videos_container_name, credential)
-        return redirect(
-            f"{blob_account_url}/{videos_container_name}/{filename}?{videos_container_sas}"
-        )
-    else:
-        raise Exception(f"Unknown media type for {filename=}")
+    photos_container_sas: str = get_container_sas(
+        account_name, photos_container_name, credential
+    )
+    return redirect(
+        f"{blob_account_url}/{photos_container_name}/{filename}?{photos_container_sas}"
+    )
 
 
-@api_photos_controller.route("/delete/<filename>", methods=["DELETE"])
-def delete(filename: str) -> Response:
+def delete_fullsize(filename: str) -> None:
     """
-    Delete a photo from the storage account.
-    Removes the photo, thumbnail, and all references to the photo in albums.
+    Deletes the fullsize photo from the storage account.
 
     :param filename: The name of the photo file
-    :type filename: str
-    :return: 204 Response if successful; 404 for missing file; throws otherwise
-    :rtype: Response
+    """
+
+    account_name: str = current_app.config["account_name"]
+    blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
+    photos_container_name: str = current_app.config["photos_container_name"]
+    credential: DefaultAzureCredential = current_app.config["credential"]
+
+    with ContainerClient(
+        blob_account_url, photos_container_name, credential
+    ) as photos_container_client:
+        photos_container_client.delete_blob(filename)
+
+
+def delete_thumbnail(filename: str) -> None:
+    """
+    Deletes the thumbnail photo from the storage account.
+
+    :param filename: The name of the photo file
     """
 
     account_name: str = current_app.config["account_name"]
     blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
     thumbnails_container_name: str = current_app.config["thumbnails_container_name"]
-    photos_container_name: str = current_app.config["photos_container_name"]
     credential: DefaultAzureCredential = current_app.config["credential"]
 
-    media_type = media_type_from_file_extension(filename)
-    try:
-        if media_type == MediaType.PHOTO:
-            with ContainerClient(blob_account_url, photos_container_name, credential) as photos_container_client:
-                photos_container_client.delete_blob(filename)
-        elif media_type == MediaType.VIDEO:
-            delete_video(filename)
-        else:
-            raise Exception(f"Unrecognized media type {media_type=}")
-
-        remove_from_all_albums(filename)
-    except ResourceNotFoundError as e:
-        return Response(e.message, status=404)
-
-    # Ignore if removing thumbnail fails 
-    try:
-        if media_type == MediaType.VIDEO:
-            filename = f"{filename}.webp"
-
-        with ContainerClient(blob_account_url, thumbnails_container_name, credential) as thumbnail_container_client:
-            thumbnail_container_client.delete_blob(filename)
-    except ResourceNotFoundError as e:
-        pass
-
-    # Client JS code should remove image from view
-    return Response(status=204)
+    with ContainerClient(
+        blob_account_url, thumbnails_container_name, credential
+    ) as thumbnails_container_client:
+        thumbnails_container_client.delete_blob(filename)
 
 
-def _upload(*file_info: tuple[FileStorage, str]) -> list[str]:
+def upload(file_info: tuple[FileStorage, str]) -> str:
     """
     Upload photos to blob storage.
-    Also, compute and upload thunbnails.
-
-    :param file_info: Collection of files and their last modified time as an ISO-formatted datetime
-    :type file_info: tuple[FileStorage, str]
-    :return: List of uploaded file names
-    :rtype: list[str]
     """
-
-    if not file_info:
-        raise Exception("No files to upload")
 
     account_name: str = current_app.config["account_name"]
     blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
@@ -150,72 +85,25 @@ def _upload(*file_info: tuple[FileStorage, str]) -> list[str]:
     thumbnails_container_name: str = current_app.config["thumbnails_container_name"]
     credential: DefaultAzureCredential = current_app.config["credential"]
 
-    save_filenames = list[str]()
-    with ContainerClient(blob_account_url, photos_container_name, credential) as photos_container_client, \
-         ContainerClient(blob_account_url, thumbnails_container_name, credential) as thumbnails_container_client:
-        for (file, modified_date) in file_info:
-            save_filename = secure_filename(str(file.filename))
-            media_type = media_type_from_file_extension(save_filename)
-            if media_type is None:
-                raise Exception(f"Extension of {file.filename} is not supported")
-            elif media_type == MediaType.VIDEO:
-                save_filenames += upload_video((file, modified_date))
-                continue
-            elif media_type == MediaType.PHOTO:
-                # TODO: Maybe we should compute and upload the thumbnail before the original to help validate?
-                metadata = {
-                    "lastModified": modified_date # ISO timestamp
-                }
+    file, modified_date = file_info
+    save_filename = secure_filename(str(file.filename))
+    metadata = {"lastModified": modified_date}  # ISO timestamp
+    with ContainerClient(
+        blob_account_url, photos_container_name, credential
+    ) as photos_container_client, ContainerClient(
+        blob_account_url, thumbnails_container_name, credential
+    ) as thumbnails_container_client:
+        # TODO: Maybe we should compute and upload the thumbnail before the original to help validate?
+        photos_container_client.upload_blob(
+            save_filename, file.stream, metadata=metadata
+        )
 
-                photos_container_client.upload_blob(save_filename, file.stream, metadata=metadata)
+        thumbnail_bytes = compute_thumbnail(file.stream)
+        thumbnails_container_client.upload_blob(
+            save_filename, thumbnail_bytes.getvalue(), metadata=metadata
+        )
 
-                thumbnail_bytes = compute_thumbnail(file.stream)
-                thumbnails_container_client.upload_blob(save_filename, thumbnail_bytes.getvalue(), metadata=metadata)
-
-                save_filenames.append(save_filename)
-            else:
-                raise Exception(f"Unrecognized media type {media_type=}.")
-
-
-    if not save_filenames:
-        raise Exception("Could not upload file")
-    
-    return save_filenames
-
-
-@api_photos_controller.route("/upload", methods=["POST"])
-def upload() -> Response:
-    """
-    Upload photos to the storage account.
-    """
-
-    files = request.files.getlist("upload")
-    datesTaken = request.form.getlist("dateTaken")
-
-    _ = _upload(*zip(files,datesTaken))
-
-    return Response(status=201)
-
-
-@api_photos_controller.route("/upload/<album_name>", methods=["POST"])
-def upload_to_album(album_name: str) -> Response:
-    """
-    Upload photos and add it to an album together
-    """
-    
-    files = request.files.getlist("upload")
-    datesTaken = request.form.getlist("dateTaken")
-    
-    upload_filenames = _upload(*zip(files,datesTaken))
-
-    for upload_filename in upload_filenames:
-        add_to_album_result = add_to_album(album_name, upload_filename)
-
-        if isinstance(add_to_album_result, Response) and add_to_album_result.status_code >= 400:
-            # TODO: Should we instead aggregate results at the end?
-            return add_to_album_result
-
-    return Response(status=201)
+    return save_filename
 
 
 def all_photos() -> list[PhotoRecord]:
@@ -229,12 +117,18 @@ def all_photos() -> list[PhotoRecord]:
     blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
     photos_container_name: str = current_app.config["photos_container_name"]
 
-    with ContainerClient(blob_account_url, photos_container_name, credential) as container_client:
+    with ContainerClient(
+        blob_account_url, photos_container_name, credential
+    ) as container_client:
         blobs = list(container_client.list_blobs(include="metadata"))
 
     def last_modified(blob_properties: BlobProperties) -> datetime:
-        if not blob_properties.metadata or not isinstance(blob_properties.metadata, dict) or not blob_properties.metadata.get("lastModified"):
-            return blob_properties.last_modified # type: ignore
+        if (
+            not blob_properties.metadata
+            or not isinstance(blob_properties.metadata, dict)
+            or not blob_properties.metadata.get("lastModified")
+        ):
+            return blob_properties.last_modified  # type: ignore
 
         return datetime.fromisoformat(blob_properties.metadata["lastModified"])
 

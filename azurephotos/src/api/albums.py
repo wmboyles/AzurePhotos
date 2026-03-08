@@ -15,7 +15,7 @@ from flask import Blueprint, Response, current_app, url_for, redirect
 from typing import Any, Sequence
 
 from ..lib.storage_helper import TableClient, get_table_client
-from ..lib.models.media import MediaRecord, MediaType, media_type_from_file_extension
+from ..lib.models.media import MediaRecord
 from ..lib.sorting import merge
 
 api_albums_controller = Blueprint(
@@ -27,6 +27,7 @@ api_albums_controller = Blueprint(
 )
 
 DEFAULT_ALBUM_THUMBNAIL: str = "/static/photo_album-512.webp"
+
 
 @api_albums_controller.route("/<album_name>", methods=["POST"])
 def create_album(album_name: str) -> Response | dict[str, Any]:
@@ -168,30 +169,29 @@ def list_album(album_name: str) -> Response | list[MediaRecord]:
 
     query = "PartitionKey eq @album_name"
     parameters = {"album_name": album_name}
-    query_results = table_client.query_entities(query_filter=query, parameters=parameters)
+    query_results = table_client.query_entities(
+        query_filter=query, parameters=parameters
+    )
     album_file_names = set[str]()
     album_exists = False
     for entity in query_results:
-        if len(entity["RowKey"]) > 0: # excluded row indicating album existence
+        if len(entity["RowKey"]) > 0:  # excluded row indicating album existence
             album_file_names.add(entity["RowKey"])
-        
+
         album_exists = True
-    
+
     if not album_exists:
         return Response("Album does not exist", status=404)
     if len(album_file_names) == 0:
         return []
-    
 
     # TODO: Can we avoid querying all files just to get the last modified date and media type? Include in albums table?
-    from .photos import all_photos # Needed here to avoid circular import
+    from .photos import all_photos  # Needed here to avoid circular import
     from .videos import all_videos
 
     medias: Sequence[MediaRecord] = merge(
-        all_photos(),
-        all_videos(),
-        key=lambda m: m.last_modified,
-        reverse=True)
+        all_photos(), all_videos(), key=lambda m: m.last_modified, reverse=True
+    )
     return [media for media in medias if media.filename in album_file_names]
 
 
@@ -214,6 +214,7 @@ def remove_from_album(album_name: str, filename: str) -> Response:
     return Response(status=204)
 
 
+# TODO: This is really slow
 @api_albums_controller.route("thumbnail/<album_name>", methods=["GET"])
 def get_album_thumbnail(album_name: str) -> Response:
     """
@@ -229,31 +230,21 @@ def get_album_thumbnail(album_name: str) -> Response:
     elif not isinstance(album_files, list):
         return Response("Internal server error", status=500)
 
-    # Get first entry that's a photo
-    # TODO: Handle video thumbnails
-    thumbnail_filename: str | None = None
-    for album_file in album_files:
-        album_file_media_type = media_type_from_file_extension(album_file.filename)
-        if album_file_media_type is not MediaType.PHOTO:
-            continue
-
-        thumbnail_filename = album_file.filename
-        break
-
-    if thumbnail_filename is None:
+    if album_files is None or len(album_files) == 0:
         return redirect(DEFAULT_ALBUM_THUMBNAIL)  # type: ignore
 
+    thumbnail_filename = album_files[0].filename
     return redirect(
-        url_for("api_photos_controller.thumbnail", filename=thumbnail_filename)
+        url_for("crud_controller.thumbnail", filename=thumbnail_filename)
     )  # type: ignore
 
 
 def remove_from_all_albums(filename: str) -> None:
     """
-    Remove a photo from all albums.
-    Most likely used when deleting a photo.
+    Remove an entry from all albums.
+    Most likely used when deleting an entry.
 
-    :param filename: The filename of the photo to remove.
+    :param filename: The filename of the entry to remove.
     """
 
     account_name: str = current_app.config["account_name"]

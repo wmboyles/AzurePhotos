@@ -4,17 +4,18 @@ API endpoints for handling videos.
 :author: William Boyles
 """
 
-from azure.core.exceptions import ResourceNotFoundError
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import ContainerClient, BlobProperties
 from datetime import datetime
-from flask import current_app
+from flask import redirect, current_app
 from werkzeug.utils import secure_filename
 from werkzeug.wrappers.response import Response
 from werkzeug.datastructures.file_storage import FileStorage
 
 from ..lib.thumbnails import video_thumbnail as compute_thumnail
-from ..lib.models.media import MediaType, VideoRecord, media_type_from_file_extension
+from ..lib.models.media import VideoRecord
+from ..lib.storage_helper import get_container_sas
+
 
 def all_videos() -> list[VideoRecord]:
     """
@@ -27,7 +28,9 @@ def all_videos() -> list[VideoRecord]:
     blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
     videos_container_name: str = current_app.config["videos_container_name"]
 
-    with ContainerClient(blob_account_url, videos_container_name, credential) as container_client:
+    with ContainerClient(
+        blob_account_url, videos_container_name, credential
+    ) as container_client:
         blobs = list(container_client.list_blobs(include="metadata"))
 
         def last_modified(blob_properties: BlobProperties) -> datetime:
@@ -49,64 +52,60 @@ def all_videos() -> list[VideoRecord]:
         )
 
 
-def upload(*file_info: tuple[FileStorage, str]) -> list[str]:
+def fullsize(filename: str) -> Response:
     """
-    Upload videos to blob storage.
+    Get a full resolution video.
 
-    :param file_info: Collection if files and their last modified time as an ISO-formatted datetime
-    :type file_info: tuple[FileStorage, str]
-    :return: List of uploaded file names
-    :rtype: list[str]
+    :param filename: The name of the file.
     """
 
-    if not file_info:
-        raise Exception("No files to upload")
+    account_name: str = current_app.config["account_name"]
+    blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
+    credential: DefaultAzureCredential = current_app.config["credential"]
+    videos_container_name: str = current_app.config["videos_container_name"]
 
+    videos_container_sas = get_container_sas(
+        account_name, videos_container_name, credential
+    )
+    return redirect(
+        f"{blob_account_url}/{videos_container_name}/{filename}?{videos_container_sas}"
+    )
+
+
+def upload(file_info: tuple[FileStorage, str]) -> str:
     account_name: str = current_app.config["account_name"]
     blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
     videos_container_name: str = current_app.config["videos_container_name"]
     thumbnails_container_name: str = current_app.config["thumbnails_container_name"]
     credential: DefaultAzureCredential = current_app.config["credential"]
 
-    save_filenames = list[str]()
-    with ContainerClient(blob_account_url, videos_container_name, credential) as container_client, \
-         ContainerClient(blob_account_url, thumbnails_container_name, credential) as thumbnails_container_client:
-        for file, modified_date in file_info:
-            save_filename = secure_filename(str(file.filename))
-            media_type = media_type_from_file_extension(save_filename)
-            if media_type != MediaType.VIDEO:
-                raise Exception(f"{save_filename} is not a video file.")
-            
-            # TODO: Maybe we should compute and upload the thumbnail before the original to help validate?
-            metadata = {
-                "lastModified": modified_date # ISO timestamp
-            }
+    file, modified_date = file_info
+    save_filename = secure_filename(str(file.filename))
+    metadata = {"lastModified": modified_date}  # ISO timestamp
+    with ContainerClient(
+        blob_account_url, videos_container_name, credential
+    ) as videos_container_client, ContainerClient(
+        blob_account_url, thumbnails_container_name, credential
+    ) as thumbnails_container_client:
+        # TODO: Maybe we should compute and upload the thumbnail before the original to help validate?
+        videos_container_client.upload_blob(
+            save_filename, file.stream, metadata=metadata
+        )
 
-            container_client.upload_blob(save_filename, file.stream, metadata=metadata)
-            
-            thumbnail_bytes = compute_thumnail(file.stream)
-            thumbnail_filename = f"{save_filename}.webp"
-            thumbnails_container_client.upload_blob(
-                thumbnail_filename,
-                data=thumbnail_bytes,
-                metadata=metadata)
+        thumbnail_bytes = compute_thumnail(file.stream)
+        thumbnail_filename = save_filename + ".webp"
+        thumbnails_container_client.upload_blob(
+            thumbnail_filename, data=thumbnail_bytes, metadata=metadata
+        )
 
-            save_filenames.append(save_filename)
-
-    if not save_filenames:
-        raise Exception("Could not upload file")
-
-    return save_filenames
+    return save_filename
 
 
-def delete(filename: str) -> Response:
+def delete_fullsize(filename: str) -> None:
     """
-    Delete a video from the storage account.
-    
+    Deletes the full length a video from the storage account.
+
     :param filename: The name of the video file
-    :type filename: str
-    :return: 204 Response if successful; 404 for missing file; throws otherwise
-    :rtype: Response
     """
 
     account_name: str = current_app.config["account_name"]
@@ -114,11 +113,26 @@ def delete(filename: str) -> Response:
     videos_container_name: str = current_app.config["videos_container_name"]
     credential: DefaultAzureCredential = current_app.config["credential"]
 
-    try:
-        with ContainerClient(blob_account_url, videos_container_name, credential) as container_client:
-            container_client.delete_blob(filename)
-    except ResourceNotFoundError as e:
-        return Response(e.message, status=404)
+    with ContainerClient(
+        blob_account_url, videos_container_name, credential
+    ) as container_client:
+        container_client.delete_blob(filename)
 
-    # Client JS code should remove video from view
-    return Response(status=204)
+
+def delete_thumbnail(filename: str) -> None:
+    """
+    Deletes the thumbnail photo from the storage account.
+
+    :param filename: The name of the photo file
+    """
+
+    account_name: str = current_app.config["account_name"]
+    blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
+    thumbnails_container_name: str = current_app.config["thumbnails_container_name"]
+    credential: DefaultAzureCredential = current_app.config["credential"]
+
+    thumbnail_filename = filename + ".webp"
+    with ContainerClient(
+        blob_account_url, thumbnails_container_name, credential
+    ) as thumbnails_container_client:
+        thumbnails_container_client.delete_blob(thumbnail_filename)
