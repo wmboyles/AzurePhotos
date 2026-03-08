@@ -178,4 +178,8 @@ def video_thumbnail(video_bytes: IO[bytes]) -> bytes:
         finally:
             os.remove(temp_video_path)
 
-    return run_ffmpeg(seek_seconds=1)
+    ffmpeg_results = run_ffmpeg()
+    if ffmpeg_results is None or len(ffmpeg_results) == 0:
+        raise RuntimeError("No output from ffmpeg process")
+
+    return ffmpeg_results
