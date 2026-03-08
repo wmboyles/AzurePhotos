@@ -162,6 +162,7 @@ def _upload(*file_info: tuple[FileStorage, str]) -> list[str]:
                 save_filenames += upload_video((file, modified_date))
                 continue
             elif media_type == MediaType.PHOTO:
+                # TODO: Maybe we should compute and upload the thumbnail before the original to help validate?
                 metadata = {
                     "lastModified": modified_date # ISO timestamp
                 }

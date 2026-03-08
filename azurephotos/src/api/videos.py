@@ -76,6 +76,8 @@ def upload(*file_info: tuple[FileStorage, str]) -> list[str]:
             media_type = media_type_from_file_extension(save_filename)
             if media_type != MediaType.VIDEO:
                 raise Exception(f"{save_filename} is not a video file.")
+            
+            # TODO: Maybe we should compute and upload the thumbnail before the original to help validate?
             metadata = {
                 "lastModified": modified_date # ISO timestamp
             }
