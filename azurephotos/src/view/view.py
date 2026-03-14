@@ -1,7 +1,11 @@
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, Response
+from typing import Sequence
 
-from ..api.albums import list_albums, list_album, all_album_photos
+from ..api.albums import list_albums, list_album, all_album_file_names
 from ..api.photos import all_photos
+from ..api.videos import all_videos
+from ..lib.models.media import MediaRecord
+from ..lib.sorting import merge
 
 landing_view_controller = Blueprint(
     "landing_view_controller",
@@ -24,24 +28,22 @@ blueprints = {
     albums_view_controller,
 }
 
-
-def non_album_photos() -> list[str]:
-    """
-    Get all photos that are not in any photo album.
-    Photos are sorted in order of their lastModified date.
-    """
-
-    album_photos = set(all_album_photos())
-    return [photo for (_, photo) in all_photos() if photo not in album_photos]
-
-@landing_view_controller.route("/")
-def index() -> str:
-    image_names = non_album_photos()
+@landing_view_controller.route("/", methods=["GET"])
+def main() -> str:
+    album_file_names = set(all_album_file_names())
+    non_album_photos = [photo for photo in all_photos() if photo.filename not in album_file_names]
+    non_album_videos = [video for video in all_videos() if video.filename not in album_file_names]
+    media: Sequence[MediaRecord] = merge(
+        non_album_photos, non_album_videos,
+        key=lambda m: m.last_modified,
+        reverse=True)
     album_names = list_albums()
-    return render_template("index.html", images=image_names, albums=album_names)
-
+    return render_template("photos.html", medias=media, albums=album_names)
 
 @albums_view_controller.route("/<album_name>", methods=["GET"])
-def album(album_name: str):
-    images_in_album = list_album(album_name)
-    return render_template("album.html", album=album_name, images=images_in_album)
+def album(album_name: str) -> str | Response:
+    files_in_album = list_album(album_name)
+    if isinstance(files_in_album, Response):
+        return files_in_album
+    
+    return render_template("album.html", album=album_name, medias=files_in_album)

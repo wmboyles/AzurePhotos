@@ -1,0 +1,7 @@
+{% extends 'base.html' %}
+
+{% block jsinit %}
+<script type="text/javascript">
+  albums = {{ albums | tojson }};
+</script>
+{% endblock %}

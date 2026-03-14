@@ -3,17 +3,16 @@ from azure.identity import DefaultAzureCredential
 import src.view.view as view
 import src.api.api as api
 
-
-def create_app():
+def create_app() -> Flask:
     app = Flask(__name__)
-    account_name = "wboylesbackups"
 
     with app.app_context():
         app.config.update(
             credential=DefaultAzureCredential(exclude_cli_credential=True),
-            account_name=account_name,
+            account_name="wboylesbackups",
             thumbnails_container_name="thumbnails",
             photos_container_name="photos",
+            videos_container_name="videos",
             albums_table_name="Albums2",
         )
 

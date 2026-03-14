@@ -10,6 +10,11 @@ T = TypeVar("T")
 
 
 def refreshed(every: timedelta) -> Callable[[Callable[..., T]], Callable[..., T]]:
+    """
+    Caches function calls for a certain duration.
+    The next call after a given time span will call the function fresh again.
+    """
+    
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         cache = dict[tuple[Any, Any], tuple[T, datetime]]()
 

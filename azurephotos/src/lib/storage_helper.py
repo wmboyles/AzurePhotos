@@ -24,7 +24,7 @@ def get_container_sas(
         key_start_time=sas_start, key_expiry_time=sas_end
     )
 
-    container_sas = generate_container_sas(
+    container_sas: str = generate_container_sas(
         account_name=account_name,
         container_name=container_name,
         user_delegation_key=user_delegation_key,

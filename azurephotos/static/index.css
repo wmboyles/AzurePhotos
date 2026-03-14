@@ -1,21 +1,24 @@
-#imageModal .modal-dialog {
+#fullsizeModal .modal-dialog {
     margin: auto;
     max-height: 97vh;
 }
 
-#imageModal .modal-content {
+#fullsizeModal .modal-content {
     background-color: transparent;
     border: none;
     align-items: center;
 }
 
-#imageModal .modal-footer {
+#fullsizeModal .modal-footer {
     border: none;
 }
 
-#modalImage {
+#fullsizeModalBody img,
+#fullsizeModalBody video {
     max-width: 90vw;
     max-height: 90vh;
+    width: auto;
+    height: auto;
 }
 
 .photo-card {
@@ -28,7 +31,7 @@
 /* Hover and selected scaling */
 /* TODO: How to keep image scaled when checkbox is checked? */
 .photo-card:hover img,
-.photo-card:has(.photo-checkbox:checked) img { 
+.photo-card:has(.photo-checkbox:checked) img {
     transform: scale(0.96);
 }
 
@@ -67,31 +70,31 @@
 .photo-card:hover .photo-checkbox,
 .photo-card:hover .photo-action,
 .photo-card .photo-checkbox:checked,
-.photo-card .photo-checkbox:checked ~ .photo-action {
+.photo-card .photo-checkbox:checked~.photo-action {
     opacity: 1;
 }
 
 .img-thumbnail {
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  display: block;
-  object-fit: cover;
-  aspect-ratio: 1;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    display: block;
+    object-fit: cover;
+    aspect-ratio: 1;
 }
 
 .album-title-overlay {
-  position: absolute;
-  bottom: 0;
-  width: 100%;
-  padding: 0;
-  color: white;
-  text-align: center;
-  background: rgba(0, 0, 0, 0.5);
-  border-bottom-left-radius: 0.5rem;
-  border-bottom-right-radius: 0.5rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    padding: 0;
+    color: white;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.5);
+    border-bottom-left-radius: 0.5rem;
+    border-bottom-right-radius: 0.5rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }

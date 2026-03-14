@@ -8,12 +8,14 @@ An empty row key represents the album itself.
 :author: William Boyles
 """
 
-from datetime import datetime, timezone
 from azure.core.exceptions import ResourceNotFoundError, ResourceExistsError
+from azure.identity import DefaultAzureCredential
+from datetime import datetime, timezone
 from flask import Blueprint, Response, current_app, url_for, redirect
 from typing import Any
 
-from ..lib.storage_helper import get_table_client
+from ..lib.storage_helper import TableClient, get_table_client
+from ..lib.models.media import MediaRecord, MediaType, PhotoRecord, VideoRecord, media_type_from_file_extension
 
 api_albums_controller = Blueprint(
     "api_albums_controller",
@@ -22,6 +24,8 @@ api_albums_controller = Blueprint(
     static_folder="static",
     url_prefix="/api/albums",
 )
+
+DEFAULT_ALBUM_THUMBNAIL: str = "/static/photo_album-512.webp"
 
 
 @api_albums_controller.route("/<album_name>", methods=["POST"])
@@ -32,10 +36,10 @@ def create_album(album_name: str) -> Response | dict[str, Any]:
     :param album_name: The name of the album to create. Must be unique.
     """
 
-    account_name = current_app.config["account_name"]
-    table_name = current_app.config["albums_table_name"]
-    credential = current_app.config["credential"]
-    table_client = get_table_client(account_name, table_name, credential)
+    account_name: str = current_app.config["account_name"]
+    table_name: str = current_app.config["albums_table_name"]
+    credential: DefaultAzureCredential = current_app.config["credential"]
+    table_client: TableClient = get_table_client(account_name, table_name, credential)
 
     new_album = {
         "PartitionKey": album_name,
@@ -55,10 +59,10 @@ def list_albums() -> list[str]:
     List all album names.
     """
 
-    account_name = current_app.config["account_name"]
-    table_name = current_app.config["albums_table_name"]
-    credential = current_app.config["credential"]
-    table_client = get_table_client(account_name, table_name, credential)
+    account_name: str = current_app.config["account_name"]
+    table_name: str = current_app.config["albums_table_name"]
+    credential: DefaultAzureCredential = current_app.config["credential"]
+    table_client: TableClient = get_table_client(account_name, table_name, credential)
 
     entities = table_client.query_entities(query_filter="RowKey eq ''")
     return [row["PartitionKey"] for row in entities]
@@ -78,10 +82,10 @@ def rename_album(album_name: str, new_name: str) -> Response:
     old album with the new name and then delete the old album.
     """
 
-    account_name = current_app.config["account_name"]
-    table_name = current_app.config["albums_table_name"]
-    credential = current_app.config["credential"]
-    table_client = get_table_client(account_name, table_name, credential)
+    account_name: str = current_app.config["account_name"]
+    table_name: str = current_app.config["albums_table_name"]
+    credential: DefaultAzureCredential = current_app.config["credential"]
+    table_client: TableClient = get_table_client(account_name, table_name, credential)
 
     query = "PartitionKey eq @album_name"
     parameters = {"album_name": album_name}
@@ -92,7 +96,7 @@ def rename_album(album_name: str, new_name: str) -> Response:
             "RowKey": entity["RowKey"],
             "Created": entity["Created"],
         }
-        table_client.create_entity(photo_copy)
+        _ = table_client.create_entity(photo_copy)
         table_client.delete_entity(entity["PartitionKey"], entity["RowKey"])
 
     return Response(status=204)
@@ -107,10 +111,10 @@ def delete_album(album_name: str):
     :param album_name: The name of the album to delete.
     """
 
-    account_name = current_app.config["account_name"]
-    table_name = current_app.config["albums_table_name"]
-    credential = current_app.config["credential"]
-    table_client = get_table_client(account_name, table_name, credential)
+    account_name: str = current_app.config["account_name"]
+    table_name: str = current_app.config["albums_table_name"]
+    credential: DefaultAzureCredential = current_app.config["credential"]
+    table_client: TableClient = get_table_client(account_name, table_name, credential)
 
     query = "PartitionKey eq @album_name"
     parameters = {"album_name": album_name}
@@ -125,64 +129,72 @@ def delete_album(album_name: str):
 @api_albums_controller.route("<album_name>/<filename>", methods=["POST"])
 def add_to_album(album_name: str, filename: str) -> Response | dict[str, Any]:
     """
-    Add a photo to an album.
+    Add a file to an album.
 
-    :param album_name: The name of the album to add the photo to.
-    :param filename: The filename of the photo to add to the album.
+    :param album_name: The name of the album to add the file to.
+    :param filename: The filename to add to the album.
     """
 
-    account_name = current_app.config["account_name"]
-    table_name = current_app.config["albums_table_name"]
-    credential = current_app.config["credential"]
-    table_client = get_table_client(account_name, table_name, credential)
+    account_name: str = current_app.config["account_name"]
+    table_name: str = current_app.config["albums_table_name"]
+    credential: DefaultAzureCredential = current_app.config["credential"]
+    table_client: TableClient = get_table_client(account_name, table_name, credential)
 
     try:
         table_client.get_entity(partition_key=album_name, row_key="")
     except ResourceNotFoundError:
         return Response("Album does not exist", status=404)
 
-    new_photo = {
+    new_file = {
         "PartitionKey": album_name,
         "RowKey": filename,
         "Created": datetime.now(timezone.utc),
     }
-    return table_client.create_entity(new_photo)  # type: ignore
+    return table_client.create_entity(new_file)  # type: ignore
 
 
 @api_albums_controller.route("<album_name>", methods=["GET"])
-def list_album(album_name: str):
-    return _list_album(album_name, time_sorted=True)
-
-def _list_album(album_name: str, time_sorted: bool) -> Response | list[str]:
+def list_album(album_name: str) -> Response | list[MediaRecord]:
     """
-    List the photos in an album.
+    List the files in an album, sorted by last modified time.
 
-    :param album_name: The name of the album to list photos for.
-    :param time_sorted: Whether to sort photo names by last modified date.
-        Otherwise, photos are sorted by just their name.
+    :param album_name: The name of the album to list files for.
     """
 
-    account_name = current_app.config["account_name"]
-    table_name = current_app.config["albums_table_name"]
-    credential = current_app.config["credential"]
-    table_client = get_table_client(account_name, table_name, credential)
+    account_name: str = current_app.config["account_name"]
+    table_name: str = current_app.config["albums_table_name"]
+    credential: DefaultAzureCredential = current_app.config["credential"]
+    table_client: TableClient = get_table_client(account_name, table_name, credential)
 
     query = "PartitionKey eq @album_name"
     parameters = {"album_name": album_name}
-    album_photo_names = set[str](
-        entity["RowKey"] for entity in
-        table_client.query_entities(query_filter=query, parameters=parameters)
-        if len(entity["RowKey"]) > 0 # excludes row indicating album existence
+    query_results = table_client.query_entities(
+        query_filter=query, parameters=parameters
     )
-    if len(album_photo_names) == 0:
-        return Response("Album does not exist", status=404)
+    album_exists = False
+    medias = list[MediaRecord]()
+    for entity in query_results:
+        album_exists = True
 
-    # TODO: Can we avoid querying all photos just to get the last modified date?
-    if time_sorted:
-        from .photos import all_photos # Needed here to avoid circular import
-        return [photo for (_,photo) in all_photos() if photo in album_photo_names]
-    else:
-        return sorted(album_photo_names)
+        filename = entity["RowKey"]
+        if len(filename) == 0:
+            continue
+
+        media_type = media_type_from_file_extension(filename)
+        last_modified = entity["Created"]
+        if media_type == MediaType.PHOTO:
+            media_record = PhotoRecord(last_modified, filename)
+        elif media_type == MediaType.VIDEO:
+            media_record = VideoRecord(last_modified, filename)
+        else: # unknown media type
+            continue
+
+        medias.append(media_record)
+
+    if not album_exists:
+        return Response("Album does not exist", status=404)
+    
+    return medias
 
 
 @api_albums_controller.route("<album_name>/<filename>", methods=["DELETE"])
@@ -195,10 +207,10 @@ def remove_from_album(album_name: str, filename: str) -> Response:
     :param filename: The filename of the photo to remove from the album.
     """
 
-    account_name = current_app.config["account_name"]
-    table_name = current_app.config["albums_table_name"]
-    credential = current_app.config["credential"]
-    table_client = get_table_client(account_name, table_name, credential)
+    account_name: str = current_app.config["account_name"]
+    table_name: str = current_app.config["albums_table_name"]
+    credential: DefaultAzureCredential = current_app.config["credential"]
+    table_client: TableClient = get_table_client(account_name, table_name, credential)
 
     table_client.delete_entity(partition_key=album_name, row_key=filename)
     return Response(status=204)
@@ -212,33 +224,42 @@ def get_album_thumbnail(album_name: str) -> Response:
     :param album_name: The name of the album to get the thumbnail for.
     """
 
-    # Select a random photo from the album to use as the thumbnail
-    album_photos = _list_album(album_name, time_sorted=False)
-    if isinstance(album_photos, Response) and album_photos.status_code == 404:
-        return album_photos
-    elif not isinstance(album_photos, list):
-        return Response("Internal server error", status=500)
-    elif len(album_photos) == 0:
-        return redirect("/static/photo_album-512.webp")  # type: ignore
+    account_name: str = current_app.config["account_name"]
+    table_name: str = current_app.config["albums_table_name"]
+    credential: DefaultAzureCredential = current_app.config["credential"]
+    table_client: TableClient = get_table_client(account_name, table_name, credential)
+    
+    query = "PartitionKey eq @album_name and RowKey ne ''"
+    parameters = {
+        "album_name": album_name
+    }
+    query_results = table_client.query_entities(
+        query_filter=query,
+        parameters=parameters,
+        results_per_page=1
+    )
 
-    thumbnail_filename = album_photos[0]
+    if (result := next(query_results, None)) is None:
+        return redirect(DEFAULT_ALBUM_THUMBNAIL)  # type: ignore
+
+    thumbnail_filename = result['RowKey']
     return redirect(
-        url_for("api_photos_controller.thumbnail", filename=thumbnail_filename)
+        url_for("crud_controller.thumbnail", filename=thumbnail_filename)
     )  # type: ignore
 
 
 def remove_from_all_albums(filename: str) -> None:
     """
-    Remove a photo from all albums.
-    Most likely used when deleting a photo.
+    Remove an entry from all albums.
+    Most likely used when deleting an entry.
 
-    :param filename: The filename of the photo to remove.
+    :param filename: The filename of the entry to remove.
     """
 
-    account_name = current_app.config["account_name"]
-    table_name = current_app.config["albums_table_name"]
-    credential = current_app.config["credential"]
-    table_client = get_table_client(account_name, table_name, credential)
+    account_name: str = current_app.config["account_name"]
+    table_name: str = current_app.config["albums_table_name"]
+    credential: DefaultAzureCredential = current_app.config["credential"]
+    table_client: TableClient = get_table_client(account_name, table_name, credential)
 
     query = "RowKey eq @filename"
     parameters = {"filename": filename}
@@ -247,16 +268,16 @@ def remove_from_all_albums(filename: str) -> None:
         table_client.delete_entity(entity)
 
 
-def all_album_photos() -> list[str]:
+def all_album_file_names() -> list[str]:
     """
     List all photo names in all albums.
     Note that photos in multiple albums will be listed multiple times.
     """
 
-    account_name = current_app.config["account_name"]
-    table_name = current_app.config["albums_table_name"]
-    credential = current_app.config["credential"]
-    table_client = get_table_client(account_name, table_name, credential)
+    account_name: str = current_app.config["account_name"]
+    table_name: str = current_app.config["albums_table_name"]
+    credential: DefaultAzureCredential = current_app.config["credential"]
+    table_client: TableClient = get_table_client(account_name, table_name, credential)
 
     entities = table_client.query_entities(query_filter="RowKey ne ''")
     return [row["RowKey"] for row in entities]
