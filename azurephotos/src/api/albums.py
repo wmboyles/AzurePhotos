@@ -214,7 +214,6 @@ def remove_from_album(album_name: str, filename: str) -> Response:
     return Response(status=204)
 
 
-# TODO: This is really slow
 @api_albums_controller.route("thumbnail/<album_name>", methods=["GET"])
 def get_album_thumbnail(album_name: str) -> Response:
     """
@@ -223,17 +222,25 @@ def get_album_thumbnail(album_name: str) -> Response:
     :param album_name: The name of the album to get the thumbnail for.
     """
 
-    # Select a random entry from the album to use as the thumbnail
-    album_files = list_album(album_name)
-    if isinstance(album_files, Response) and album_files.status_code == 404:
-        return album_files
-    elif not isinstance(album_files, list):
-        return Response("Internal server error", status=500)
+    account_name: str = current_app.config["account_name"]
+    table_name: str = current_app.config["albums_table_name"]
+    credential: DefaultAzureCredential = current_app.config["credential"]
+    table_client: TableClient = get_table_client(account_name, table_name, credential)
+    
+    query = "PartitionKey eq @album_name and RowKey ne ''"
+    parameters = {
+        "album_name": album_name
+    }
+    query_results = table_client.query_entities(
+        query_filter=query,
+        parameters=parameters,
+        results_per_page=1
+    )
 
-    if album_files is None or len(album_files) == 0:
+    if (result := next(query_results, None)) is None:
         return redirect(DEFAULT_ALBUM_THUMBNAIL)  # type: ignore
 
-    thumbnail_filename = album_files[0].filename
+    thumbnail_filename = result['RowKey']
     return redirect(
         url_for("crud_controller.thumbnail", filename=thumbnail_filename)
     )  # type: ignore
