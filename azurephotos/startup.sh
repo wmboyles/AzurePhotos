@@ -3,10 +3,15 @@ set -e
 
 echo "----- Custom startup: ensuring ffmpeg is installed -----"
 
+FFMPEG_DIR="$APP_PATH/bin/ffmpeg-7.0.2-amd64-static"
+
 if ! command -v ffmpeg >/dev/null 2>&1; then
-    chmod +x $APP_PATH/bin/ffmpeg-7.0.2-amd64-static/ffmpeg
-    chmod +x $APP_PATH/bin/ffmpeg-7.0.2-amd64-static/ffprobe
-    export PATH="$APP_PATH/bin:$PATH"
+    echo "Adding ffmpeg to PATH..."
+
+    chmod +x "$FFMPEG_DIR/ffmpeg"
+    chmod +x "$FFMPEG_DIR/ffprobe"
+
+    export PATH="$FFMPEG_DIR:$PATH"
 else
     echo "ffmpeg already installed."
 fi
