@@ -5,7 +5,7 @@ API endpoints for handling videos.
 """
 
 from azure.identity import DefaultAzureCredential
-from azure.storage.blob import ContainerClient, BlobProperties
+from azure.storage.blob import ContainerClient, BlobProperties, ContentSettings
 from datetime import datetime
 from flask import redirect, current_app
 from werkzeug.utils import secure_filename
@@ -95,7 +95,12 @@ def upload(file_info: tuple[FileStorage, str]) -> str:
         thumbnail_bytes = compute_thumnail(file.stream)
         thumbnail_filename = save_filename + ".webp"
         thumbnails_container_client.upload_blob(
-            thumbnail_filename, data=thumbnail_bytes, metadata=metadata
+            name=thumbnail_filename,
+            data=thumbnail_bytes,
+            metadata=metadata,
+            content_settings=ContentSettings(
+                cache_control="public, max-age=31536000, immutable"
+            )
         )
 
     return save_filename
