@@ -139,7 +139,7 @@ def upload_to_album(album_name: str) -> Response:
 
     return Response(status=201)
 
-
+@crud_controller.route("/delete/<filename>", methods=["DELETE"])
 def delete(filename: str) -> Response:
     """
     Delete an entry from the storage account.
