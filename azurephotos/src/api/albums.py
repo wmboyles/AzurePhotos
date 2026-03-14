@@ -12,11 +12,10 @@ from azure.core.exceptions import ResourceNotFoundError, ResourceExistsError
 from azure.identity import DefaultAzureCredential
 from datetime import datetime, timezone
 from flask import Blueprint, Response, current_app, url_for, redirect
-from typing import Any, Sequence
+from typing import Any
 
 from ..lib.storage_helper import TableClient, get_table_client
-from ..lib.models.media import MediaRecord
-from ..lib.sorting import merge
+from ..lib.models.media import MediaRecord, MediaType, PhotoRecord, VideoRecord, media_type_from_file_extension
 
 api_albums_controller = Blueprint(
     "api_albums_controller",
@@ -172,27 +171,30 @@ def list_album(album_name: str) -> Response | list[MediaRecord]:
     query_results = table_client.query_entities(
         query_filter=query, parameters=parameters
     )
-    album_file_names = set[str]()
     album_exists = False
+    medias = list[MediaRecord]()
     for entity in query_results:
-        if len(entity["RowKey"]) > 0:  # excluded row indicating album existence
-            album_file_names.add(entity["RowKey"])
-
         album_exists = True
+
+        filename = entity["RowKey"]
+        if len(filename) == 0:
+            continue
+
+        media_type = media_type_from_file_extension(filename)
+        last_modified = entity["Created"]
+        if media_type == MediaType.PHOTO:
+            media_record = PhotoRecord(last_modified, filename)
+        elif media_type == MediaType.VIDEO:
+            media_record = VideoRecord(last_modified, filename)
+        else: # unknown media type
+            continue
+
+        medias.append(media_record)
 
     if not album_exists:
         return Response("Album does not exist", status=404)
-    if len(album_file_names) == 0:
-        return []
-
-    # TODO: Can we avoid querying all files just to get the last modified date and media type? Include in albums table?
-    from .photos import all_photos  # Needed here to avoid circular import
-    from .videos import all_videos
-
-    medias: Sequence[MediaRecord] = merge(
-        all_photos(), all_videos(), key=lambda m: m.last_modified, reverse=True
-    )
-    return [media for media in medias if media.filename in album_file_names]
+    
+    return medias
 
 
 @api_albums_controller.route("<album_name>/<filename>", methods=["DELETE"])
