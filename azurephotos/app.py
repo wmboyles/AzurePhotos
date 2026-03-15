@@ -15,6 +15,7 @@ def create_app() -> Flask:
             videos_container_name="videos",
             albums_table_name="Albums2",
         )
+        app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 86400
 
         for blueprint in view.blueprints:
             app.register_blueprint(blueprint)
