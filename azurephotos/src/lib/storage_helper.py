@@ -6,7 +6,7 @@ from azure.storage.blob import (
     BlobServiceClient,
 )
 from azure.data.tables import TableServiceClient, TableClient
-from .credential_refresher import refreshed
+from .refresher import refreshed
 
 @refreshed(every=timedelta(minutes=15))
 def get_container_sas(

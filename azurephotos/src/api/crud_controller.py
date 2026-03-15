@@ -10,9 +10,11 @@ from werkzeug.datastructures.file_storage import FileStorage
 
 import src.api.photos as photos
 import src.api.videos as videos
+from .media_cache import invalidates_media_cache
 
 from ..lib.storage_helper import get_container_sas
 from ..lib.models.media import MediaType, media_type_from_file_extension
+
 from .albums import remove_from_all_albums, add_to_album
 
 crud_controller = Blueprint(
@@ -95,7 +97,7 @@ def upload() -> Response:
 
     return Response(status=201)
 
-
+@invalidates_media_cache
 def _upload(*file_infos: tuple[FileStorage, str]) -> list[str]:
     uploaded_filenames = list[str]()
     for file, date_taken in file_infos:
@@ -113,6 +115,7 @@ def _upload(*file_infos: tuple[FileStorage, str]) -> list[str]:
     return uploaded_filenames
 
 
+# No invalidate media cache needed here because we upload directly to an album
 @crud_controller.route("/upload/<album_name>", methods=["POST"])
 def upload_to_album(album_name: str) -> Response:
     """
@@ -143,6 +146,7 @@ def upload_to_album(album_name: str) -> Response:
     return Response(status=201)
 
 @crud_controller.route("/delete/<filename>", methods=["DELETE"])
+@invalidates_media_cache
 def delete(filename: str) -> Response:
     """
     Delete an entry from the storage account.
