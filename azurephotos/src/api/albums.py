@@ -243,6 +243,7 @@ def get_album_thumbnail(album_name: str) -> Response:
         return redirect(DEFAULT_ALBUM_THUMBNAIL)  # type: ignore
 
     thumbnail_filename = result['RowKey']
+    # TODO: Instead if redirecting back to ourselves, should we invoke thumbnail directly?
     response = redirect(
         url_for("crud_controller.thumbnail", filename=thumbnail_filename)
     )
