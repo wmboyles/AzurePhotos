@@ -111,16 +111,16 @@ def upload(file_info: tuple[FileStorage, str]) -> str:
     return save_filename
 
 
-def all_photos() -> list[PhotoRecord]:
+def all_photos(account_name: str, photos_container_name: str, credential: DefaultAzureCredential) -> list[PhotoRecord]:
     """
     Get all photos stored in blob storage and their last modified time.
     Photos are ordered by their last modified time.
     """
 
-    credential: DefaultAzureCredential = current_app.config["credential"]
-    account_name = current_app.config["account_name"]
+    # credential: DefaultAzureCredential = current_app.config["credential"]
+    # account_name = current_app.config["account_name"]
     blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
-    photos_container_name: str = current_app.config["photos_container_name"]
+    # photos_container_name: str = current_app.config["photos_container_name"]
 
     with ContainerClient(
         blob_account_url, photos_container_name, credential

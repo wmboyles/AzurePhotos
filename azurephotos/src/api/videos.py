@@ -17,16 +17,16 @@ from ..lib.models.media import VideoRecord
 from ..lib.storage_helper import get_container_sas
 
 
-def all_videos() -> list[VideoRecord]:
+def all_videos(account_name: str, videos_container_name: str, credential: DefaultAzureCredential) -> list[VideoRecord]:
     """
     Get all vidoes stored in blob storage and their last modified time.
     Videos are ordered by their last modified time.
     """
 
-    credential: DefaultAzureCredential = current_app.config["credential"]
-    account_name = current_app.config["account_name"]
+    # credential: DefaultAzureCredential = current_app.config["credential"]
+    # account_name = current_app.config["account_name"]
     blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
-    videos_container_name: str = current_app.config["videos_container_name"]
+    # videos_container_name: str = current_app.config["videos_container_name"]
 
     with ContainerClient(
         blob_account_url, videos_container_name, credential

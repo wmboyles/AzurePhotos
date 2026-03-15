@@ -62,6 +62,11 @@ def list_albums() -> list[str]:
     account_name: str = current_app.config["account_name"]
     table_name: str = current_app.config["albums_table_name"]
     credential: DefaultAzureCredential = current_app.config["credential"]
+    
+    return _list_albums(account_name, table_name, credential)
+
+
+def _list_albums(account_name: str, table_name: str, credential: DefaultAzureCredential) -> list[str]:
     table_client: TableClient = get_table_client(account_name, table_name, credential)
 
     entities = table_client.query_entities(query_filter="RowKey eq ''")
@@ -272,15 +277,12 @@ def remove_from_all_albums(filename: str) -> None:
         table_client.delete_entity(entity)
 
 
-def all_album_file_names() -> list[str]:
+def all_album_file_names(account_name: str, table_name: str, credential: DefaultAzureCredential) -> list[str]:
     """
     List all photo names in all albums.
     Note that photos in multiple albums will be listed multiple times.
     """
 
-    account_name: str = current_app.config["account_name"]
-    table_name: str = current_app.config["albums_table_name"]
-    credential: DefaultAzureCredential = current_app.config["credential"]
     table_client: TableClient = get_table_client(account_name, table_name, credential)
 
     entities = table_client.query_entities(query_filter="RowKey ne ''")
