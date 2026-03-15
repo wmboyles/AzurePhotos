@@ -243,9 +243,12 @@ def get_album_thumbnail(album_name: str) -> Response:
         return redirect(DEFAULT_ALBUM_THUMBNAIL)  # type: ignore
 
     thumbnail_filename = result['RowKey']
-    return redirect(
+    response = redirect(
         url_for("crud_controller.thumbnail", filename=thumbnail_filename)
-    )  # type: ignore
+    )
+    response.headers["Cache-Control"] = "public, max-age=900"
+
+    return response # type: ignore
 
 
 def remove_from_all_albums(filename: str) -> None:
