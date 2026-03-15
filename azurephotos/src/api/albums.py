@@ -10,11 +10,13 @@ An empty row key represents the album itself.
 
 from azure.core.exceptions import ResourceNotFoundError, ResourceExistsError
 from azure.identity import DefaultAzureCredential
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from flask import Blueprint, Response, current_app, url_for, redirect
 from typing import Any
 
+from .media_cache import invalidates_media_cache
 from ..lib.storage_helper import TableClient, get_table_client
+from ..lib.refresher import refreshed
 from ..lib.models.media import MediaRecord, MediaType, PhotoRecord, VideoRecord, media_type_from_file_extension
 
 api_albums_controller = Blueprint(
@@ -62,6 +64,18 @@ def list_albums() -> list[str]:
     account_name: str = current_app.config["account_name"]
     table_name: str = current_app.config["albums_table_name"]
     credential: DefaultAzureCredential = current_app.config["credential"]
+    
+    return _list_albums(account_name, table_name, credential)
+
+
+@refreshed(every=timedelta(seconds=30))
+def _list_albums(account_name: str, table_name: str, credential: DefaultAzureCredential) -> list[str]:
+    """
+    List all album names.
+    """
+    
+    print("LISTING ALBUMS")
+
     table_client: TableClient = get_table_client(account_name, table_name, credential)
 
     entities = table_client.query_entities(query_filter="RowKey eq ''")
@@ -103,6 +117,7 @@ def rename_album(album_name: str, new_name: str) -> Response:
 
 
 @api_albums_controller.route("<album_name>", methods=["DELETE"])
+@invalidates_media_cache
 def delete_album(album_name: str):
     """
     Delete an album.
@@ -127,6 +142,7 @@ def delete_album(album_name: str):
 
 
 @api_albums_controller.route("<album_name>/<filename>", methods=["POST"])
+@invalidates_media_cache
 def add_to_album(album_name: str, filename: str) -> Response | dict[str, Any]:
     """
     Add a file to an album.
@@ -198,6 +214,7 @@ def list_album(album_name: str) -> Response | list[MediaRecord]:
 
 
 @api_albums_controller.route("<album_name>/<filename>", methods=["DELETE"])
+@invalidates_media_cache
 def remove_from_album(album_name: str, filename: str) -> Response:
     """
     Remove a photo from an album.
@@ -243,11 +260,16 @@ def get_album_thumbnail(album_name: str) -> Response:
         return redirect(DEFAULT_ALBUM_THUMBNAIL)  # type: ignore
 
     thumbnail_filename = result['RowKey']
-    return redirect(
+    # TODO: Instead if redirecting back to ourselves, should we invoke thumbnail directly?
+    response = redirect(
         url_for("crud_controller.thumbnail", filename=thumbnail_filename)
-    )  # type: ignore
+    )
+    response.headers["Cache-Control"] = "public, max-age=900"
+
+    return response # type: ignore
 
 
+@invalidates_media_cache
 def remove_from_all_albums(filename: str) -> None:
     """
     Remove an entry from all albums.
@@ -268,15 +290,13 @@ def remove_from_all_albums(filename: str) -> None:
         table_client.delete_entity(entity)
 
 
-def all_album_file_names() -> list[str]:
+@refreshed(every=timedelta(seconds=30))
+def all_album_file_names(account_name: str, table_name: str, credential: DefaultAzureCredential) -> list[str]:
     """
     List all photo names in all albums.
     Note that photos in multiple albums will be listed multiple times.
     """
 
-    account_name: str = current_app.config["account_name"]
-    table_name: str = current_app.config["albums_table_name"]
-    credential: DefaultAzureCredential = current_app.config["credential"]
     table_client: TableClient = get_table_client(account_name, table_name, credential)
 
     entities = table_client.query_entities(query_filter="RowKey ne ''")

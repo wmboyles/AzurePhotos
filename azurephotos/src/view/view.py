@@ -1,11 +1,9 @@
-from flask import Blueprint, render_template, Response
-from typing import Sequence
+from concurrent.futures import ThreadPoolExecutor
+from flask import Blueprint, render_template, Response, current_app
+from flask.ctx import AppContext
 
-from ..api.albums import list_albums, list_album, all_album_file_names
-from ..api.photos import all_photos
-from ..api.videos import all_videos
-from ..lib.models.media import MediaRecord
-from ..lib.sorting import merge
+from ..api.albums import list_albums, list_album#, all_album_file_names
+from ..api.media_cache import all_media
 
 landing_view_controller = Blueprint(
     "landing_view_controller",
@@ -30,14 +28,22 @@ blueprints = {
 
 @landing_view_controller.route("/", methods=["GET"])
 def main() -> str:
-    album_file_names = set(all_album_file_names())
-    non_album_photos = [photo for photo in all_photos() if photo.filename not in album_file_names]
-    non_album_videos = [video for video in all_videos() if video.filename not in album_file_names]
-    media: Sequence[MediaRecord] = merge(
-        non_album_photos, non_album_videos,
-        key=lambda m: m.last_modified,
-        reverse=True)
-    album_names = list_albums()
+    def all_media_threaded(app_context: AppContext):
+        with app_context:
+            return all_media()
+        
+    def list_albums_threaded(app_context: AppContext):
+        with app_context:
+            return list_albums()
+
+    with ThreadPoolExecutor() as executor:
+        all_media_future = executor.submit(all_media_threaded, current_app.app_context())
+        list_albums_future = executor.submit(list_albums_threaded, current_app.app_context())
+        
+        media = all_media_future.result()
+        album_names = list_albums_future.result()
+    
+    print("SERVING PAGE")
     return render_template("photos.html", medias=media, albums=album_names)
 
 @albums_view_controller.route("/<album_name>", methods=["GET"])

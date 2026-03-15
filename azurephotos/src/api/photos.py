@@ -5,7 +5,7 @@ API endpoints for handling individual photos.
 """
 
 from azure.identity import DefaultAzureCredential
-from azure.storage.blob import ContainerClient, BlobProperties
+from azure.storage.blob import ContainerClient, BlobProperties, ContentSettings
 from datetime import datetime
 from flask import redirect, current_app
 from werkzeug.utils import secure_filename
@@ -100,22 +100,27 @@ def upload(file_info: tuple[FileStorage, str]) -> str:
 
         thumbnail_bytes = compute_thumbnail(file.stream)
         thumbnails_container_client.upload_blob(
-            save_filename, thumbnail_bytes.getvalue(), metadata=metadata
+            name=save_filename,
+            data=thumbnail_bytes.getvalue(),
+            metadata=metadata,
+            content_settings=ContentSettings(
+                cache_control="public, max-age=31536000, immutable"
+            )
         )
 
     return save_filename
 
 
-def all_photos() -> list[PhotoRecord]:
+def all_photos(account_name: str, photos_container_name: str, credential: DefaultAzureCredential) -> list[PhotoRecord]:
     """
     Get all photos stored in blob storage and their last modified time.
     Photos are ordered by their last modified time.
     """
 
-    credential: DefaultAzureCredential = current_app.config["credential"]
-    account_name = current_app.config["account_name"]
+    # credential: DefaultAzureCredential = current_app.config["credential"]
+    # account_name = current_app.config["account_name"]
     blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
-    photos_container_name: str = current_app.config["photos_container_name"]
+    # photos_container_name: str = current_app.config["photos_container_name"]
 
     with ContainerClient(
         blob_account_url, photos_container_name, credential
