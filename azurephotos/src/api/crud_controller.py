@@ -49,9 +49,12 @@ def thumbnail(filename: str) -> Response:
     thumbnails_container_sas: str = get_container_sas(
         account_name, thumbnails_container_name, credential
     )
-    return redirect(
+    response = redirect(
         f"{blob_account_url}/{thumbnails_container_name}/{filename}?{thumbnails_container_sas}"
     )
+    response.headers["Cache-Control"] = "public, max-age=900"
+
+    return response
 
 
 @crud_controller.route("/fullsize/<filename>", methods=["GET"])
