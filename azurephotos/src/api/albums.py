@@ -254,7 +254,11 @@ def list_album(album_name: str) -> Response | list[MediaRecord]:
     if not album_exists:
         return Response("Album does not exist", status=404)
     
-    return medias
+    return sorted(
+        medias,
+        key=lambda m: m.last_modified,
+        reverse=True
+    )
 
 
 @api_albums_controller.route("<album_name>/<filename>", methods=["DELETE"])
