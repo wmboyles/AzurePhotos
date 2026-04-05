@@ -15,7 +15,7 @@ from .media_cache import invalidates_media_cache
 from ..lib.storage_helper import get_container_sas
 from ..lib.models.media import MediaType, media_type_from_file_extension
 
-from .albums import remove_from_all_albums, add_to_album
+from .albums import remove_from_all_albums, add_to_album, NONE_ALBUM_NAME
 
 crud_controller = Blueprint(
     "crud_controller",
@@ -102,15 +102,17 @@ def _upload(*file_infos: tuple[FileStorage, str]) -> list[str]:
     uploaded_filenames = list[str]()
     for file, date_taken in file_infos:
         media_type = media_type_from_file_extension(file.filename)
+        uploaded_filename = None
         match media_type:
             case MediaType.PHOTO:
-                uploaded_photo = photos.upload((file, date_taken))
-                uploaded_filenames.append(uploaded_photo)
+                uploaded_filename = photos.upload((file, date_taken))
             case MediaType.VIDEO:
-                uploaded_video = videos.upload((file, date_taken))
-                uploaded_filenames.append(uploaded_video)
+                uploaded_filename = videos.upload((file, date_taken))
             case _:
                 raise ValueError(f"Unrecognized media type for {file.filename=}")
+        
+        uploaded_filenames.append(uploaded_filename)
+        _ = add_to_album(NONE_ALBUM_NAME, uploaded_filename)
 
     return uploaded_filenames
 
@@ -121,6 +123,9 @@ def upload_to_album(album_name: str) -> Response:
     """
     Upload photos or videos, and add it to an album.
     """
+
+    if album_name == NONE_ALBUM_NAME:
+        return Response(f"Album name '{NONE_ALBUM_NAME}' is reserved and cannot be uploaded to directly", status=403)
 
     files = request.files.getlist("upload")
     dates_taken = request.form.getlist("dateTaken")
@@ -135,11 +140,7 @@ def upload_to_album(album_name: str) -> Response:
     uploaded_filenames = _upload(*zip(files, dates_taken))
     for uploaded_filename in uploaded_filenames:
         add_to_album_result = add_to_album(album_name, uploaded_filename)
-
-        if (
-            isinstance(add_to_album_result, Response)
-            and add_to_album_result.status_code >= 400
-        ):
+        if add_to_album_result.status_code >= 400:
             # TODO: Should we instead aggregate results at the end?
             return add_to_album_result
 
