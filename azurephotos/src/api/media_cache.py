@@ -22,8 +22,10 @@ def all_media() -> Sequence[MediaRecord]:
     table_name: str = current_app.config["albums_table_name"]
     credential: DefaultAzureCredential = current_app.config["credential"]
 
-    # TODO: Fix ordering, which is ruined when using 'Created' in a table
-    media_cache = non_album_file_names(account_name, table_name, credential)
+    media_cache = sorted(
+        non_album_file_names(account_name, table_name, credential),
+        key= lambda m: m.last_modified,
+        reverse=True)
     return media_cache
 
 def invalidates_media_cache(func):

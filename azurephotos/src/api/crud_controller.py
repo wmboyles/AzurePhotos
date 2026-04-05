@@ -4,6 +4,7 @@ Will delegate to the proper controller per media.
 """
 
 from azure.identity import DefaultAzureCredential
+from datetime import datetime
 from flask import Blueprint, redirect, current_app, request
 from werkzeug.wrappers.response import Response
 from werkzeug.datastructures.file_storage import FileStorage
@@ -15,7 +16,7 @@ from .media_cache import invalidates_media_cache
 from ..lib.storage_helper import get_container_sas
 from ..lib.models.media import MediaType, media_type_from_file_extension
 
-from .albums import remove_from_all_albums, add_to_album, NONE_ALBUM_NAME
+from .albums import remove_from_all_albums, add_to_album, _add_to_reserved_album, NONE_ALBUM_NAME
 
 crud_controller = Blueprint(
     "crud_controller",
@@ -112,7 +113,7 @@ def _upload(*file_infos: tuple[FileStorage, str]) -> list[str]:
                 raise ValueError(f"Unrecognized media type for {file.filename=}")
         
         uploaded_filenames.append(uploaded_filename)
-        _ = add_to_album(NONE_ALBUM_NAME, uploaded_filename)
+        _ = _add_to_reserved_album(uploaded_filename, datetime.fromisoformat(date_taken))
 
     return uploaded_filenames
 

@@ -163,37 +163,53 @@ def add_to_album(album_name: str, filename: str) -> Response:
     :param filename: The filename to add to the album.
     """
 
+    if album_name == NONE_ALBUM_NAME:
+        return Response(f"Album name '{NONE_ALBUM_NAME}' is reserved and cannot be added to directly")
+
     account_name: str = current_app.config["account_name"]
     table_name: str = current_app.config["albums_table_name"]
     credential: DefaultAzureCredential = current_app.config["credential"]
     table_client: TableClient = get_table_client(account_name, table_name, credential)
 
-    if album_name == NONE_ALBUM_NAME: # First upload
-        new_file = {
-            "PartitionKey": album_name,
-            "RowKey": filename,
-            "Created": datetime.now(timezone.utc)
-        }
-        _ = table_client.create_entity(new_file)
-    else:
-        try:
-            non_album_entity = table_client.get_entity(partition_key=NONE_ALBUM_NAME, row_key=filename)
-        except ResourceNotFoundError:
-            return Response(f"Filename '{filename}' does not exist or is already in an album")
-        
-        try:
-            _ = table_client.get_entity(partition_key=album_name, row_key="")
-        except ResourceNotFoundError:
-            return Response(f"Album '{album_name}' does not exist", status=404)
+    try:
+        non_album_entity = table_client.get_entity(partition_key=NONE_ALBUM_NAME, row_key=filename)
+    except ResourceNotFoundError:
+        return Response(f"Filename '{filename}' does not exist or is already in an album")
+    
+    try:
+        _ = table_client.get_entity(partition_key=album_name, row_key="")
+    except ResourceNotFoundError:
+        return Response(f"Album '{album_name}' does not exist", status=404)
 
-        # Add new entity to album
-        new_file = dict(non_album_entity)
-        new_file["PartitionKey"] = album_name
-        _ = table_client.create_entity(new_file) 
+    # Add new entity to album
+    new_file = dict(non_album_entity)
+    new_file["PartitionKey"] = album_name
+    _ = table_client.create_entity(new_file) 
 
-        # Delete existing entity
-        _ = table_client.delete_entity(partition_key=NONE_ALBUM_NAME, row_key=filename)
+    # Delete existing entity
+    _ = table_client.delete_entity(partition_key=NONE_ALBUM_NAME, row_key=filename)
 
+    return Response(status=201)
+
+@invalidates_media_cache
+def _add_to_reserved_album(filename: str, date_taken: datetime) -> Response:
+    """
+    Add a photo to the "none album" album.
+    Should only be used when first uploading a photo.
+    """
+    
+    account_name: str = current_app.config["account_name"]
+    table_name: str = current_app.config["albums_table_name"]
+    credential: DefaultAzureCredential = current_app.config["credential"]
+    table_client: TableClient = get_table_client(account_name, table_name, credential)
+
+    new_file = {
+        "PartitionKey": NONE_ALBUM_NAME,
+        "RowKey": filename,
+        "Created": date_taken
+    }
+    _ = table_client.create_entity(new_file)
+    
     return Response(status=201)
 
 
