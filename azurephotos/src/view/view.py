@@ -2,7 +2,7 @@ from concurrent.futures import ThreadPoolExecutor
 from flask import Blueprint, render_template, Response, current_app
 from flask.ctx import AppContext
 
-from ..api.albums import list_albums, list_album#, all_album_file_names
+from ..api.albums import list_albums, list_album
 from ..api.media_cache import all_media
 
 landing_view_controller = Blueprint(
