@@ -17,7 +17,7 @@ from typing import Any
 from .media_cache import invalidates_media_cache
 from ..lib.storage_helper import TableClient, get_table_client
 from ..lib.refresher import refreshed
-from ..lib.models.media import MediaRecord, MediaType, PhotoRecord, VideoRecord, media_type_from_file_extension
+from ..lib.models.media import MediaRecord
 
 api_albums_controller = Blueprint(
     "api_albums_controller",
@@ -252,25 +252,16 @@ def list_album(album_name: str) -> Response | list[MediaRecord]:
         if len(filename) == 0:
             continue
 
-        media_type = media_type_from_file_extension(filename)
         last_modified = entity["Created"]
-        if media_type == MediaType.PHOTO:
-            media_record = PhotoRecord(last_modified, filename)
-        elif media_type == MediaType.VIDEO:
-            media_record = VideoRecord(last_modified, filename)
-        else: # unknown media type
-            continue
+        media_record = MediaRecord.from_filename(last_modified, filename)
 
-        medias.append(media_record)
+        if media_record:
+            medias.append(media_record)
 
     if not album_exists:
         return Response("Album does not exist", status=404)
     
-    return sorted(
-        medias,
-        key=lambda m: m.last_modified,
-        reverse=True
-    )
+    return sorted(medias, reverse=True)
 
 
 @api_albums_controller.route("<album_name>/<filename>", methods=["DELETE"])
@@ -379,15 +370,7 @@ def non_album_file_names(account_name: str, table_name: str, credential: Default
         filename = row["RowKey"]
         last_modified = row["Created"]
 
-        result: MediaRecord | None = None
-        match (media_type_from_file_extension(filename)):
-            case MediaType.PHOTO:
-                result = PhotoRecord(last_modified, filename)
-            case MediaType.VIDEO:
-                result = VideoRecord(last_modified, filename)
-            case _: # Unknown media type
-                pass
-        
+        result = MediaRecord.from_filename(last_modified, filename)
         if result:
             results.append(result)
 
