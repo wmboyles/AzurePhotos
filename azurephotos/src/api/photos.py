@@ -77,6 +77,9 @@ def delete_thumbnail(filename: str) -> None:
 def upload(file_info: tuple[FileStorage, str]) -> str:
     """
     Upload photos to blob storage.
+
+    :raises:
+        ResourceExistsError when blob with filename already exists
     """
 
     account_name: str = current_app.config["account_name"]

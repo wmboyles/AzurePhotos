@@ -75,6 +75,13 @@ def fullsize(filename: str) -> Response:
 
 
 def upload(file_info: tuple[FileStorage, str]) -> str:
+    """
+    Upload videos to blob storage.
+
+    :raises:
+        ResourceExistsError when blob with filename already exists
+    """
+    
     account_name: str = current_app.config["account_name"]
     blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
     videos_container_name: str = current_app.config["videos_container_name"]
