@@ -186,7 +186,7 @@ def add_to_album(album_name: str, filename: str) -> Response:
     try:
         non_album_entity = table_client.get_entity(partition_key=NONE_ALBUM_NAME, row_key=filename)
     except ResourceNotFoundError:
-        return Response(f"Filename '{filename}' does not exist or is already in an album")
+        return Response(f"Filename '{filename}' does not exist or is already in an album", status=404)
     
     try:
         _ = table_client.get_entity(partition_key=album_name, row_key="")
