@@ -135,6 +135,8 @@ def delete_album(album_name: str) -> Response:
     :param album_name: The name of the album to delete.
     """
 
+    print(f"RECEIVED ALBUM NAME {album_name}")
+
     if album_name == NONE_ALBUM_NAME:
         return Response(f"Album name '{NONE_ALBUM_NAME}' is reserved and cannot be deleted", status=403)
 
@@ -146,10 +148,20 @@ def delete_album(album_name: str) -> Response:
     query = "PartitionKey eq @album_name"
     parameters = {"album_name": album_name}
     entities = table_client.query_entities(query_filter=query, parameters=parameters)
+    entity = None
     for entity in entities:
-        table_client.delete_entity(entity["PartitionKey"], entity["RowKey"])
+        partition_key = entity["PartitionKey"]
+        row_key = entity["RowKey"]
+        if row_key: 
+            new_entity = dict(entity)
+            new_entity["PartitionKey"] = NONE_ALBUM_NAME
+            _ = table_client.create_entity(new_entity) 
+        
+        table_client.delete_entity(partition_key, row_key)
 
-    # TODO: Check if the album was actually deleted
+    if not entity: # No results. Loop didn't run
+        return Response(f"Album '{album_name}' not found", status=404)
+
     return Response(status=204)
 
 
