@@ -50,11 +50,10 @@ def thumbnail(photo_bytes: IO[bytes]) -> BytesIO:
     - Maintains EXIF orientation
     - Converts to an efficient output format (:obj:`OUTPUT_FORMAT`)
     - Strips other metadata
+
+    NOTE: photo_bytes stream may be advanced/consumed by this method
     """
     
-    if photo_bytes.seekable():
-        photo_bytes.seek(0)
-
     try:
         with Image.open(photo_bytes) as img:
             # Validate format if known
@@ -112,6 +111,8 @@ def video_thumbnail(video_bytes: IO[bytes]) -> bytes:
     - Converts to an efficient output format (:obj:`OUTPUT_FORMAT`)
     - Takes thumbnail from first second of video, falling back to 0 seconds if video is shorter than 1 second
     - Appends a play button icon to the top-left of the thumbnail to differentiate it from photo thumbnails
+
+    NOTE: photo_bytes stream may be consumed/advanced by this method. 
     """
     
     # find ffmpeg
@@ -123,9 +124,6 @@ def video_thumbnail(video_bytes: IO[bytes]) -> bytes:
     video_icon_path = os.path.join(str(current_app.static_folder), "video_icon.png")
     if not os.path.exists(video_icon_path):
         raise Exception("Cannot find video icon")
-
-    if video_bytes.seekable():
-        video_bytes.seek(0)
 
     # Copy bytes to temporary file
     with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_video:
@@ -175,10 +173,12 @@ def video_thumbnail(video_bytes: IO[bytes]) -> bytes:
             raise RuntimeError(
                 f"ffmpeg failed:\n{e.stderr.decode(errors='ignore')}"
             ) from e
-        finally:
-            os.remove(temp_video_path)
 
-    ffmpeg_results = run_ffmpeg()
+    try:
+        ffmpeg_results = run_ffmpeg()
+    finally:
+        os.remove(temp_video_path)
+    
     if ffmpeg_results is None or len(ffmpeg_results) == 0:
         raise RuntimeError("No output from ffmpeg process")
 

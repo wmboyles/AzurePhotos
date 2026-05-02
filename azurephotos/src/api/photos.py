@@ -14,7 +14,7 @@ from werkzeug.datastructures.file_storage import FileStorage
 
 from ..lib.storage_helper import get_container_sas
 from ..lib.thumbnails import thumbnail as compute_thumbnail
-from ..lib.models.media import PhotoRecord
+from ..lib.models.media import MediaRecord, MediaType
 
 
 def fullsize(filename: str) -> Response:
@@ -77,6 +77,9 @@ def delete_thumbnail(filename: str) -> None:
 def upload(file_info: tuple[FileStorage, str]) -> str:
     """
     Upload photos to blob storage.
+
+    :raises:
+        ResourceExistsError when blob with filename already exists
     """
 
     account_name: str = current_app.config["account_name"]
@@ -105,13 +108,15 @@ def upload(file_info: tuple[FileStorage, str]) -> str:
             metadata=metadata,
             content_settings=ContentSettings(
                 cache_control="public, max-age=31536000, immutable"
-            )
+            ),
         )
 
     return save_filename
 
 
-def all_photos(account_name: str, photos_container_name: str, credential: DefaultAzureCredential) -> list[PhotoRecord]:
+def all_photos(
+    account_name: str, photos_container_name: str, credential: DefaultAzureCredential
+) -> list[MediaRecord]:
     """
     Get all photos stored in blob storage and their last modified time.
     Photos are ordered by their last modified time.
@@ -139,7 +144,11 @@ def all_photos(account_name: str, photos_container_name: str, credential: Defaul
 
     return sorted(
         (
-            PhotoRecord(last_modified=last_modified(blob), filename=str(blob.name))
+            MediaRecord(
+                last_modified=last_modified(blob),
+                filename=str(blob.name),
+                type=MediaType.PHOTO,
+            )
             for blob in blobs
         ),
         reverse=True,

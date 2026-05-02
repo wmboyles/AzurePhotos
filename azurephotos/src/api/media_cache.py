@@ -24,7 +24,6 @@ def all_media() -> Sequence[MediaRecord]:
 
     media_cache = sorted(
         non_album_file_names(account_name, table_name, credential),
-        key= lambda m: m.last_modified,
         reverse=True)
     return media_cache
 

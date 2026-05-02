@@ -17,7 +17,7 @@ from typing import Any
 from .media_cache import invalidates_media_cache
 from ..lib.storage_helper import TableClient, get_table_client
 from ..lib.refresher import refreshed
-from ..lib.models.media import MediaRecord, MediaType, PhotoRecord, VideoRecord, media_type_from_file_extension
+from ..lib.models.media import MediaRecord
 
 api_albums_controller = Blueprint(
     "api_albums_controller",
@@ -135,6 +135,8 @@ def delete_album(album_name: str) -> Response:
     :param album_name: The name of the album to delete.
     """
 
+    print(f"RECEIVED ALBUM NAME {album_name}")
+
     if album_name == NONE_ALBUM_NAME:
         return Response(f"Album name '{NONE_ALBUM_NAME}' is reserved and cannot be deleted", status=403)
 
@@ -146,10 +148,20 @@ def delete_album(album_name: str) -> Response:
     query = "PartitionKey eq @album_name"
     parameters = {"album_name": album_name}
     entities = table_client.query_entities(query_filter=query, parameters=parameters)
+    entity = None
     for entity in entities:
-        table_client.delete_entity(entity["PartitionKey"], entity["RowKey"])
+        partition_key = entity["PartitionKey"]
+        row_key = entity["RowKey"]
+        if row_key: 
+            new_entity = dict(entity)
+            new_entity["PartitionKey"] = NONE_ALBUM_NAME
+            _ = table_client.create_entity(new_entity) 
+        
+        table_client.delete_entity(partition_key, row_key)
 
-    # TODO: Check if the album was actually deleted
+    if not entity: # No results. Loop didn't run
+        return Response(f"Album '{album_name}' not found", status=404)
+
     return Response(status=204)
 
 
@@ -174,7 +186,7 @@ def add_to_album(album_name: str, filename: str) -> Response:
     try:
         non_album_entity = table_client.get_entity(partition_key=NONE_ALBUM_NAME, row_key=filename)
     except ResourceNotFoundError:
-        return Response(f"Filename '{filename}' does not exist or is already in an album")
+        return Response(f"Filename '{filename}' does not exist or is already in an album", status=404)
     
     try:
         _ = table_client.get_entity(partition_key=album_name, row_key="")
@@ -240,25 +252,16 @@ def list_album(album_name: str) -> Response | list[MediaRecord]:
         if len(filename) == 0:
             continue
 
-        media_type = media_type_from_file_extension(filename)
         last_modified = entity["Created"]
-        if media_type == MediaType.PHOTO:
-            media_record = PhotoRecord(last_modified, filename)
-        elif media_type == MediaType.VIDEO:
-            media_record = VideoRecord(last_modified, filename)
-        else: # unknown media type
-            continue
+        media_record = MediaRecord.from_filename(last_modified, filename)
 
-        medias.append(media_record)
+        if media_record:
+            medias.append(media_record)
 
     if not album_exists:
         return Response("Album does not exist", status=404)
     
-    return sorted(
-        medias,
-        key=lambda m: m.last_modified,
-        reverse=True
-    )
+    return sorted(medias, reverse=True)
 
 
 @api_albums_controller.route("<album_name>/<filename>", methods=["DELETE"])
@@ -367,14 +370,8 @@ def non_album_file_names(account_name: str, table_name: str, credential: Default
         filename = row["RowKey"]
         last_modified = row["Created"]
 
-        match (media_type_from_file_extension(filename)):
-            case MediaType.PHOTO:
-                result = PhotoRecord(last_modified, filename)
-            case MediaType.VIDEO:
-                result = VideoRecord(last_modified, filename)
-            case _:
-                raise Exception(f"Unknown media type")
-        
-        results.append(result)
+        result = MediaRecord.from_filename(last_modified, filename)
+        if result:
+            results.append(result)
 
     return results

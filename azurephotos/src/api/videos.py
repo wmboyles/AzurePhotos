@@ -12,12 +12,14 @@ from werkzeug.utils import secure_filename
 from werkzeug.wrappers.response import Response
 from werkzeug.datastructures.file_storage import FileStorage
 
-from ..lib.thumbnails import video_thumbnail as compute_thumnail
-from ..lib.models.media import VideoRecord
+from ..lib.thumbnails import video_thumbnail as compute_thumbnail
+from ..lib.models.media import MediaRecord, MediaType
 from ..lib.storage_helper import get_container_sas
 
 
-def all_videos(account_name: str, videos_container_name: str, credential: DefaultAzureCredential) -> list[VideoRecord]:
+def all_videos(
+    account_name: str, videos_container_name: str, credential: DefaultAzureCredential
+) -> list[MediaRecord]:
     """
     Get all vidoes stored in blob storage and their last modified time.
     Videos are ordered by their last modified time.
@@ -45,7 +47,11 @@ def all_videos(account_name: str, videos_container_name: str, credential: Defaul
 
         return sorted(
             (
-                VideoRecord(last_modified=last_modified(blob), filename=str(blob.name))
+                MediaRecord(
+                    last_modified=last_modified(blob),
+                    filename=str(blob.name),
+                    type=MediaType.VIDEO,
+                )
                 for blob in blobs
             ),
             reverse=True,
@@ -73,6 +79,13 @@ def fullsize(filename: str) -> Response:
 
 
 def upload(file_info: tuple[FileStorage, str]) -> str:
+    """
+    Upload videos to blob storage.
+
+    :raises:
+        ResourceExistsError when blob with filename already exists
+    """
+
     account_name: str = current_app.config["account_name"]
     blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
     videos_container_name: str = current_app.config["videos_container_name"]
@@ -87,21 +100,23 @@ def upload(file_info: tuple[FileStorage, str]) -> str:
     ) as videos_container_client, ContainerClient(
         blob_account_url, thumbnails_container_name, credential
     ) as thumbnails_container_client:
-        # TODO: Maybe we should compute and upload the thumbnail before the original to help validate?
-        videos_container_client.upload_blob(
-            save_filename, file.stream, metadata=metadata
-        )
-
-        thumbnail_bytes = compute_thumnail(file.stream)
-        thumbnail_filename = save_filename + ".webp"
-        thumbnails_container_client.upload_blob(
-            name=thumbnail_filename,
-            data=thumbnail_bytes,
+        _ = thumbnails_container_client.upload_blob(
+            name=f"{save_filename}.webp",
+            data=compute_thumbnail(file.stream),
             metadata=metadata,
             content_settings=ContentSettings(
                 cache_control="public, max-age=31536000, immutable"
-            )
+            ),
         )
+
+        if file.stream.seekable():
+            file.stream.seek(0)
+
+        _ = videos_container_client.upload_blob(
+            name=save_filename, data=file.stream, metadata=metadata
+        )
+
+        # TODO: Try to delete thumbnail blob if fullsize upload failed
 
     return save_filename
 

@@ -2,7 +2,7 @@
 
 {% block jsinit %}
 <script type="text/javascript">
-  album = "{{album}}";
+  const album = {{album | tojson}};
 </script>
 {% endblock %}
 
