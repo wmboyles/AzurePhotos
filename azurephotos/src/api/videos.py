@@ -12,12 +12,14 @@ from werkzeug.utils import secure_filename
 from werkzeug.wrappers.response import Response
 from werkzeug.datastructures.file_storage import FileStorage
 
-from ..lib.thumbnails import video_thumbnail as compute_thumnail
+from ..lib.thumbnails import video_thumbnail as compute_thumbnail
 from ..lib.models.media import VideoRecord
 from ..lib.storage_helper import get_container_sas
 
 
-def all_videos(account_name: str, videos_container_name: str, credential: DefaultAzureCredential) -> list[VideoRecord]:
+def all_videos(
+    account_name: str, videos_container_name: str, credential: DefaultAzureCredential
+) -> list[VideoRecord]:
     """
     Get all vidoes stored in blob storage and their last modified time.
     Videos are ordered by their last modified time.
@@ -87,21 +89,23 @@ def upload(file_info: tuple[FileStorage, str]) -> str:
     ) as videos_container_client, ContainerClient(
         blob_account_url, thumbnails_container_name, credential
     ) as thumbnails_container_client:
-        # TODO: Maybe we should compute and upload the thumbnail before the original to help validate?
-        videos_container_client.upload_blob(
-            save_filename, file.stream, metadata=metadata
-        )
-
-        thumbnail_bytes = compute_thumnail(file.stream)
-        thumbnail_filename = save_filename + ".webp"
-        thumbnails_container_client.upload_blob(
-            name=thumbnail_filename,
-            data=thumbnail_bytes,
+        _ = thumbnails_container_client.upload_blob(
+            name=f"{save_filename}.webp",
+            data=compute_thumbnail(file.stream),
             metadata=metadata,
             content_settings=ContentSettings(
                 cache_control="public, max-age=31536000, immutable"
-            )
+            ),
         )
+
+        if file.stream.seekable():
+            file.stream.seek(0)
+        
+        _ = videos_container_client.upload_blob(
+            name=save_filename, data=file.stream, metadata=metadata
+        )
+
+        # TODO: Try to delete thumbnail blob if fullsize upload failed
 
     return save_filename
 
