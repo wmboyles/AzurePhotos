@@ -379,14 +379,16 @@ def non_album_file_names(account_name: str, table_name: str, credential: Default
         filename = row["RowKey"]
         last_modified = row["Created"]
 
+        result: MediaRecord | None = None
         match (media_type_from_file_extension(filename)):
             case MediaType.PHOTO:
                 result = PhotoRecord(last_modified, filename)
             case MediaType.VIDEO:
                 result = VideoRecord(last_modified, filename)
-            case _:
-                raise Exception(f"Unknown media type")
+            case _: # Unknown media type
+                pass
         
-        results.append(result)
+        if result:
+            results.append(result)
 
     return results
