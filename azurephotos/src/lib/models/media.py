@@ -9,7 +9,7 @@ PHOTO_EXTENSIONS: frozenset[str] = frozenset({
     ".png",
     ".webp",
     ".bmp", ".dib",
-    ".tif", ".tiff"
+    ".tif", ".tiff",
     ".gif",
     ".mpo",
     ".heic", ".heif",
