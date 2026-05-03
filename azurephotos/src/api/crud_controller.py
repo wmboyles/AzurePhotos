@@ -4,6 +4,7 @@ Will delegate to the proper controller per media.
 """
 
 from azure.identity import DefaultAzureCredential
+from datetime import datetime
 from flask import Blueprint, redirect, current_app, request
 from werkzeug.wrappers.response import Response
 from werkzeug.datastructures.file_storage import FileStorage
@@ -13,9 +14,9 @@ import src.api.videos as videos
 from .media_cache import invalidates_media_cache
 
 from ..lib.storage_helper import get_container_sas
-from ..lib.models.media import MediaType, media_type_from_file_extension
+from ..lib.models.media import MediaType
 
-from .albums import remove_from_all_albums, add_to_album
+from .albums import remove_from_all_albums, add_to_album, _add_to_reserved_album, NONE_ALBUM_NAME
 
 crud_controller = Blueprint(
     "crud_controller",
@@ -34,14 +35,14 @@ def thumbnail(filename: str) -> Response:
     :param filename: The name of the file
     """
 
-    media_type = media_type_from_file_extension(filename)
+    media_type = MediaType.from_file_extension(filename)
     match media_type:
         case MediaType.PHOTO:
             pass
         case MediaType.VIDEO:
             filename += ".webp"
         case _:
-            raise ValueError(f"Unrecognized media type for {filename=}")
+            raise ValueError(f"Unrecognized {media_type=} for {filename=}")
 
     account_name: str = current_app.config["account_name"]
     blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
@@ -67,7 +68,7 @@ def fullsize(filename: str) -> Response:
     :param filename: The name of the file.
     """
 
-    media_type = media_type_from_file_extension(filename)
+    media_type = MediaType.from_file_extension(filename)
     match media_type:
         case MediaType.PHOTO:
             return photos.fullsize(filename)
@@ -101,16 +102,20 @@ def upload() -> Response:
 def _upload(*file_infos: tuple[FileStorage, str]) -> list[str]:
     uploaded_filenames = list[str]()
     for file, date_taken in file_infos:
-        media_type = media_type_from_file_extension(file.filename)
+        uploaded_filename = None
+
+        media_type = MediaType.from_file_extension(file.filename)
         match media_type:
             case MediaType.PHOTO:
-                uploaded_photo = photos.upload((file, date_taken))
-                uploaded_filenames.append(uploaded_photo)
+                uploaded_filename = photos.upload((file, date_taken))
             case MediaType.VIDEO:
-                uploaded_video = videos.upload((file, date_taken))
-                uploaded_filenames.append(uploaded_video)
+                uploaded_filename = videos.upload((file, date_taken))
             case _:
+                # TODO: Should we pass here and continue uploading other files?
                 raise ValueError(f"Unrecognized media type for {file.filename=}")
+        
+        uploaded_filenames.append(uploaded_filename)
+        _ = _add_to_reserved_album(uploaded_filename, datetime.fromisoformat(date_taken))
 
     return uploaded_filenames
 
@@ -121,6 +126,9 @@ def upload_to_album(album_name: str) -> Response:
     """
     Upload photos or videos, and add it to an album.
     """
+
+    if album_name == NONE_ALBUM_NAME:
+        return Response(f"Album name '{NONE_ALBUM_NAME}' is reserved and cannot be uploaded to directly", status=403)
 
     files = request.files.getlist("upload")
     dates_taken = request.form.getlist("dateTaken")
@@ -135,11 +143,7 @@ def upload_to_album(album_name: str) -> Response:
     uploaded_filenames = _upload(*zip(files, dates_taken))
     for uploaded_filename in uploaded_filenames:
         add_to_album_result = add_to_album(album_name, uploaded_filename)
-
-        if (
-            isinstance(add_to_album_result, Response)
-            and add_to_album_result.status_code >= 400
-        ):
+        if add_to_album_result.status_code >= 400:
             # TODO: Should we instead aggregate results at the end?
             return add_to_album_result
 
@@ -156,7 +160,7 @@ def delete(filename: str) -> Response:
     """
 
     # Delete the main file + thumbnail
-    media_type = media_type_from_file_extension(filename)
+    media_type = MediaType.from_file_extension(filename)
     match media_type:
         case MediaType.PHOTO:
             photos.delete_fullsize(filename)
