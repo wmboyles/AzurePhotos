@@ -33,7 +33,7 @@ def invalidates_media_cache(func):
         global media_cache
         result = func(*args, **kwargs)
         media_cache = None
-        print("INVALIDATED MEDIA CACHE")
+        
         return result
 
     return wrapper

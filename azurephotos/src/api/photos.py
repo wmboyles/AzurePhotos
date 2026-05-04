@@ -4,6 +4,7 @@ API endpoints for handling individual photos.
 :author: William Boyles
 """
 
+from azure.core.exceptions import ResourceExistsError
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import ContainerClient, BlobProperties, ContentSettings
 from datetime import datetime
@@ -74,7 +75,7 @@ def delete_thumbnail(filename: str) -> None:
         thumbnails_container_client.delete_blob(filename)
 
 
-def upload(file_info: tuple[FileStorage, str]) -> str:
+def upload(file: FileStorage, date_taken: datetime) -> str:
     """
     Upload photos to blob storage.
 
@@ -88,9 +89,8 @@ def upload(file_info: tuple[FileStorage, str]) -> str:
     thumbnails_container_name: str = current_app.config["thumbnails_container_name"]
     credential: DefaultAzureCredential = current_app.config["credential"]
 
-    file, modified_date = file_info
     save_filename = secure_filename(str(file.filename))
-    metadata = {"lastModified": modified_date}  # ISO timestamp
+    metadata = {"lastModified": date_taken.isoformat()}
     with ContainerClient(
         blob_account_url, photos_container_name, credential
     ) as photos_container_client, ContainerClient(

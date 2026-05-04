@@ -78,7 +78,7 @@ def fullsize(filename: str) -> Response:
     )
 
 
-def upload(file_info: tuple[FileStorage, str]) -> str:
+def upload(file: FileStorage, date_taken: datetime) -> str:
     """
     Upload videos to blob storage.
 
@@ -92,9 +92,8 @@ def upload(file_info: tuple[FileStorage, str]) -> str:
     thumbnails_container_name: str = current_app.config["thumbnails_container_name"]
     credential: DefaultAzureCredential = current_app.config["credential"]
 
-    file, modified_date = file_info
     save_filename = secure_filename(str(file.filename))
-    metadata = {"lastModified": modified_date}  # ISO timestamp
+    metadata = {"lastModified": date_taken.isoformat()}
     with ContainerClient(
         blob_account_url, videos_container_name, credential
     ) as videos_container_client, ContainerClient(

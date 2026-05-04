@@ -114,6 +114,7 @@ def rename_album(album_name: str, new_name: str) -> Response:
     parameters = {"album_name": album_name}
     entities = table_client.query_entities(query_filter=query, parameters=parameters)
     for entity in entities:
+        print(entity["RowKey"])
         photo_copy = {
             "PartitionKey": new_name,
             "RowKey": entity["RowKey"],
@@ -134,8 +135,6 @@ def delete_album(album_name: str) -> Response:
 
     :param album_name: The name of the album to delete.
     """
-
-    print(f"RECEIVED ALBUM NAME {album_name}")
 
     if album_name == NONE_ALBUM_NAME:
         return Response(f"Album name '{NONE_ALBUM_NAME}' is reserved and cannot be deleted", status=403)

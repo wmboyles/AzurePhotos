@@ -44,6 +44,93 @@ function isVideo(filename) {
     return VIDEO_EXTENSIONS.has(extension);
 }
 
+function uploadWithConcurrency(files, path, concurrency) {
+    let index = 0;
+    let active = 0;
+
+    const totalFiles = files.length;
+    let successCount = 0;
+    let failureCount = 0;
+    const errors = [];
+
+    function updateProgressBar() {
+        const successPercent = Math.round((successCount / totalFiles) * 100);
+        const failurePercent = Math.round((failureCount / totalFiles) * 100);
+
+        $("#successProgress")
+            .css("width", successPercent + "%")
+            .attr("aria-valuenow", successPercent)
+            .text(`${successCount} / ${totalFiles}`)
+        $("#failureProgress")
+            .css("width", failurePercent + "%")
+            .attr("aria-valuenow", failurePercent)
+            .text(`${failureCount} / ${totalFiles}`)
+    }
+
+    function uploadSingle(file) {
+        return new Promise((resolve) => {
+            const formData = new FormData();
+            formData.append("upload", file);
+
+            const dateTaken = new Date(file.lastModified);
+            formData.append("dateTaken", dateTaken.toISOString());
+
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", path);
+
+            xhr.onload = () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    successCount++;
+                } else {
+                    failureCount++;
+                    errors.push({
+                        file: file.name,
+                        status: xhr.status
+                    });
+                }
+
+                updateProgressBar();
+                resolve();
+            }
+            xhr.onerror = () => {
+                errors.push({
+                    file: file.name,
+                    status: "network error"
+                });
+
+                updateProgressBar();
+                resolve();
+            }
+
+            xhr.send(formData);
+        });
+    }
+
+    return new Promise((resolve) => {
+        function next() {
+            if (index === files.length && active === 0) {
+                resolve({ successCount, totalFiles, errors });
+                return;
+            }
+
+            while (active < concurrency && index < files.length) {
+                const file = files[index++];
+                active++;
+
+                uploadSingle(file).then(() => {
+                    active--;
+                    next();
+                });
+            }
+        }
+
+        successCount = 0;
+        updateProgressBar();
+
+        next();
+    });
+}
+
 // Some variables are passed here from HTML from Flask.
 // We'll have `albums` on the main page, `album` on an album page, and `videoUrls` on the video page.
 $(document).ready(() => {
@@ -62,7 +149,7 @@ $(document).ready(() => {
 
         // Clear any existing parts of the modal body
         fullsizeModalBody.innerHTML = "";
-        
+
         // Build a new img or video inside the modal body
         if (isVideo(fullSrc)) {
             const video = document.createElement("video");
@@ -94,8 +181,7 @@ $(document).ready(() => {
         const fullsizeModalBody = document.getElementById("fullsizeModalBody");
         const video = fullsizeModalBody.querySelector("video");
 
-        if (video)
-        {
+        if (video) {
             // Try to exit picture-in-picture if active
             try {
                 if (document.pictureInPictureElement) {
@@ -129,57 +215,55 @@ $(document).ready(() => {
         event.preventDefault();
 
         const isAlbum = typeof (album) !== "undefined";
-        const path = isAlbum  ? `/upload/${album}` : `/upload`;
+        const path = isAlbum ? `/upload/${album}` : `/upload`;
 
         const input = document.getElementById("formFileLg");
-        const files = input.files;
-        const formData = new FormData();
-
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-
-            const filename = file.name;
-            if (!isPhoto(filename) && !isVideo(filename)) {
-                alert(`${filename} is not a supported extension`);
-                return;
+        const validFiles = Array.from(input.files).filter(file => {
+            if (!isPhoto(file.name) && !isVideo(file.name)) {
+                alert(`${file.name} is not a supported extension`);
+                return false;
             }
 
-            const fileType = file.type;
-            if (!fileType.startsWith("image/") && !fileType.startsWith("video/")) {
-                alert(`${filename} is not a photo nor a video`);
-                return;
+            if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
+                alert(`${file.name} is not a photo nor a video`);
+                return false
             }
 
-            formData.append("upload", file);
+            return true;
+        });
 
-            // Get last modified
-            const dateTaken = new Date(file.lastModified);
-            formData.append("dateTaken", dateTaken.toISOString());
+        if (validFiles.length === 0) {
+            return;
+            // TODO: Should we show some erorr here?
         }
 
-        $("#submitUpload").prop("disabled", true); // disable before upload
-        fetch(path, { method: "POST", body: formData })
-            .then(response => {
-                if (!response.ok) {
-                    alert("Upload failed");
-                    console.log(response);
-                } else {
-                    location.reload();
+        $("#formFileLg").prop("disabled", true);
+        $("#submitUpload").prop("disabled", true);
+        $("#uploadProgress").show();
+
+        uploadWithConcurrency(validFiles, path, 2)
+            .then(({ successCount, totalFiles, errors }) => {
+                if (errors.length > 0) {
+                    console.warn("Some uploads failed:", errors);
+                    alert(`${successCount}/${totalFiles} uploads succeeded`);
+                    return;
                 }
-            })
-            .catch(error => {
-                console.log(error);
+
+                location.reload();
             })
             .finally(() => {
-                $("#submitUpload").prop("disabled", false) // re-enable submit
+                $("#formFileLg").prop("disabled", false);
+                $("#submitUpload").prop("disabled", false);
+                setTimeout(() => { 
+                    $("#uploadProgress").hide(); 
+                }, 500);
             });
-        // Submit button should be re-enabled on page refresh.
     });
 
     // Delete photo or video
     $(".photo-action.delete-btn").click(function (event) {
         const isAlbum = (typeof album) !== "undefined";
-        
+
         // If we clicked the delete button on an unchecked item, add it to selected items
         const selected = event.currentTarget.dataset.selected;
         $(`.photo-checkbox[value='${selected}']`)
@@ -319,7 +403,27 @@ $(document).ready(() => {
 
     // Rename album
     $("#renameAlbumBtn").click(function (_) {
-        const newAlbumName = prompt("Enter new album name");
+        const renameBtn = $(this);
+        const deleteBtn = $("#deleteAlbumBtn");
+        renameBtn.prop("disabled", true);
+        deleteBtn.prop("disabled", true);
+
+        const newAlbumInput = prompt("Enter new album name");
+
+        if (newAlbumInput === null) { // User cancelled rename
+            renameBtn.prop("disabled", false);
+            deleteBtn.prop("disabled", false);
+            return;
+        }
+
+        const newAlbumName = newAlbumInput.trim();
+        if (newAlbumName === "") {
+            alert("Album name cannot be only whitespace");
+            renameBtn.prop("disabled", false);
+            deleteBtn.prop("disabled", false);
+            return;
+        }
+
         fetch(`/api/albums/${album}/rename/${newAlbumName}`, { method: "PUT" })
             .then(response => {
                 if (response.ok) {
@@ -331,6 +435,11 @@ $(document).ready(() => {
             })
             .catch(error => {
                 console.log(error);
+                alert("Rename failed");
+            })
+            .finally(() => {
+                renameBtn.prop("disabled", false);
+                deleteBtn.prop("disabled", false);
             });
     });
 });

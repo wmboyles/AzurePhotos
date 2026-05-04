@@ -3,6 +3,7 @@ Generic API endpoints for handling any media.
 Will delegate to the proper controller per media.
 """
 
+from azure.core.exceptions import ResourceExistsError
 from azure.identity import DefaultAzureCredential
 from datetime import datetime
 from flask import Blueprint, redirect, current_app, request
@@ -93,31 +94,29 @@ def upload() -> Response:
         raise ValueError("No dates provided for uploaded items")
     if len(files) != len(dates_taken):
         raise ValueError("Number of uploaded files and number of dates do not match")
-
-    _upload(*zip(files, dates_taken))
+    
+    for file, date_string in zip(files, dates_taken):
+        try:
+            _ = _upload(file, date_string)
+        except ResourceExistsError as e:
+            return Response(str(e.message), status=409)
 
     return Response(status=201)
 
 @invalidates_media_cache
-def _upload(*file_infos: tuple[FileStorage, str]) -> list[str]:
-    uploaded_filenames = list[str]()
-    for file, date_taken in file_infos:
-        uploaded_filename = None
-
-        media_type = MediaType.from_file_extension(file.filename)
-        match media_type:
-            case MediaType.PHOTO:
-                uploaded_filename = photos.upload((file, date_taken))
-            case MediaType.VIDEO:
-                uploaded_filename = videos.upload((file, date_taken))
-            case _:
-                # TODO: Should we pass here and continue uploading other files?
-                raise ValueError(f"Unrecognized media type for {file.filename=}")
+def _upload(file: FileStorage, date_string: str) -> str:    
+    date_taken = datetime.fromisoformat(date_string.strip())
+    match MediaType.from_file_extension(file.filename):
+        case MediaType.PHOTO:
+            uploaded_filename = photos.upload(file, date_taken)
+        case MediaType.VIDEO:
+            uploaded_filename = videos.upload(file, date_taken)
+        case _:
+            raise ValueError(f"Unrecognized media type for {file.filename=}")
         
-        uploaded_filenames.append(uploaded_filename)
-        _ = _add_to_reserved_album(uploaded_filename, datetime.fromisoformat(date_taken))
+    _ = _add_to_reserved_album(uploaded_filename, date_taken)
 
-    return uploaded_filenames
+    return uploaded_filename
 
 
 # No invalidate media cache needed here because we upload directly to an album
@@ -140,12 +139,15 @@ def upload_to_album(album_name: str) -> Response:
     if len(files) != len(dates_taken):
         raise ValueError("Number of uploaded files and number of dates do not match")
 
-    uploaded_filenames = _upload(*zip(files, dates_taken))
-    for uploaded_filename in uploaded_filenames:
-        add_to_album_result = add_to_album(album_name, uploaded_filename)
-        if add_to_album_result.status_code >= 400:
-            # TODO: Should we instead aggregate results at the end?
-            return add_to_album_result
+    try:
+        for file, date_string in zip(files, dates_taken):
+            uploaded_filename = _upload(file, date_string)
+            add_to_album_result = add_to_album(album_name, uploaded_filename)
+            if add_to_album_result.status_code >= 400:
+                # TODO: Should we instead aggregate results at the end?
+                return add_to_album_result
+    except ResourceExistsError as e:
+        return Response(str(e.message), status=409)
 
     return Response(status=201)
 
