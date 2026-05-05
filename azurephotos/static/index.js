@@ -239,6 +239,7 @@ $(document).ready(() => {
 
         $("#formFileLg").prop("disabled", true);
         $("#submitUpload").prop("disabled", true);
+        $("#uploadProgress .progress-bar").addClass("progress-bar-animated");
         $("#uploadProgress").show();
 
         uploadWithConcurrency(validFiles, path, 2)
@@ -254,6 +255,7 @@ $(document).ready(() => {
             .finally(() => {
                 $("#formFileLg").prop("disabled", false);
                 $("#submitUpload").prop("disabled", false);
+                $("#uploadProgress .progress-bar").removeClass("progress-bar-animated");
                 setTimeout(() => { 
                     $("#uploadProgress").hide(); 
                 }, 500);
