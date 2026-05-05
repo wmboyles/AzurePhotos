@@ -114,7 +114,6 @@ def rename_album(album_name: str, new_name: str) -> Response:
     parameters = {"album_name": album_name}
     entities = table_client.query_entities(query_filter=query, parameters=parameters)
     for entity in entities:
-        print(entity["RowKey"])
         photo_copy = {
             "PartitionKey": new_name,
             "RowKey": entity["RowKey"],
