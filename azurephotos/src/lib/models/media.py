@@ -1,4 +1,3 @@
-from abc import ABC
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -63,7 +62,7 @@ class MediaType(str, Enum):
 
 
 @dataclass(frozen=True, order=True)
-class MediaRecord(ABC):
+class MediaRecord:
     """
     Entry representing a stored file.
     """
@@ -79,4 +78,3 @@ class MediaRecord(ABC):
             return None
         
         return cls(last_modified, filename, media_type)
-
