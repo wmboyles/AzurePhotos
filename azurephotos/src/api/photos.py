@@ -96,20 +96,23 @@ def upload(file_info: tuple[FileStorage, str]) -> str:
     ) as photos_container_client, ContainerClient(
         blob_account_url, thumbnails_container_name, credential
     ) as thumbnails_container_client:
-        # TODO: Maybe we should compute and upload the thumbnail before the original to help validate?
-        photos_container_client.upload_blob(
-            save_filename, file.stream, metadata=metadata
-        )
-
-        thumbnail_bytes = compute_thumbnail(file.stream)
-        thumbnails_container_client.upload_blob(
+        _ = thumbnails_container_client.upload_blob(
             name=save_filename,
-            data=thumbnail_bytes.getvalue(),
+            data=compute_thumbnail(file.stream),
             metadata=metadata,
             content_settings=ContentSettings(
                 cache_control="public, max-age=31536000, immutable"
             ),
         )
+
+        if file.stream.seekable():
+            file.stream.seek(0)
+
+        _ = photos_container_client.upload_blob(
+            name=save_filename, data=file.stream, metadata=metadata
+        )
+
+        # TODO: Try to delete thumbnail blob if fullsize upload failed
 
     return save_filename
 
