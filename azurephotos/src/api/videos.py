@@ -4,6 +4,7 @@ API endpoints for handling videos.
 :author: William Boyles
 """
 
+from azure.core.exceptions import ResourceNotFoundError
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import ContainerClient, BlobProperties, ContentSettings
 from datetime import datetime
@@ -132,10 +133,14 @@ def delete_fullsize(filename: str) -> None:
     videos_container_name: str = current_app.config["videos_container_name"]
     credential: DefaultAzureCredential = current_app.config["credential"]
 
-    with ContainerClient(
-        blob_account_url, videos_container_name, credential
-    ) as container_client:
-        container_client.delete_blob(filename)
+    try:
+        with ContainerClient(
+            blob_account_url, videos_container_name, credential
+        ) as container_client:
+            container_client.delete_blob(filename)
+    except ResourceNotFoundError:
+        # Blob already deleted
+        pass
 
 
 def delete_thumbnail(filename: str) -> None:
@@ -151,7 +156,12 @@ def delete_thumbnail(filename: str) -> None:
     credential: DefaultAzureCredential = current_app.config["credential"]
 
     thumbnail_filename = filename + ".webp"
-    with ContainerClient(
-        blob_account_url, thumbnails_container_name, credential
-    ) as thumbnails_container_client:
-        thumbnails_container_client.delete_blob(thumbnail_filename)
+
+    try:
+        with ContainerClient(
+            blob_account_url, thumbnails_container_name, credential
+        ) as thumbnails_container_client:
+            thumbnails_container_client.delete_blob(thumbnail_filename)
+    except ResourceNotFoundError:
+        # Blob already deleted
+        pass

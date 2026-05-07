@@ -4,7 +4,7 @@ API endpoints for handling individual photos.
 :author: William Boyles
 """
 
-from azure.core.exceptions import ResourceExistsError
+from azure.core.exceptions import ResourceExistsError, ResourceNotFoundError
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import ContainerClient, BlobProperties, ContentSettings
 from datetime import datetime
@@ -51,10 +51,14 @@ def delete_fullsize(filename: str) -> None:
     photos_container_name: str = current_app.config["photos_container_name"]
     credential: DefaultAzureCredential = current_app.config["credential"]
 
-    with ContainerClient(
-        blob_account_url, photos_container_name, credential
-    ) as photos_container_client:
-        photos_container_client.delete_blob(filename)
+    try:
+        with ContainerClient(
+            blob_account_url, photos_container_name, credential
+        ) as photos_container_client:
+            photos_container_client.delete_blob(filename)
+    except ResourceNotFoundError:
+        # Blob already deleted
+        pass
 
 
 def delete_thumbnail(filename: str) -> None:
@@ -69,10 +73,14 @@ def delete_thumbnail(filename: str) -> None:
     thumbnails_container_name: str = current_app.config["thumbnails_container_name"]
     credential: DefaultAzureCredential = current_app.config["credential"]
 
-    with ContainerClient(
-        blob_account_url, thumbnails_container_name, credential
-    ) as thumbnails_container_client:
-        thumbnails_container_client.delete_blob(filename)
+    try:
+        with ContainerClient(
+            blob_account_url, thumbnails_container_name, credential
+        ) as thumbnails_container_client:
+            thumbnails_container_client.delete_blob(filename)
+    except ResourceNotFoundError:
+        # Blob already deleted
+        pass
 
 
 def upload(file: FileStorage, date_taken: datetime) -> str:
