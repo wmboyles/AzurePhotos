@@ -18,20 +18,19 @@ def get_container_sas(
     sas_start = now - timedelta(minutes=1)
     sas_end = now + timedelta(minutes=30)
 
-    bsc = BlobServiceClient(blob_account_url, credential)
+    with BlobServiceClient(blob_account_url, credential) as bsc:
+        user_delegation_key = bsc.get_user_delegation_key(
+            key_start_time=sas_start, key_expiry_time=sas_end
+        )
 
-    user_delegation_key = bsc.get_user_delegation_key(
-        key_start_time=sas_start, key_expiry_time=sas_end
-    )
-
-    container_sas: str = generate_container_sas(
-        account_name=account_name,
-        container_name=container_name,
-        user_delegation_key=user_delegation_key,
-        permission=ContainerSasPermissions(read=True),
-        start=sas_start,
-        expiry=sas_end,
-    )
+        container_sas: str = generate_container_sas(
+            account_name=account_name,
+            container_name=container_name,
+            user_delegation_key=user_delegation_key,
+            permission=ContainerSasPermissions(read=True),
+            start=sas_start,
+            expiry=sas_end,
+        )
 
     return container_sas
 

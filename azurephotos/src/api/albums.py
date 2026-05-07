@@ -68,16 +68,18 @@ def list_albums() -> list[str]:
     account_name: str = current_app.config["account_name"]
     table_name: str = current_app.config["albums_table_name"]
     credential: DefaultAzureCredential = current_app.config["credential"]
-    
+
     return _list_albums(account_name, table_name, credential)
 
 
 @refreshed(every=timedelta(seconds=30))
-def _list_albums(account_name: str, table_name: str, credential: DefaultAzureCredential) -> list[str]:
+def _list_albums(
+    account_name: str, table_name: str, credential: DefaultAzureCredential
+) -> list[str]:
     """
     List all album names.
     """
-    
+
     print("LISTING ALBUMS")
 
     table_client: TableClient = get_table_client(account_name, table_name, credential)
@@ -103,7 +105,9 @@ def rename_album(album_name: str, new_name: str) -> Response:
     """
 
     if album_name == NONE_ALBUM_NAME:
-        return Response(f"Album '{NONE_ALBUM_NAME}' is reserved and cannot be renamed", status=403)
+        return Response(
+            f"Album '{NONE_ALBUM_NAME}' is reserved and cannot be renamed", status=403
+        )
 
     account_name: str = current_app.config["account_name"]
     table_name: str = current_app.config["albums_table_name"]
@@ -120,7 +124,12 @@ def rename_album(album_name: str, new_name: str) -> Response:
             "Created": entity["Created"],
         }
         _ = table_client.create_entity(photo_copy)
-        table_client.delete_entity(entity["PartitionKey"], entity["RowKey"])
+
+        try:
+            table_client.delete_entity(entity["PartitionKey"], entity["RowKey"])
+        except ResourceNotFoundError:
+            # Entry already deleted
+            pass
 
     return Response(status=204)
 
@@ -138,7 +147,10 @@ def delete_album(album_name: str) -> Response:
     print(f"RECEIVED ALBUM NAME {album_name}")
 
     if album_name == NONE_ALBUM_NAME:
-        return Response(f"Album name '{NONE_ALBUM_NAME}' is reserved and cannot be deleted", status=403)
+        return Response(
+            f"Album name '{NONE_ALBUM_NAME}' is reserved and cannot be deleted",
+            status=403,
+        )
 
     account_name: str = current_app.config["account_name"]
     table_name: str = current_app.config["albums_table_name"]
@@ -152,14 +164,18 @@ def delete_album(album_name: str) -> Response:
     for entity in entities:
         partition_key = entity["PartitionKey"]
         row_key = entity["RowKey"]
-        if row_key: 
+        if row_key:
             new_entity = dict(entity)
             new_entity["PartitionKey"] = NONE_ALBUM_NAME
-            _ = table_client.create_entity(new_entity) 
-        
-        table_client.delete_entity(partition_key, row_key)
+            _ = table_client.create_entity(new_entity)
 
-    if not entity: # No results. Loop didn't run
+        try:
+            table_client.delete_entity(partition_key, row_key)
+        except ResourceNotFoundError:
+            # Entry already deleted
+            pass
+
+    if not entity:  # No results. Loop didn't run
         return Response(f"Album '{album_name}' not found", status=404)
 
     return Response(status=204)
@@ -176,7 +192,9 @@ def add_to_album(album_name: str, filename: str) -> Response:
     """
 
     if album_name == NONE_ALBUM_NAME:
-        return Response(f"Album name '{NONE_ALBUM_NAME}' is reserved and cannot be added to directly")
+        return Response(
+            f"Album name '{NONE_ALBUM_NAME}' is reserved and cannot be added to directly"
+        )
 
     account_name: str = current_app.config["account_name"]
     table_name: str = current_app.config["albums_table_name"]
@@ -184,10 +202,15 @@ def add_to_album(album_name: str, filename: str) -> Response:
     table_client: TableClient = get_table_client(account_name, table_name, credential)
 
     try:
-        non_album_entity = table_client.get_entity(partition_key=NONE_ALBUM_NAME, row_key=filename)
+        non_album_entity = table_client.get_entity(
+            partition_key=NONE_ALBUM_NAME, row_key=filename
+        )
     except ResourceNotFoundError:
-        return Response(f"Filename '{filename}' does not exist or is already in an album", status=404)
-    
+        return Response(
+            f"Filename '{filename}' does not exist or is already in an album",
+            status=404,
+        )
+
     try:
         _ = table_client.get_entity(partition_key=album_name, row_key="")
     except ResourceNotFoundError:
@@ -196,12 +219,17 @@ def add_to_album(album_name: str, filename: str) -> Response:
     # Add new entity to album
     new_file = dict(non_album_entity)
     new_file["PartitionKey"] = album_name
-    _ = table_client.create_entity(new_file) 
+    _ = table_client.create_entity(new_file)
 
     # Delete existing entity
-    _ = table_client.delete_entity(partition_key=NONE_ALBUM_NAME, row_key=filename)
+    try:
+        _ = table_client.delete_entity(partition_key=NONE_ALBUM_NAME, row_key=filename)
+    except ResourceNotFoundError:
+        # Entry already deleted
+        pass
 
     return Response(status=201)
+
 
 @invalidates_media_cache
 def _add_to_reserved_album(filename: str, date_taken: datetime) -> Response:
@@ -209,7 +237,7 @@ def _add_to_reserved_album(filename: str, date_taken: datetime) -> Response:
     Add a photo to the "none album" album.
     Should only be used when first uploading a photo.
     """
-    
+
     account_name: str = current_app.config["account_name"]
     table_name: str = current_app.config["albums_table_name"]
     credential: DefaultAzureCredential = current_app.config["credential"]
@@ -218,10 +246,10 @@ def _add_to_reserved_album(filename: str, date_taken: datetime) -> Response:
     new_file = {
         "PartitionKey": NONE_ALBUM_NAME,
         "RowKey": filename,
-        "Created": date_taken
+        "Created": date_taken,
     }
     _ = table_client.create_entity(new_file)
-    
+
     return Response(status=201)
 
 
@@ -260,7 +288,7 @@ def list_album(album_name: str) -> Response | list[MediaRecord]:
 
     if not album_exists:
         return Response("Album does not exist", status=404)
-    
+
     return sorted(medias, reverse=True)
 
 
@@ -276,7 +304,9 @@ def remove_from_album(album_name: str, filename: str) -> Response:
     """
 
     if album_name == NONE_ALBUM_NAME:
-        return Response(f"Album name '{NONE_ALBUM_NAME}' is reserved and cannot be deleted from")
+        return Response(
+            f"Album name '{NONE_ALBUM_NAME}' is reserved and cannot be deleted from"
+        )
 
     account_name: str = current_app.config["account_name"]
     table_name: str = current_app.config["albums_table_name"]
@@ -284,15 +314,22 @@ def remove_from_album(album_name: str, filename: str) -> Response:
     table_client: TableClient = get_table_client(account_name, table_name, credential)
 
     # Get existing entity
-    existing_entity = table_client.get_entity(partition_key=album_name, row_key=filename)
-    
+    existing_entity = table_client.get_entity(
+        partition_key=album_name, row_key=filename
+    )
+
     # Add new entity to NONE album
     new_entity = dict(existing_entity)
     new_entity["PartitionKey"] = NONE_ALBUM_NAME
     _ = table_client.create_entity(new_entity)
 
     # Delete old entity
-    _ = table_client.delete_entity(partition_key=album_name, row_key=filename)
+    try:
+        _ = table_client.delete_entity(partition_key=album_name, row_key=filename)
+    except ResourceNotFoundError:
+        # Entry already removed
+        pass
+
     return Response(status=204)
 
 
@@ -308,28 +345,24 @@ def get_album_thumbnail(album_name: str) -> Response:
     table_name: str = current_app.config["albums_table_name"]
     credential: DefaultAzureCredential = current_app.config["credential"]
     table_client: TableClient = get_table_client(account_name, table_name, credential)
-    
+
     query = "PartitionKey eq @album_name and RowKey ne ''"
-    parameters = {
-        "album_name": album_name
-    }
+    parameters = {"album_name": album_name}
     query_results = table_client.query_entities(
-        query_filter=query,
-        parameters=parameters,
-        results_per_page=1
+        query_filter=query, parameters=parameters, results_per_page=1
     )
 
     if (result := next(query_results, None)) is None:
         return redirect(DEFAULT_ALBUM_THUMBNAIL)  # type: ignore
 
-    thumbnail_filename = result['RowKey']
+    thumbnail_filename = result["RowKey"]
     # TODO: Instead if redirecting back to ourselves, should we invoke thumbnail directly?
     response = redirect(
         url_for("crud_controller.thumbnail", filename=thumbnail_filename)
     )
     response.headers["Cache-Control"] = "public, max-age=900"
 
-    return response # type: ignore
+    return response  # type: ignore
 
 
 @invalidates_media_cache
@@ -350,15 +383,21 @@ def remove_from_all_albums(filename: str) -> None:
     parameters = {"filename": filename}
     entities = table_client.query_entities(query_filter=query, parameters=parameters)
     for entity in entities:
-        table_client.delete_entity(entity)
+        try:
+            table_client.delete_entity(entity)
+        except ResourceNotFoundError:
+            # Entry already deleted
+            pass
 
 
 @refreshed(every=timedelta(seconds=30))
-def non_album_file_names(account_name: str, table_name: str, credential: DefaultAzureCredential) -> list[MediaRecord]:
+def non_album_file_names(
+    account_name: str, table_name: str, credential: DefaultAzureCredential
+) -> list[MediaRecord]:
     """
     Get all entities not in an album
     """
-    
+
     table_client: TableClient = get_table_client(account_name, table_name, credential)
 
     query = "PartitionKey eq @reserved_album_name and RowKey ne ''"
