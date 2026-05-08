@@ -303,7 +303,7 @@ def list_album(album_name: str) -> Response | list[MediaRecord]:
 @invalidates_media_cache
 def remove_from_album(album_name: str, filename: str) -> Response:
     """
-    Remove a photo from an album.
+    Remove a photo from an album, putting it back in the "none" album.
     This does not remove the photo itself or remove it from other albums.
 
     :param album_name: The name of the album to remove the photo from.

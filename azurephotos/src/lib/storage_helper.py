@@ -41,9 +41,9 @@ def get_table_client(
     """
     Built a TableClient for an account and
 
-    - account_name: Storage account name
-    - table_name: Name of table in storage account
-    - credential: Credential for storage account
+    :param account_name: Storage account name
+    :param table_name: Name of table in storage account
+    :param credential: Credential for storage account
     """
 
     table_service_client = TableServiceClient(
