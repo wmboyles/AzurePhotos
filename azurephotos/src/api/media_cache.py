@@ -4,8 +4,10 @@ from typing import Sequence
 
 from ..lib.models.media import MediaRecord
 
-# All existing photos and videos not in an album, sorted by last modified time
 media_cache: Sequence[MediaRecord] | None = None
+"""
+All existing photos and videos not in an album, sorted by last modified time
+"""
 
 def all_media() -> Sequence[MediaRecord]:
     from .albums import non_album_file_names
