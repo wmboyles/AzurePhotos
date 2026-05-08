@@ -1,6 +1,5 @@
 from azure.identity import DefaultAzureCredential
 from flask import current_app
-from functools import wraps
 from typing import Sequence
 
 from ..lib.models.media import MediaRecord
@@ -13,10 +12,7 @@ def all_media() -> Sequence[MediaRecord]:
     global media_cache
 
     if media_cache is not None:
-        print("SERVED MEDIA FROM CACHE")
         return media_cache
-    
-    print("RECALCULATING MEDIA")
     
     account_name: str = current_app.config["account_name"]
     table_name: str = current_app.config["albums_table_name"]
@@ -27,13 +23,6 @@ def all_media() -> Sequence[MediaRecord]:
         reverse=True)
     return media_cache
 
-def invalidates_media_cache(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        global media_cache
-        result = func(*args, **kwargs)
-        media_cache = None
-        
-        return result
-
-    return wrapper
+def invalidate_media_cache() -> None:
+    global media_cache
+    media_cache = None

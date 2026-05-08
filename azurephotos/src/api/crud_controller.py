@@ -12,7 +12,7 @@ from werkzeug.datastructures.file_storage import FileStorage
 
 import src.api.photos as photos
 import src.api.videos as videos
-from .media_cache import invalidates_media_cache
+from .media_cache import invalidate_media_cache
 
 from ..lib.storage_helper import get_container_sas
 from ..lib.models.media import MediaType
@@ -86,28 +86,12 @@ def fullsize(filename: str) -> Response:
 @crud_controller.route("/upload", methods=["POST"])
 def upload() -> Response:
     """
-    Upload a photo or video.
+    Upload a photo or video without specifying an album. The photo or video will be uploaded to the "none" album.
+    For uploading a photo or video to a specific album, use :func:`upload_to_album`.
     """
 
-    files = request.files.getlist("upload")
-    dates_taken = request.form.getlist("dateTaken")
+    return _upload_to_album(NONE_ALBUM_NAME)
 
-    if files is None or len(files) == 0:
-        raise ValueError("No files provided for upload")
-    if dates_taken is None or len(dates_taken) == 0:
-        raise ValueError("No dates provided for uploaded items")
-    if len(files) != len(dates_taken):
-        raise ValueError("Number of uploaded files and number of dates do not match")
-    
-    for file, date_string in zip(files, dates_taken):
-        try:
-            _ = _upload(file, date_string)
-        except ResourceExistsError as e:
-            return Response(str(e.message), status=409)
-
-    return Response(status=201)
-
-@invalidates_media_cache
 def _upload(file: FileStorage, date_string: str, album_name: str = NONE_ALBUM_NAME) -> Response:
     if file.filename is None:
         raise ValueError("File must have filename")
@@ -120,15 +104,17 @@ def _upload(file: FileStorage, date_string: str, album_name: str = NONE_ALBUM_NA
             uploaded_filename = videos.upload(file, date_taken)
         case _:
             raise ValueError(f"Unrecognized media type for {file.filename=}")
-        
+    
     upload_to_album_result = upload_directly_to_album(uploaded_filename, date_taken, album_name)
     if upload_to_album_result.status_code >= 400:
         return upload_to_album_result
-    else:
-        return Response(uploaded_filename, status=201)
+    
+    if album_name == NONE_ALBUM_NAME:
+        invalidate_media_cache()
+    
+    return Response(uploaded_filename, status=201)
 
 
-# No invalidate media cache needed here because we upload directly to an album
 @crud_controller.route("/upload/<album_name>", methods=["POST"])
 def upload_to_album(album_name: str) -> Response:
     """
@@ -140,7 +126,16 @@ def upload_to_album(album_name: str) -> Response:
 
     if album_name == NONE_ALBUM_NAME:
         return Response(f"Album name '{NONE_ALBUM_NAME}' is reserved and cannot be uploaded to directly", status=403)
+    
+    return _upload_to_album(album_name)
 
+def _upload_to_album(album_name: str) -> Response:
+    """
+    Helper for :func:`upload` and :func:`upload_to_album`.
+    Skips any checks for reserved album names since those are already handled in the calling functions.
+    Clients should not call this function directly, but rather use :func:`upload` or :func:`upload_to_album`.
+    """
+    
     files = request.files.getlist("upload")
     dates_taken = request.form.getlist("dateTaken")
 
@@ -166,7 +161,6 @@ def upload_to_album(album_name: str) -> Response:
     return Response(status=201)
 
 @crud_controller.route("/delete/<filename>", methods=["DELETE"])
-@invalidates_media_cache
 def delete(filename: str) -> Response:
     """
     Delete an entry from the storage account.
@@ -187,7 +181,9 @@ def delete(filename: str) -> Response:
         case _:
             raise ValueError(f"Unrecognized media type for {filename=}")
 
-    remove_from_all_albums(filename)
+    albums_affected = remove_from_all_albums(filename)
+    if NONE_ALBUM_NAME in albums_affected:
+        invalidate_media_cache()
 
     # Client JS code should remove image from view
     return Response(status=204)

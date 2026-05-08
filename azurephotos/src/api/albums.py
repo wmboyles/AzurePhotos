@@ -14,7 +14,7 @@ from datetime import datetime, timezone, timedelta
 from flask import Blueprint, Response, current_app, url_for, redirect
 from typing import Any
 
-from .media_cache import invalidates_media_cache
+from .media_cache import invalidate_media_cache
 from ..lib.storage_helper import TableClient, get_table_client
 from ..lib.refresher import refreshed
 from ..lib.models.media import MediaRecord
@@ -135,11 +135,10 @@ def rename_album(album_name: str, new_name: str) -> Response:
 
 
 @api_albums_controller.route("<album_name>", methods=["DELETE"])
-@invalidates_media_cache
 def delete_album(album_name: str) -> Response:
     """
     Delete an album.
-    This does not delete the photos in the album.
+    Entries in the album will be moved to the "none" album.
 
     :param album_name: The name of the album to delete.
     """
@@ -175,12 +174,12 @@ def delete_album(album_name: str) -> Response:
 
     if not entity:  # No results. Loop didn't run
         return Response(f"Album '{album_name}' not found", status=404)
-
+    
+    invalidate_media_cache()
     return Response(status=204)
 
 
 @api_albums_controller.route("<album_name>/<filename>", methods=["POST"])
-@invalidates_media_cache
 def move_to_album(album_name: str, filename: str) -> Response:
     """
     Move an existing file from the "none" album to another album.
@@ -227,10 +226,11 @@ def move_to_album(album_name: str, filename: str) -> Response:
         # Entry already deleted
         pass
 
+    invalidate_media_cache()
     return Response(status=201)
 
 
-@invalidates_media_cache
+# Don't invalidate media cache. Caller will decide if they want to do that.
 def upload_to_album(filename: str, date_taken: datetime, album_name: str) -> Response:
     """
     Upload a photo directly to an album.
@@ -300,7 +300,6 @@ def list_album(album_name: str) -> Response | list[MediaRecord]:
 
 
 @api_albums_controller.route("<album_name>/<filename>", methods=["DELETE"])
-@invalidates_media_cache
 def remove_from_album(album_name: str, filename: str) -> Response:
     """
     Remove a photo from an album, putting it back in the "none" album.
@@ -337,6 +336,7 @@ def remove_from_album(album_name: str, filename: str) -> Response:
         # Entry already removed
         pass
 
+    invalidate_media_cache()
     return Response(status=204)
 
 
@@ -372,13 +372,14 @@ def get_album_thumbnail(album_name: str) -> Response:
     return response  # type: ignore
 
 
-@invalidates_media_cache
-def remove_from_all_albums(filename: str) -> None:
+# Don't invalidate media cache. Caller will decide if they want to do that.
+def remove_from_all_albums(filename: str) -> set[str]:
     """
     Remove an entry from all albums.
     Most likely used when deleting an entry.
 
     :param filename: The filename of the entry to remove.
+    :return: The set of albums that were affected by the removal.
     """
 
     account_name: str = current_app.config["account_name"]
@@ -389,12 +390,16 @@ def remove_from_all_albums(filename: str) -> None:
     query = "RowKey eq @filename"
     parameters = {"filename": filename}
     entities = table_client.query_entities(query_filter=query, parameters=parameters)
+    albums_affected = set[str]()
     for entity in entities:
         try:
             table_client.delete_entity(entity)
+            albums_affected.add(entity["PartitionKey"])
         except ResourceNotFoundError:
             # Entry already deleted
             pass
+
+    return albums_affected
 
 
 @refreshed(every=timedelta(seconds=30))
