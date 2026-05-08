@@ -43,6 +43,8 @@ class MediaType(str, Enum):
     def from_file_extension(cls, filename: str | None) -> MediaType | None:
         """
         Determine the :class:`MediaType` from the incoming file's extension.
+
+        :param filename: file name with extension
         """
         
         if filename is None:
