@@ -6,7 +6,7 @@ Will delegate to the proper controller per media.
 from azure.core.exceptions import ResourceExistsError
 from azure.identity import DefaultAzureCredential
 from datetime import datetime
-from flask import Blueprint, redirect, current_app, request
+from flask import Blueprint, redirect, current_app, request, jsonify
 from werkzeug.wrappers.response import Response
 from werkzeug.datastructures.file_storage import FileStorage
 
@@ -139,24 +139,35 @@ def _upload_to_album(album_name: str) -> Response:
     files = request.files.getlist("upload")
     dates_taken = request.form.getlist("dateTaken")
 
-    if files is None or len(files) == 0:
+    if not files:
         raise ValueError("No files provided for upload")
-    if dates_taken is None or len(dates_taken) == 0:
+    if not dates_taken:
         raise ValueError("No dates provided for uploaded items")
     if len(files) != len(dates_taken):
         raise ValueError("Number of uploaded files and number of dates do not match")
 
-    upload_failures =  list[str]()
-    try:
-        for file, date_string in zip(files, dates_taken):
+    # TODO: Consider also tracking successes and then giving back a 207 that the frontend could use to show which files failed and which succeeded.
+    upload_failures = list[dict[str, str | int]]()
+    for file, date_string in zip(files, dates_taken):
+        try:
             upload_result = _upload(file, date_string, album_name)
             if upload_result.status_code >= 400:
-                upload_failures.append(str(upload_result.response))
-    except ResourceExistsError as e:
-        return Response(str(e.message), status=409)
+                upload_failures.append({
+                    "filename": file.filename or "<unknown>",
+                    "status_code": upload_result.status_code,
+                    "message": upload_result.get_data(as_text=True)
+                })
+        except ResourceExistsError as e:
+            upload_failures.append({
+                "filename": file.filename or "<unknown>",
+                "status_code": 409,
+                "message": str(e)
+            })
 
     if upload_failures:
-        return Response(upload_failures, status=400)
+        response = jsonify(upload_failures)
+        response.status_code = 400
+        return response
 
     return Response(status=201)
 
