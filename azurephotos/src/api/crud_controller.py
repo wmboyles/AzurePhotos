@@ -17,7 +17,11 @@ from .media_cache import invalidates_media_cache
 from ..lib.storage_helper import get_container_sas
 from ..lib.models.media import MediaType
 
-from .albums import remove_from_all_albums, add_to_album, _add_to_reserved_album, NONE_ALBUM_NAME
+from .albums import (
+    remove_from_all_albums,
+    upload_to_album as upload_directly_to_album,
+    NONE_ALBUM_NAME
+)
 
 crud_controller = Blueprint(
     "crud_controller",
@@ -104,7 +108,10 @@ def upload() -> Response:
     return Response(status=201)
 
 @invalidates_media_cache
-def _upload(file: FileStorage, date_string: str) -> str:    
+def _upload(file: FileStorage, date_string: str, album_name: str = NONE_ALBUM_NAME) -> Response:
+    if file.filename is None:
+        raise ValueError("File must have filename")
+    
     date_taken = datetime.fromisoformat(date_string.strip())
     match MediaType.from_file_extension(file.filename):
         case MediaType.PHOTO:
@@ -114,16 +121,21 @@ def _upload(file: FileStorage, date_string: str) -> str:
         case _:
             raise ValueError(f"Unrecognized media type for {file.filename=}")
         
-    _ = _add_to_reserved_album(uploaded_filename, date_taken)
-
-    return uploaded_filename
+    upload_to_album_result = upload_directly_to_album(uploaded_filename, date_taken, album_name)
+    if upload_to_album_result.status_code >= 400:
+        return upload_to_album_result
+    else:
+        return Response(uploaded_filename, status=201)
 
 
 # No invalidate media cache needed here because we upload directly to an album
 @crud_controller.route("/upload/<album_name>", methods=["POST"])
 def upload_to_album(album_name: str) -> Response:
     """
-    Upload photos or videos, and add it to an album.
+    Upload a file directly to an album.
+    For uploading a photo to the "none" album, use :func:`upload`.
+
+    :param album_name: Album name to add to
     """
 
     if album_name == NONE_ALBUM_NAME:
@@ -139,15 +151,17 @@ def upload_to_album(album_name: str) -> Response:
     if len(files) != len(dates_taken):
         raise ValueError("Number of uploaded files and number of dates do not match")
 
+    upload_failures =  list[str]()
     try:
         for file, date_string in zip(files, dates_taken):
-            uploaded_filename = _upload(file, date_string)
-            add_to_album_result = add_to_album(album_name, uploaded_filename)
-            if add_to_album_result.status_code >= 400:
-                # TODO: Should we instead aggregate results at the end?
-                return add_to_album_result
+            upload_result = _upload(file, date_string, album_name)
+            if upload_result.status_code >= 400:
+                upload_failures.append(str(upload_result.response))
     except ResourceExistsError as e:
         return Response(str(e.message), status=409)
+
+    if upload_failures:
+        return Response(upload_failures, status=400)
 
     return Response(status=201)
 

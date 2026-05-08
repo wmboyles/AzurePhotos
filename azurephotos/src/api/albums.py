@@ -181,9 +181,10 @@ def delete_album(album_name: str) -> Response:
 
 @api_albums_controller.route("<album_name>/<filename>", methods=["POST"])
 @invalidates_media_cache
-def add_to_album(album_name: str, filename: str) -> Response:
+def move_to_album(album_name: str, filename: str) -> Response:
     """
-    Add a file to an album.
+    Move an existing file from the "none" album to another album.
+    For uploading a new file to an album, use :func:`delete_album`
 
     :param album_name: The name of the album to add the file to.
     :param filename: The filename to add to the album.
@@ -230,10 +231,18 @@ def add_to_album(album_name: str, filename: str) -> Response:
 
 
 @invalidates_media_cache
-def _add_to_reserved_album(filename: str, date_taken: datetime) -> Response:
+def upload_to_album(filename: str, date_taken: datetime, album_name: str) -> Response:
     """
-    Add a photo to the "none album" album.
-    Should only be used when first uploading a photo.
+    Upload a photo directly to an album.
+    For moving photos between albums, see :func:`move_to_album`.
+    
+    Prerequisites:
+    - Album already exists
+    - Photo does not exist in another album, including "none" album
+
+    :param filename: The filename to add to the album
+    :param date_take: When the file was created
+    :param album_name: Name of album to add to
     """
 
     account_name: str = current_app.config["account_name"]
@@ -242,7 +251,7 @@ def _add_to_reserved_album(filename: str, date_taken: datetime) -> Response:
     table_client: TableClient = get_table_client(account_name, table_name, credential)
 
     new_file = {
-        "PartitionKey": NONE_ALBUM_NAME,
+        "PartitionKey": album_name,
         "RowKey": filename,
         "Created": date_taken,
     }
