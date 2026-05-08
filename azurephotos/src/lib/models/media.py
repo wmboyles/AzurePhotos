@@ -40,7 +40,7 @@ class MediaType(str, Enum):
     VIDEO = "video"
 
     @classmethod
-    def from_file_extension(cls, filename: str | None) -> MediaType | None:
+    def from_file_extension(cls, filename: str | None) -> 'MediaType | None':
         """
         Determine the :class:`MediaType` from the incoming file's extension.
 
@@ -74,7 +74,7 @@ class MediaRecord:
     type: MediaType = field(compare=False)
 
     @classmethod
-    def from_filename(cls, last_modified: datetime, filename: str) -> MediaRecord | None:
+    def from_filename(cls, last_modified: datetime, filename: str) -> 'MediaRecord | None':
         media_type = MediaType.from_file_extension(filename)
         if media_type is None:
             return None
