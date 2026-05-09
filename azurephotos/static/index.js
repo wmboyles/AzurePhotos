@@ -77,7 +77,7 @@ function isVideo(filename) {
  * @returns {Promise<{
  *  successCount: number;
  *  failureCount: number;
- *  totalItems: number;
+ *  totalCount: number;
  *  errors: Array<{
  *      item: T;
  *      error: unknown
@@ -369,10 +369,10 @@ $(document).ready(() => {
             (file) => uploadFile(file, path),
             2
         )
-            .then(({ successCount, failureCount, totalItems, errors }) => {
+            .then(({ successCount, failureCount, totalCount, errors }) => {
                 if (failureCount > 0) {
                     console.warn("Some uploads failed:", errors);
-                    alert(`${successCount}/${totalItems} uploads succeeded`);
+                    alert(`${successCount}/${totalCount} uploads succeeded`);
                     return;
                 }
 
@@ -412,10 +412,10 @@ $(document).ready(() => {
             (file) => deleteFile(file, `${basePath}/${file}`),
             4
         )
-            .then(({ successCount, failureCount, totalItems, errors }) => {
+            .then(({ successCount, failureCount, totalCount, errors }) => {
                 if (failureCount) {
                     console.warn("Some deletes failed:", errors);
-                    alert(`${successCount}/${totalItems} deletes succeeded`);
+                    alert(`${successCount}/${totalCount} deletes succeeded`);
                     return;
                 }
 
@@ -457,10 +457,10 @@ $(document).ready(() => {
                 (file) => moveToAlbum(file, `${basePath}/${file}`),
                 4
             )
-                .then(({ successCount, failureCount, totalItems, errors }) => {
+                .then(({ successCount, failureCount, totalCount, errors }) => {
                     if (failureCount) {
                         console.warn("Some moves failed:", errors);
-                        alert(`${successCount}/${totalItems} moves succeeded`);
+                        alert(`${successCount}/${totalCount} moves succeeded`);
                         return;
                     }
                     
