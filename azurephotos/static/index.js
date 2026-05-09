@@ -91,8 +91,9 @@ function uploadWithConcurrency(files, path, concurrency) {
 
                 updateProgressBar();
                 resolve();
-            }
+            };
             xhr.onerror = () => {
+                failureCount++;
                 errors.push({
                     file: file.name,
                     status: "network error"
@@ -100,7 +101,7 @@ function uploadWithConcurrency(files, path, concurrency) {
 
                 updateProgressBar();
                 resolve();
-            }
+            };
 
             xhr.send(formData);
         });
@@ -118,6 +119,96 @@ function uploadWithConcurrency(files, path, concurrency) {
                 active++;
 
                 uploadSingle(file).then(() => {
+                    active--;
+                    next();
+                });
+            }
+        }
+
+        successCount = 0;
+        updateProgressBar();
+
+        next();
+    });
+}
+
+function deleteWithConcurrency(filenames, path, concurrency) {
+    filenames = Array.from(filenames);
+    let index = 0;
+    let active = 0;
+
+    const totalFiles = filenames.length;
+    let successCount = 0;
+    let failureCount = 0;
+    const errors = [];
+
+    function updateProgressBar() {
+        const successPercent = Math.round((successCount / totalFiles) * 100);
+        const failurePercent = Math.round((failureCount / totalFiles) * 100);
+
+        $("#successProgress")
+            .css("width", successPercent + "%")
+            .attr("aria-valuenow", successPercent)
+            .text(`${successCount} / ${totalFiles}`)
+        $("#failureProgress")
+            .css("width", failurePercent + "%")
+            .attr("aria-valuenow", failurePercent)
+            .text(`${failureCount} / ${totalFiles}`)
+    }
+
+    function deleteSingle(filename) {
+        return new Promise((resolve) => {
+            const xhr = new XMLHttpRequest();
+            const pathWithFile = `${path}/${filename}`
+            xhr.open("DELETE", pathWithFile);
+
+            xhr.onload = () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    successCount++;
+
+                    const thumbnailQuery = `[src="/thumbnail/${filename}"]`;
+                    const deletedThumbnail = document.querySelector(thumbnailQuery);
+                    if (deletedThumbnail) {
+                        deletedThumbnail.closest(".col").remove();
+                    }
+                } else {
+                    failureCount++;
+                    errors.push({
+                        file: filename,
+                        status: xhr.status
+                    });
+                }
+
+                updateProgressBar();
+                resolve();
+            };
+            xhr.onerror = () => {
+                failureCount++;
+                errors.push({
+                    file: filename,
+                    status: "network error"
+                });
+
+                updateProgressBar();
+                resolve();
+            };
+
+            xhr.send();
+        })
+    }
+
+    return new Promise((resolve) => {
+        function next() {
+            if (index === filenames.length && active === 0) {
+                resolve({ successCount, totalFiles, errors });
+                return;
+            }
+
+            while(active < concurrency && index < filenames.length) {
+                const filename = filenames[index++];
+                active++;
+
+                deleteSingle(filename).then(() => {
                     active--;
                     next();
                 });
@@ -214,7 +305,7 @@ $(document).ready(() => {
     $("#uploadForm").on('submit', function (event) {
         event.preventDefault();
 
-        const isAlbum = typeof (album) !== "undefined";
+        const isAlbum = (typeof album) !== "undefined";
         const path = isAlbum ? `/upload/${album}` : `/upload`;
 
         const input = document.getElementById("formFileLg");
@@ -239,8 +330,8 @@ $(document).ready(() => {
 
         $("#formFileLg").prop("disabled", true);
         $("#submitUpload").prop("disabled", true);
-        $("#uploadProgress .progress-bar").addClass("progress-bar-animated");
-        $("#uploadProgress").show();
+        $("#operationProgress .progress-bar").addClass("progress-bar-animated");
+        $("#operationProgress").show();
 
         uploadWithConcurrency(validFiles, path, 2)
             .then(({ successCount, totalFiles, errors }) => {
@@ -255,16 +346,17 @@ $(document).ready(() => {
             .finally(() => {
                 $("#formFileLg").prop("disabled", false);
                 $("#submitUpload").prop("disabled", false);
-                $("#uploadProgress .progress-bar").removeClass("progress-bar-animated");
+                $("#operationProgress .progress-bar").removeClass("progress-bar-animated");
                 setTimeout(() => { 
-                    $("#uploadProgress").hide(); 
+                    $("#operationProgress").hide();
                 }, 500);
             });
     });
 
-    // Delete photo or video
+    // Delete photos and videos
     $(".photo-action.delete-btn").click(function (event) {
         const isAlbum = (typeof album) !== "undefined";
+        const basePath = isAlbum ? `/api/albums/${album}` : `/delete`;
 
         // If we clicked the delete button on an unchecked item, add it to selected items
         const selected = event.currentTarget.dataset.selected;
@@ -277,25 +369,25 @@ $(document).ready(() => {
             return;
         }
 
-        selectedItems.forEach(selectedItem => {
-            const deleteUrl = isAlbum ? `/api/albums/${album}/${selectedItem}` : `/delete/${selectedItem}`;
-            fetch(deleteUrl, { method: "DELETE" })
-                .then(response => {
-                    if (response.ok) {
-                        const selectedItemQuery = `[src="/thumbnail/${selectedItem}"]`;
-                        const deletedThumbnail = document.querySelector(selectedItemQuery);
-                        if (deletedThumbnail) {
-                            deletedThumbnail.closest(".col").remove();
-                        }
-                        selectedItems.delete(selectedItem)
-                    } else {
-                        console.log(response);
-                    }
-                })
-                .catch(error => {
-                    console.log(error);
-                });
-        });
+        $("#operationProgress .progress-bar").addClass("progress-bar-animated");
+        $("#operationProgress").show();
+
+        deleteWithConcurrency(selectedItems, basePath, 4)
+            .then(({ successCount, totalFiles, errors }) => {
+                if (errors.length > 0) {
+                    console.warn("Some deletes failed:", errors);
+                    alert(`${successCount}/${totalFiles} deletes succeeded`);
+                    return;
+                }
+
+                selectedItems.clear();
+            })
+            .finally(() => {
+                $("#operationProgress .progress-bar").removeClass("progress-bar-animated");
+                setTimeout(() => { 
+                    $("#operationProgress").hide(); 
+                }, 500);
+            });
     });
 
     // Place photo or video in album
