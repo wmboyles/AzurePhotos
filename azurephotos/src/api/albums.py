@@ -128,7 +128,7 @@ def rename_album(album_name: str, new_name: str) -> Response:
     return Response(status=204)
 
 
-@api_albums_controller.route("<album_name>", methods=["DELETE"])
+@api_albums_controller.route("/<album_name>", methods=["DELETE"])
 def delete_album(album_name: str) -> Response:
     """
     Delete an album.
@@ -170,7 +170,7 @@ def delete_album(album_name: str) -> Response:
     return Response(status=204)
 
 
-@api_albums_controller.route("<album_name>/<filename>", methods=["POST"])
+@api_albums_controller.route("/<album_name>/<filename>", methods=["POST"])
 def move_to_album(album_name: str, filename: str) -> Response:
     """
     Move an existing file from the "none" album to another album.
@@ -255,7 +255,7 @@ def upload_to_album(filename: str, date_taken: datetime, album_name: str) -> Res
     return Response(status=201)
 
 
-@api_albums_controller.route("<album_name>", methods=["GET"])
+@api_albums_controller.route("/<album_name>", methods=["GET"])
 def list_album(album_name: str) -> Response | list[MediaRecord]:
     """
     List the files in an album, sorted by last modified time.
@@ -291,7 +291,7 @@ def list_album(album_name: str) -> Response | list[MediaRecord]:
     return sorted(medias, reverse=True)
 
 
-@api_albums_controller.route("<album_name>/<filename>", methods=["DELETE"])
+@api_albums_controller.route("/<album_name>/<filename>", methods=["DELETE"])
 def remove_from_album(album_name: str, filename: str) -> Response:
     """
     Remove a photo from an album, putting it back in the "none" album.
@@ -333,7 +333,7 @@ def remove_from_album(album_name: str, filename: str) -> Response:
     return Response(status=204)
 
 
-@api_albums_controller.route("thumbnail/<album_name>", methods=["GET"])
+@api_albums_controller.route("/thumbnail/<album_name>", methods=["GET"])
 def get_album_thumbnail(album_name: str) -> Response:
     """
     Get the thumbnail for an album.
