@@ -174,7 +174,7 @@ def delete_album(album_name: str) -> Response:
 def move_to_album(album_name: str, filename: str) -> Response:
     """
     Move an existing file from the "none" album to another album.
-    For uploading a new file to an album, use :func:`delete_album`
+    For uploading a new file to an album, use :func:`upload_to_album`.
 
     :param album_name: The name of the album to add the file to.
     :param filename: The filename to add to the album.
