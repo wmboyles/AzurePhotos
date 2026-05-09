@@ -230,7 +230,7 @@ def upload_to_album(filename: str, date_taken: datetime, album_name: str) -> Res
     - Photo does not exist in another album, including "none" album
 
     :param filename: The filename to add to the album
-    :param date_take: When the file was created
+    :param date_taken: When the file was created
     :param album_name: Name of album to add to
     """
 
