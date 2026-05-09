@@ -310,9 +310,12 @@ def remove_from_album(album_name: str, filename: str) -> Response:
     table_client: TableClient = current_app.config["albums_table_client"]
 
     # Get existing entity
-    existing_entity = table_client.get_entity(
-        partition_key=album_name, row_key=filename
-    )
+    try:
+        existing_entity = table_client.get_entity(
+            partition_key=album_name, row_key=filename
+        )
+    except ResourceNotFoundError:
+        return Response(f"'{filename}' not found in album '{album_name}'", status=404)
 
     # Add new entity to NONE album
     new_entity = dict(existing_entity)
