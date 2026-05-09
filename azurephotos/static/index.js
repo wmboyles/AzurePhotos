@@ -161,7 +161,7 @@ function uploadFile(file, path) {
         formData.append("upload", file);
 
         const lastModified = new Date(file.lastModified);
-        formData.append("dateTaken", dateTaken.toISOString());
+        formData.append("dateTaken", lastModified.toISOString());
 
         const xhr = new XMLHttpRequest();
         xhr.open("POST", path);
@@ -185,7 +185,7 @@ function uploadFile(file, path) {
  * Delete a single file by HTTP DELETEing to a particular path.
  * 
  * @param {string} file File name with extension
- * @param {string} basePath API path to send request
+ * @param {string} path API path to send request
  * @returns {Promise<void>}
  */
 function deleteFile(file, path) {
@@ -214,12 +214,51 @@ function deleteFile(file, path) {
     });
 }
 
+/**
+ * Move a single file to an album by HTTP POSTing to a particular path.
+ * 
+ * @param {string} file File name with extension
+ * @param {string} path API path to send request
+ * @returns {Promise<void>}
+ */
+function moveToAlbum(file, path) {
+    return new Promise((resolve) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", path);
+
+        xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                const thumbnailQuery = `[src="/thumbnail/${file}"]`;
+                const movedThumbnail = document.querySelector(thumbnailQuery);
+                if (movedThumbnail) {
+                    movedThumbnail.closest(".col").remove();
+                }
+
+                resolve();
+            } else {
+                reject(xhr.status);
+            }
+        };
+        xhr.onerror = () => {
+            reject("network error");
+        }
+
+        xhr.send();
+    });
+}
+
 // Some variables are passed here from HTML from Flask.
 // We'll have `albums` on the main page, `album` on an album page, and `videoUrls` on the video page.
 $(document).ready(() => {
-    // Last viewed photo or video in modal
+    /**
+     * Last viewed photo or video in modal
+     * @type {string?}
+     */
     let modalPhotoName = null;
-    // Photo or video selected by checkbox
+    /**
+     * Photo or video selected by checkbox
+     * @type {Set<string>}
+     */
     let selectedItems = new Set();
 
     // Open modal when clicking on a thumbnail
@@ -330,10 +369,10 @@ $(document).ready(() => {
             (file) => uploadFile(file, path),
             2
         )
-            .then(({ successCount, failureCount, totalFiles, errors }) => {
+            .then(({ successCount, failureCount, totalItems, errors }) => {
                 if (failureCount > 0) {
                     console.warn("Some uploads failed:", errors);
-                    alert(`${successCount}/${totalFiles} uploads succeeded`);
+                    alert(`${successCount}/${totalItems} uploads succeeded`);
                     return;
                 }
 
@@ -373,10 +412,10 @@ $(document).ready(() => {
             (file) => deleteFile(file, `${basePath}/${file}`),
             4
         )
-            .then(({ successCount, failureCount, totalFiles, errors }) => {
+            .then(({ successCount, failureCount, totalItems, errors }) => {
                 if (failureCount) {
                     console.warn("Some deletes failed:", errors);
-                    alert(`${successCount}/${totalFiles} deletes succeeded`);
+                    alert(`${successCount}/${totalItems} deletes succeeded`);
                     return;
                 }
 
@@ -390,7 +429,7 @@ $(document).ready(() => {
             });
     });
 
-    // Place photo or video in album
+    // Place photos and videos in album
     $(".photo-action.album-btn").siblings("ul").find("li .dropdown-item").each(function () {
         const li = $(this);
         const album = li.text()
@@ -409,28 +448,35 @@ $(document).ready(() => {
                 return;
             }
 
-            selectedItems.forEach(selectedItem => {
-                fetch(`/api/albums/${album}/${selectedItem}`, { method: "POST" })
-                    .then(response => {
-                        if (response.ok) {
-                            const selectedItemsQuery = `[data-full="/fullsize/${selectedItem}"]`;
-                            const movedThumbnail = document.querySelector(selectedItemsQuery);
-                            if (movedThumbnail) {
-                                movedThumbnail.closest(".col").remove();
-                            }
-                            if (modalPhotoName !== null) {
-                                bootstrap.Modal.getInstance(fullsizeModal).hide();
-                                modalPhotoName = null;
-                            }
-                            selectedItems.delete(selectedItem)
-                        } else {
-                            console.log(response);
-                        }
-                    })
-                    .catch(error => {
-                        console.log(error)
-                    });
-            });
+            $("#operationProgress .progress-bar").addClass("progress-bar-animated");
+            $("#operationProgress").show();
+
+            const basePath = `/api/albums/${album}`;
+            doWithProgressBarWithConcurrency(
+                selectedItems,
+                (file) => moveToAlbum(file, `${basePath}/${file}`),
+                4
+            )
+                .then(({ successCount, failureCount, totalItems, errors }) => {
+                    if (failureCount) {
+                        console.warn("Some moves failed:", errors);
+                        alert(`${successCount}/${totalItems} moves succeeded`);
+                        return;
+                    }
+                    
+                    if (modalPhotoName !== null) {
+                        bootstrap.Modal.getInstance(fullsizeModal).hide();
+                        modalPhotoName = null;
+                    }
+
+                    selectedItems.clear();
+                })
+                .finally(() => {
+                    $("#operationProgress .progress-bar").removeClass("progress-bar-animated");
+                    setTimeout(() => { 
+                        $("#operationProgress").hide(); 
+                    }, 500);
+                });
         });
     });
 
