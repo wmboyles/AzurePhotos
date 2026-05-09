@@ -43,7 +43,6 @@ def main() -> str:
         media = all_media_future.result()
         album_names = list_albums_future.result()
     
-    print("SERVING PAGE")
     return render_template("photos.html", medias=media, albums=album_names)
 
 @albums_view_controller.route("/<album_name>", methods=["GET"])

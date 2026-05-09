@@ -174,7 +174,8 @@ def move_to_album(album_name: str, filename: str) -> Response:
 
     if album_name == NONE_ALBUM_NAME:
         return Response(
-            f"Album name '{NONE_ALBUM_NAME}' is reserved and cannot be added to directly"
+            f"Album name '{NONE_ALBUM_NAME}' is reserved and cannot be added to directly",
+            status=403
         )
 
     table_client: TableClient = current_app.config["albums_table_client"]
@@ -294,7 +295,8 @@ def remove_from_album(album_name: str, filename: str) -> Response:
 
     if album_name == NONE_ALBUM_NAME:
         return Response(
-            f"Album name '{NONE_ALBUM_NAME}' is reserved and cannot be deleted from"
+            f"Album name '{NONE_ALBUM_NAME}' is reserved and cannot be deleted from",
+            status=403
         )
 
     table_client: TableClient = current_app.config["albums_table_client"]
