@@ -188,6 +188,7 @@ def move_to_album(album_name: str, filename: str) -> Response:
 
     table_client: TableClient = current_app.config["albums_table_client"]
 
+    # Find file in "none" album
     try:
         non_album_entity = table_client.get_entity(
             partition_key=NONE_ALBUM_NAME, row_key=filename
@@ -198,6 +199,7 @@ def move_to_album(album_name: str, filename: str) -> Response:
             status=404,
         )
 
+    # Find target album
     try:
         _ = table_client.get_entity(partition_key=album_name, row_key="")
     except ResourceNotFoundError:
@@ -206,7 +208,11 @@ def move_to_album(album_name: str, filename: str) -> Response:
     # Add new entity to album
     new_file = dict(non_album_entity)
     new_file["PartitionKey"] = album_name
-    _ = table_client.create_entity(new_file)
+    try:
+        _ = table_client.create_entity(new_file)
+    except ResourceExistsError:
+        # File already exists in album
+        pass
 
     # Delete existing entity
     try:
