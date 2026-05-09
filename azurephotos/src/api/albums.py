@@ -107,6 +107,7 @@ def rename_album(album_name: str, new_name: str) -> Response:
     query = "PartitionKey eq @album_name"
     parameters = {"album_name": album_name}
     entities = table_client.query_entities(query_filter=query, parameters=parameters)
+    entity = None
     for entity in entities:
         photo_copy = {
             "PartitionKey": new_name,
@@ -120,6 +121,9 @@ def rename_album(album_name: str, new_name: str) -> Response:
         except ResourceNotFoundError:
             # Entry already deleted
             pass
+
+    if not entity:  # No results. Loop didn't run
+        return Response(f"Album '{album_name}' not found", status=404)
 
     return Response(status=204)
 
