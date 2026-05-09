@@ -75,9 +75,6 @@ def upload(file: FileStorage, date_taken: datetime) -> str:
         ResourceExistsError when blob with filename already exists
     """
 
-    photos_container_client: ContainerClient = current_app.config["photos_container_client"]
-    thumbnails_container_client: ContainerClient = current_app.config["thumbnails_container_client"]
-
     save_filename = secure_filename(str(file.filename))
     metadata = {"lastModified": date_taken.isoformat()}
     data = file.stream.read()
