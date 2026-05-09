@@ -1,4 +1,7 @@
-// Should match src.lib.models.media.PHOTO_EXTENSIONS
+/**
+ * Collection of file extensions representing supported photo types.
+ * Should match src.lib.models.media.PHOTO_EXTENSIONS
+ */
 const PHOTO_EXTENSIONS = new Set([
     ".jpg", ".jpeg", ".jpe", ".jfif",
     ".png",
@@ -10,7 +13,10 @@ const PHOTO_EXTENSIONS = new Set([
     ".heic", ".heif",
 ]);
 
-// Should match src.lib.models.media.VIDEO_EXTENSIONS
+/**
+ * Collection of file extensions representing supported video types.
+ * Should match src.lib.models.media.VIDEO_EXTENSIONS
+ */
 const VIDEO_EXTENSIONS = new Set([
     ".mp4",
     ".mov",
@@ -24,6 +30,12 @@ const VIDEO_EXTENSIONS = new Set([
     ".m2ts",
 ]);
 
+/**
+ * Get the extension from a file name.
+ * @example getExtension("video.mp4") === ".mp4"
+ * @param {string} filename File name with extension
+ * @returns {string?}
+ */
 function getExtension(filename) {
     if (typeof filename !== 'string') {
         return null;
@@ -34,191 +46,171 @@ function getExtension(filename) {
     return extension;
 }
 
+/**
+ * Determine if a filename is a supported photo type.
+ * @param {string} filename File name with extension
+ * @returns {boolean}
+ */
 function isPhoto(filename) {
     const extension = getExtension(filename);
     return PHOTO_EXTENSIONS.has(extension);
 }
 
+/**
+ * Determine if a filename is a supported video type.
+ * @param {string} filename File name with extension
+ * @returns {boolean}
+ */
 function isVideo(filename) {
     const extension = getExtension(filename);
     return VIDEO_EXTENSIONS.has(extension);
 }
 
-function uploadWithConcurrency(files, path, concurrency) {
+/**
+ * Perform an action on a collection of items
+ * Update the progress bar as actions are successful or failed
+ * Limit the number of concurrent actions run at once.
+ * 
+ * @param {Iterable<T> | ArrayLike<T>} items Collection of items to act upon
+ * @param {(item: T) => Promise<void>} action Action to perform on each item
+ * @param {number} concurrency Max concurrency limit
+ * @returns {Promise<{
+ *  successCount: number;
+ *  failureCount: number;
+ *  totalItems: number;
+ *  errors: Array<{
+ *      item: T;
+ *      error: unknown
+ *  }>;
+ * }>}
+ */
+function doWithProgressBarWithConcurrency(items, action, concurrency) {
+    items = Array.from(items);
+    const totalCount = items.length;
+
     let index = 0;
     let active = 0;
-
-    const totalFiles = files.length;
     let successCount = 0;
     let failureCount = 0;
     const errors = [];
 
     function updateProgressBar() {
-        const successPercent = Math.round((successCount / totalFiles) * 100);
-        const failurePercent = Math.round((failureCount / totalFiles) * 100);
+        const successPercent = Math.round((successCount / totalCount) * 100);
+        const failurePercent = Math.round((failureCount / totalCount) * 100);
 
         $("#successProgress")
             .css("width", successPercent + "%")
             .attr("aria-valuenow", successPercent)
-            .text(`${successCount} / ${totalFiles}`)
+            .text(`${successCount} / ${totalCount}`)
         $("#failureProgress")
             .css("width", failurePercent + "%")
             .attr("aria-valuenow", failurePercent)
-            .text(`${failureCount} / ${totalFiles}`)
-    }
-
-    function uploadSingle(file) {
-        return new Promise((resolve) => {
-            const formData = new FormData();
-            formData.append("upload", file);
-
-            const dateTaken = new Date(file.lastModified);
-            formData.append("dateTaken", dateTaken.toISOString());
-
-            const xhr = new XMLHttpRequest();
-            xhr.open("POST", path);
-
-            xhr.onload = () => {
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    successCount++;
-                } else {
-                    failureCount++;
-                    errors.push({
-                        file: file.name,
-                        status: xhr.status
-                    });
-                }
-
-                updateProgressBar();
-                resolve();
-            };
-            xhr.onerror = () => {
-                failureCount++;
-                errors.push({
-                    file: file.name,
-                    status: "network error"
-                });
-
-                updateProgressBar();
-                resolve();
-            };
-
-            xhr.send(formData);
-        });
+            .text(`${failureCount} / ${totalCount}`)
     }
 
     return new Promise((resolve) => {
         function next() {
-            if (index === files.length && active === 0) {
-                resolve({ successCount, totalFiles, errors });
+            if (index === totalCount && active === 0) {
+                resolve({
+                    successCount,
+                    failureCount,
+                    totalCount,
+                    errors
+                });
                 return;
             }
 
-            while (active < concurrency && index < files.length) {
-                const file = files[index++];
+            while (active < concurrency && index < totalCount) {
+                const item = items[index++];
                 active++;
 
-                uploadSingle(file).then(() => {
-                    active--;
-                    next();
-                });
+                action(item)
+                    .then(() => {
+                        successCount++;
+                    })
+                    .catch((error) => {
+                        failureCount++;
+                        errors.push({
+                            item,
+                            error
+                        });
+                    })
+                    .finally(() =>{
+                        active--;
+                        updateProgressBar();
+                        next();
+                    })
             }
         }
 
-        successCount = 0;
         updateProgressBar();
-
         next();
+    })
+}
+
+/**
+ * Upload a single file by HTTP POSTing to a particular path.
+ * 
+ * @param {File} file File to upload
+ * @param {string} path API path to send request
+ * @returns {Promise<void>}
+ */
+function uploadFile(file, path) {
+    return new Promise((resolve, reject) => {
+        const formData = new FormData();
+        formData.append("upload", file);
+
+        const lastModified = new Date(file.lastModified);
+        formData.append("dateTaken", dateTaken.toISOString());
+
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", path);
+
+        xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                resolve();
+            } else {
+                reject(xhr.status);
+            }
+        };
+        xhr.onerror = () => {
+            reject("network error");
+        }
+
+        xhr.send(formData);
     });
 }
 
-function deleteWithConcurrency(filenames, path, concurrency) {
-    filenames = Array.from(filenames);
-    let index = 0;
-    let active = 0;
+/**
+ * Delete a single file by HTTP DELETEing to a particular path.
+ * 
+ * @param {string} file File name with extension
+ * @param {string} basePath API path to send request
+ * @returns {Promise<void>}
+ */
+function deleteFile(file, path) {
+    return new Promise((resolve) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("DELETE", path);
 
-    const totalFiles = filenames.length;
-    let successCount = 0;
-    let failureCount = 0;
-    const errors = [];
-
-    function updateProgressBar() {
-        const successPercent = Math.round((successCount / totalFiles) * 100);
-        const failurePercent = Math.round((failureCount / totalFiles) * 100);
-
-        $("#successProgress")
-            .css("width", successPercent + "%")
-            .attr("aria-valuenow", successPercent)
-            .text(`${successCount} / ${totalFiles}`)
-        $("#failureProgress")
-            .css("width", failurePercent + "%")
-            .attr("aria-valuenow", failurePercent)
-            .text(`${failureCount} / ${totalFiles}`)
-    }
-
-    function deleteSingle(filename) {
-        return new Promise((resolve) => {
-            const xhr = new XMLHttpRequest();
-            const pathWithFile = `${path}/${filename}`
-            xhr.open("DELETE", pathWithFile);
-
-            xhr.onload = () => {
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    successCount++;
-
-                    const thumbnailQuery = `[src="/thumbnail/${filename}"]`;
-                    const deletedThumbnail = document.querySelector(thumbnailQuery);
-                    if (deletedThumbnail) {
-                        deletedThumbnail.closest(".col").remove();
-                    }
-                } else {
-                    failureCount++;
-                    errors.push({
-                        file: filename,
-                        status: xhr.status
-                    });
+        xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                const thumbnailQuery = `[src="/thumbnail/${file}"]`;
+                const deletedThumbnail = document.querySelector(thumbnailQuery);
+                if (deletedThumbnail) {
+                    deletedThumbnail.closest(".col").remove();
                 }
 
-                updateProgressBar();
                 resolve();
-            };
-            xhr.onerror = () => {
-                failureCount++;
-                errors.push({
-                    file: filename,
-                    status: "network error"
-                });
-
-                updateProgressBar();
-                resolve();
-            };
-
-            xhr.send();
-        })
-    }
-
-    return new Promise((resolve) => {
-        function next() {
-            if (index === filenames.length && active === 0) {
-                resolve({ successCount, totalFiles, errors });
-                return;
+            } else {
+                reject(xhr.status);
             }
+        };
+        xhr.onerror = () => {
+            reject("network error");
+        };
 
-            while(active < concurrency && index < filenames.length) {
-                const filename = filenames[index++];
-                active++;
-
-                deleteSingle(filename).then(() => {
-                    active--;
-                    next();
-                });
-            }
-        }
-
-        successCount = 0;
-        updateProgressBar();
-
-        next();
+        xhr.send();
     });
 }
 
@@ -333,9 +325,13 @@ $(document).ready(() => {
         $("#operationProgress .progress-bar").addClass("progress-bar-animated");
         $("#operationProgress").show();
 
-        uploadWithConcurrency(validFiles, path, 2)
-            .then(({ successCount, totalFiles, errors }) => {
-                if (errors.length > 0) {
+        doWithProgressBarWithConcurrency(
+            validFiles,
+            (file) => uploadFile(file, path),
+            2
+        )
+            .then(({ successCount, failureCount, totalFiles, errors }) => {
+                if (failureCount > 0) {
                     console.warn("Some uploads failed:", errors);
                     alert(`${successCount}/${totalFiles} uploads succeeded`);
                     return;
@@ -372,9 +368,13 @@ $(document).ready(() => {
         $("#operationProgress .progress-bar").addClass("progress-bar-animated");
         $("#operationProgress").show();
 
-        deleteWithConcurrency(selectedItems, basePath, 4)
-            .then(({ successCount, totalFiles, errors }) => {
-                if (errors.length > 0) {
+        doWithProgressBarWithConcurrency(
+            selectedItems,
+            (file) => deleteFile(file, `${basePath}/${file}`),
+            4
+        )
+            .then(({ successCount, failureCount, totalFiles, errors }) => {
+                if (failureCount) {
                     console.warn("Some deletes failed:", errors);
                     alert(`${successCount}/${totalFiles} deletes succeeded`);
                     return;
