@@ -189,7 +189,7 @@ function uploadFile(file, path) {
  * @returns {Promise<void>}
  */
 function deleteFile(file, path) {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open("DELETE", path);
 
@@ -222,7 +222,7 @@ function deleteFile(file, path) {
  * @returns {Promise<void>}
  */
 function moveToAlbum(file, path) {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open("POST", path);
 
