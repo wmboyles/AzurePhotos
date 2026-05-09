@@ -104,7 +104,7 @@ def thumbnail(photo_bytes: IO[bytes]) -> BytesIO:
     except DecompressionBombError:
         raise ValueError("Image is too large")
 
-def video_thumbnail(video_bytes: IO[bytes]) -> bytes:
+def video_thumbnail(video_path: str) -> bytes:
     """
     Create a compressed thumbnail of a video.
 
@@ -112,7 +112,7 @@ def video_thumbnail(video_bytes: IO[bytes]) -> bytes:
     - Takes thumbnail from first second of video, falling back to 0 seconds if video is shorter than 1 second
     - Appends a play button icon to the top-left of the thumbnail to differentiate it from photo thumbnails
 
-    NOTE: photo_bytes stream may be consumed/advanced by this method. 
+    NOTE: Caller owns :obj:`video_path` and is responsible for cleaning it up after this method returns
     """
     
     # find ffmpeg
@@ -125,12 +125,6 @@ def video_thumbnail(video_bytes: IO[bytes]) -> bytes:
     if not os.path.exists(video_icon_path):
         raise Exception("Cannot find video icon")
 
-    # Copy bytes to temporary file
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_video:
-        shutil.copyfileobj(video_bytes, temp_video)
-        temp_video.flush()
-        temp_video_path = temp_video.name
-
     # Use ffmpeg to compute thumbnail
     def run_ffmpeg(seek_seconds: int = 1) -> bytes:
         cmd = [
@@ -138,7 +132,7 @@ def video_thumbnail(video_bytes: IO[bytes]) -> bytes:
             "-hide_banner",
             "-loglevel", "error",
             "-ss", str(seek_seconds),
-            "-i", temp_video_path,
+            "-i", video_path,
             "-i", video_icon_path,
             "-frames:v", "1",
             "-filter_complex",
@@ -159,27 +153,18 @@ def video_thumbnail(video_bytes: IO[bytes]) -> bytes:
                 stderr = subprocess.PIPE,
                 check = True
             )
-            
-            process_stdout = process.stdout
-            if process_stdout is None or len(process_stdout) == 0:
-                if seek_seconds != 0: # fallback to seeking to 0 seconds
-                    return run_ffmpeg(seek_seconds=0)
-                else:
-                    raise RuntimeError("No output from ffmpeg process")
-        
-            return process_stdout
         except subprocess.CalledProcessError as e:
             # TODO: Should we create a default thumbnail? Maybe this can be done in /thumbnail route?
             raise RuntimeError(
                 f"ffmpeg failed:\n{e.stderr.decode(errors='ignore')}"
             ) from e
 
-    try:
-        ffmpeg_results = run_ffmpeg()
-    finally:
-        os.remove(temp_video_path)
+        if not process.stdout:
+            if seek_seconds != 0: # fallback to seeking to 0 seconds
+                return run_ffmpeg(seek_seconds=0)
+            else:
+                raise RuntimeError("No output from ffmpeg process")
     
-    if ffmpeg_results is None or len(ffmpeg_results) == 0:
-        raise RuntimeError("No output from ffmpeg process")
+        return process.stdout
 
-    return ffmpeg_results
+    return run_ffmpeg()
