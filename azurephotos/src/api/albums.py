@@ -9,13 +9,12 @@ An empty row key represents the album itself.
 """
 
 from azure.core.exceptions import ResourceNotFoundError, ResourceExistsError
-from azure.identity import DefaultAzureCredential
+from azure.data.tables import TableClient
 from datetime import datetime, timezone, timedelta
 from flask import Blueprint, Response, current_app, url_for, redirect
 from typing import Any
 
 from .media_cache import invalidate_media_cache
-from ..lib.storage_helper import TableClient, get_table_client
 from ..lib.refresher import refreshed
 from ..lib.models.media import MediaRecord
 
@@ -42,10 +41,7 @@ def create_album(album_name: str) -> Response | dict[str, Any]:
     if album_name == NONE_ALBUM_NAME:
         return Response(f"Album name {NONE_ALBUM_NAME} is reserved", status=403)
 
-    account_name: str = current_app.config["account_name"]
-    table_name: str = current_app.config["albums_table_name"]
-    credential: DefaultAzureCredential = current_app.config["credential"]
-    table_client: TableClient = get_table_client(account_name, table_name, credential)
+    table_client = current_app.config["albums_table_client"]
 
     new_album = {
         "PartitionKey": album_name,
@@ -65,24 +61,17 @@ def list_albums() -> list[str]:
     List all album names.
     """
 
-    account_name: str = current_app.config["account_name"]
-    table_name: str = current_app.config["albums_table_name"]
-    credential: DefaultAzureCredential = current_app.config["credential"]
-
-    return _list_albums(account_name, table_name, credential)
+    return _list_albums()
 
 
 @refreshed(every=timedelta(seconds=30))
-def _list_albums(
-    account_name: str, table_name: str, credential: DefaultAzureCredential
-) -> list[str]:
+def _list_albums() -> list[str]:
+
     """
     List all album names.
     """
 
-    print("LISTING ALBUMS")
-
-    table_client: TableClient = get_table_client(account_name, table_name, credential)
+    table_client: TableClient = current_app.config["albums_table_client"]
 
     query = "PartitionKey ne @reserved_album_name and RowKey eq ''"
     parameters = {"reserved_album_name": NONE_ALBUM_NAME}
@@ -109,10 +98,7 @@ def rename_album(album_name: str, new_name: str) -> Response:
             f"Album '{NONE_ALBUM_NAME}' is reserved and cannot be renamed", status=403
         )
 
-    account_name: str = current_app.config["account_name"]
-    table_name: str = current_app.config["albums_table_name"]
-    credential: DefaultAzureCredential = current_app.config["credential"]
-    table_client: TableClient = get_table_client(account_name, table_name, credential)
+    table_client: TableClient = current_app.config["albums_table_client"]
 
     query = "PartitionKey eq @album_name"
     parameters = {"album_name": album_name}
@@ -149,10 +135,7 @@ def delete_album(album_name: str) -> Response:
             status=403,
         )
 
-    account_name: str = current_app.config["account_name"]
-    table_name: str = current_app.config["albums_table_name"]
-    credential: DefaultAzureCredential = current_app.config["credential"]
-    table_client: TableClient = get_table_client(account_name, table_name, credential)
+    table_client: TableClient = current_app.config["albums_table_client"]
 
     query = "PartitionKey eq @album_name"
     parameters = {"album_name": album_name}
@@ -194,10 +177,7 @@ def move_to_album(album_name: str, filename: str) -> Response:
             f"Album name '{NONE_ALBUM_NAME}' is reserved and cannot be added to directly"
         )
 
-    account_name: str = current_app.config["account_name"]
-    table_name: str = current_app.config["albums_table_name"]
-    credential: DefaultAzureCredential = current_app.config["credential"]
-    table_client: TableClient = get_table_client(account_name, table_name, credential)
+    table_client: TableClient = current_app.config["albums_table_client"]
 
     try:
         non_album_entity = table_client.get_entity(
@@ -245,10 +225,16 @@ def upload_to_album(filename: str, date_taken: datetime, album_name: str) -> Res
     :param album_name: Name of album to add to
     """
 
-    account_name: str = current_app.config["account_name"]
-    table_name: str = current_app.config["albums_table_name"]
-    credential: DefaultAzureCredential = current_app.config["credential"]
-    table_client: TableClient = get_table_client(account_name, table_name, credential)
+    table_client: TableClient = current_app.config["albums_table_client"]
+
+    # Check that album exists
+    # TODO: Could we cache this and avoid checking every time?
+    try:
+        # None album entry doesn't have an empty row key. We can assume it always exists
+        if album_name != NONE_ALBUM_NAME:
+            _ = table_client.get_entity(partition_key=album_name, row_key="")
+    except ResourceNotFoundError:
+        return Response(f"Album '{album_name}' does not exist", status=404)
 
     new_file = {
         "PartitionKey": album_name,
@@ -268,10 +254,7 @@ def list_album(album_name: str) -> Response | list[MediaRecord]:
     :param album_name: The name of the album to list files for.
     """
 
-    account_name: str = current_app.config["account_name"]
-    table_name: str = current_app.config["albums_table_name"]
-    credential: DefaultAzureCredential = current_app.config["credential"]
-    table_client: TableClient = get_table_client(account_name, table_name, credential)
+    table_client: TableClient = current_app.config["albums_table_client"]
 
     query = "PartitionKey eq @album_name"
     parameters = {"album_name": album_name}
@@ -314,10 +297,7 @@ def remove_from_album(album_name: str, filename: str) -> Response:
             f"Album name '{NONE_ALBUM_NAME}' is reserved and cannot be deleted from"
         )
 
-    account_name: str = current_app.config["account_name"]
-    table_name: str = current_app.config["albums_table_name"]
-    credential: DefaultAzureCredential = current_app.config["credential"]
-    table_client: TableClient = get_table_client(account_name, table_name, credential)
+    table_client: TableClient = current_app.config["albums_table_client"]
 
     # Get existing entity
     existing_entity = table_client.get_entity(
@@ -348,10 +328,7 @@ def get_album_thumbnail(album_name: str) -> Response:
     :param album_name: The name of the album to get the thumbnail for.
     """
 
-    account_name: str = current_app.config["account_name"]
-    table_name: str = current_app.config["albums_table_name"]
-    credential: DefaultAzureCredential = current_app.config["credential"]
-    table_client: TableClient = get_table_client(account_name, table_name, credential)
+    table_client: TableClient = current_app.config["albums_table_client"]
 
     query = "PartitionKey eq @album_name and RowKey ne ''"
     parameters = {"album_name": album_name}
@@ -382,10 +359,7 @@ def remove_from_all_albums(filename: str) -> set[str]:
     :return: The set of albums that were affected by the removal.
     """
 
-    account_name: str = current_app.config["account_name"]
-    table_name: str = current_app.config["albums_table_name"]
-    credential: DefaultAzureCredential = current_app.config["credential"]
-    table_client: TableClient = get_table_client(account_name, table_name, credential)
+    table_client: TableClient = current_app.config["albums_table_client"]
 
     query = "RowKey eq @filename"
     parameters = {"filename": filename}
@@ -403,14 +377,12 @@ def remove_from_all_albums(filename: str) -> set[str]:
 
 
 @refreshed(every=timedelta(seconds=30))
-def non_album_file_names(
-    account_name: str, table_name: str, credential: DefaultAzureCredential
-) -> list[MediaRecord]:
+def non_album_file_names() -> list[MediaRecord]:
     """
     Get all entities not in an album
     """
 
-    table_client: TableClient = get_table_client(account_name, table_name, credential)
+    table_client: TableClient = current_app.config["albums_table_client"]
 
     query = "PartitionKey eq @reserved_album_name and RowKey ne ''"
     parameters = {"reserved_album_name": NONE_ALBUM_NAME}

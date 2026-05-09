@@ -4,60 +4,21 @@ API endpoints for handling videos.
 :author: William Boyles
 """
 
-from azure.core.exceptions import ResourceNotFoundError
-from azure.identity import DefaultAzureCredential
-from azure.storage.blob import ContainerClient, BlobProperties, ContentSettings
+import os
+import shutil
+import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+
+from azure.core.exceptions import ResourceNotFoundError
+from azure.storage.blob import ContainerClient, ContentSettings
 from flask import redirect, current_app
 from werkzeug.utils import secure_filename
 from werkzeug.wrappers.response import Response
 from werkzeug.datastructures.file_storage import FileStorage
 
 from ..lib.thumbnails import video_thumbnail as compute_thumbnail
-from ..lib.models.media import MediaRecord, MediaType
 from ..lib.storage_helper import get_container_sas
-
-
-def all_videos(
-    account_name: str, videos_container_name: str, credential: DefaultAzureCredential
-) -> list[MediaRecord]:
-    """
-    Get all vidoes stored in blob storage and their last modified time.
-    Videos are ordered by their last modified time.
-    """
-
-    # credential: DefaultAzureCredential = current_app.config["credential"]
-    # account_name = current_app.config["account_name"]
-    blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
-    # videos_container_name: str = current_app.config["videos_container_name"]
-
-    with ContainerClient(
-        blob_account_url, videos_container_name, credential
-    ) as container_client:
-        blobs = list(container_client.list_blobs(include="metadata"))
-
-        def last_modified(blob_properties: BlobProperties) -> datetime:
-            if (
-                not blob_properties.metadata
-                or not isinstance(blob_properties.metadata, dict)
-                or not blob_properties.metadata.get("lastModified")
-            ):
-                return blob_properties.last_modified  # type: ignore
-
-            return datetime.fromisoformat(blob_properties.metadata["lastModified"])
-
-        return sorted(
-            (
-                MediaRecord(
-                    last_modified=last_modified(blob),
-                    filename=str(blob.name),
-                    type=MediaType.VIDEO,
-                )
-                for blob in blobs
-            ),
-            reverse=True,
-        )
-
 
 def fullsize(filename: str) -> Response:
     """
@@ -66,14 +27,10 @@ def fullsize(filename: str) -> Response:
     :param filename: The name of the file.
     """
 
-    account_name: str = current_app.config["account_name"]
-    blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
-    credential: DefaultAzureCredential = current_app.config["credential"]
-    videos_container_name: str = current_app.config["videos_container_name"]
+    blob_account_url: str = current_app.config["blob_account_url"]
+    videos_container_name: str = "videos"
 
-    videos_container_sas = get_container_sas(
-        account_name, videos_container_name, credential
-    )
+    videos_container_sas = get_container_sas(videos_container_name)
     return redirect(
         f"{blob_account_url}/{videos_container_name}/{filename}?{videos_container_sas}"
     )
@@ -87,36 +44,52 @@ def upload(file: FileStorage, date_taken: datetime) -> str:
         ResourceExistsError when blob with filename already exists
     """
 
-    account_name: str = current_app.config["account_name"]
-    blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
-    videos_container_name: str = current_app.config["videos_container_name"]
-    thumbnails_container_name: str = current_app.config["thumbnails_container_name"]
-    credential: DefaultAzureCredential = current_app.config["credential"]
+    videos_container_client: ContainerClient = current_app.config["videos_container_client"]
+    thumbnails_container_client: ContainerClient = current_app.config["thumbnails_container_client"]
 
     save_filename = secure_filename(str(file.filename))
     metadata = {"lastModified": date_taken.isoformat()}
-    with ContainerClient(
-        blob_account_url, videos_container_name, credential
-    ) as videos_container_client, ContainerClient(
-        blob_account_url, thumbnails_container_name, credential
-    ) as thumbnails_container_client:
-        _ = thumbnails_container_client.upload_blob(
-            name=f"{save_filename}.webp",
-            data=compute_thumbnail(file.stream),
-            metadata=metadata,
-            content_settings=ContentSettings(
-                cache_control="public, max-age=31536000, immutable"
-            ),
-        )
 
-        if file.stream.seekable():
-            file.stream.seek(0)
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".video") as temp_file:
+        shutil.copyfileobj(file.stream, temp_file)   
+        temp_file.flush()
+        temp_path = temp_file.name       
+    file_size = os.path.getsize(temp_path)                                  
 
-        _ = videos_container_client.upload_blob(
-            name=save_filename, data=file.stream, metadata=metadata
-        )
+    try:
+        def upload_thumbnail(client: ContainerClient) -> None:
+            thumbnail_bytes = compute_thumbnail(temp_path)
+            _ = client.upload_blob(
+                name=f"{save_filename}.webp",
+                data=thumbnail_bytes,
+                metadata=metadata,
+                content_settings=ContentSettings(
+                    cache_control="public, max-age=31536000, immutable"
+                ),
+            )
 
-        # TODO: Try to delete thumbnail blob if fullsize upload failed
+        def upload_fullsize(client: ContainerClient) -> None:
+            with open(temp_path, "rb") as full:
+                _ = client.upload_blob(
+                    name=save_filename,
+                    data=full,
+                    length=file_size,
+                    max_concurrency=4,
+                    metadata=metadata
+                )
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            thumbnails_future = executor.submit(upload_thumbnail, thumbnails_container_client)
+            fullsize_future = executor.submit(upload_fullsize, videos_container_client)
+
+            # TODO: Try to delete thumbnail blob if fullsize upload failed
+            thumbnails_future.result()
+            fullsize_future.result()
+    finally:
+        try:
+            os.remove(temp_path)
+        except OSError:
+            pass
 
     return save_filename
 
@@ -128,16 +101,10 @@ def delete_fullsize(filename: str) -> None:
     :param filename: The name of the video file
     """
 
-    account_name: str = current_app.config["account_name"]
-    blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
-    videos_container_name: str = current_app.config["videos_container_name"]
-    credential: DefaultAzureCredential = current_app.config["credential"]
+    videos_container_client: ContainerClient = current_app.config["videos_container_client"]
 
     try:
-        with ContainerClient(
-            blob_account_url, videos_container_name, credential
-        ) as container_client:
-            container_client.delete_blob(filename)
+        videos_container_client.delete_blob(filename)
     except ResourceNotFoundError:
         # Blob already deleted
         pass
@@ -149,19 +116,12 @@ def delete_thumbnail(filename: str) -> None:
 
     :param filename: The name of the photo file
     """
-
-    account_name: str = current_app.config["account_name"]
-    blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
-    thumbnails_container_name: str = current_app.config["thumbnails_container_name"]
-    credential: DefaultAzureCredential = current_app.config["credential"]
+    thumbnails_container_client: ContainerClient = current_app.config["thumbnails_container_client"]
 
     thumbnail_filename = filename + ".webp"
 
     try:
-        with ContainerClient(
-            blob_account_url, thumbnails_container_name, credential
-        ) as thumbnails_container_client:
-            thumbnails_container_client.delete_blob(thumbnail_filename)
+        thumbnails_container_client.delete_blob(thumbnail_filename)
     except ResourceNotFoundError:
         # Blob already deleted
         pass

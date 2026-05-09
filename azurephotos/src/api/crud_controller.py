@@ -4,7 +4,6 @@ Will delegate to the proper controller per media.
 """
 
 from azure.core.exceptions import ResourceExistsError
-from azure.identity import DefaultAzureCredential
 from datetime import datetime
 from flask import Blueprint, redirect, current_app, request, jsonify
 from werkzeug.wrappers.response import Response
@@ -49,14 +48,10 @@ def thumbnail(filename: str) -> Response:
         case _:
             raise ValueError(f"Unrecognized {media_type=} for {filename=}")
 
-    account_name: str = current_app.config["account_name"]
-    blob_account_url: str = f"https://{account_name}.blob.core.windows.net"
-    credential: DefaultAzureCredential = current_app.config["credential"]
-    thumbnails_container_name: str = current_app.config["thumbnails_container_name"]
+    blob_account_url: str = current_app.config["blob_account_url"]
+    thumbnails_container_name: str = "thumbnails"
 
-    thumbnails_container_sas: str = get_container_sas(
-        account_name, thumbnails_container_name, credential
-    )
+    thumbnails_container_sas: str = get_container_sas(thumbnails_container_name)
     response = redirect(
         f"{blob_account_url}/{thumbnails_container_name}/{filename}?{thumbnails_container_sas}"
     )
