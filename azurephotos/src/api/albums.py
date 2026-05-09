@@ -97,6 +97,10 @@ def rename_album(album_name: str, new_name: str) -> Response:
         return Response(
             f"Album '{NONE_ALBUM_NAME}' is reserved and cannot be renamed", status=403
         )
+    if new_name == NONE_ALBUM_NAME:
+        return Response(
+            f"Album name '{NONE_ALBUM_NAME}' is reserved and cannot be renamed to", status=403
+        )
 
     table_client: TableClient = current_app.config["albums_table_client"]
 
