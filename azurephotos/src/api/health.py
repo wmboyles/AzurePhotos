@@ -5,7 +5,7 @@ API endpoints for managing health
 """
 
 from flask import Blueprint, Response, current_app
-from azure.storage.blob import BlobServiceClient, LinearRetry
+from azure.storage.blob import BlobServiceClient
 
 api_health_controller = Blueprint(
     "api_health_controller",
@@ -25,7 +25,7 @@ def health() -> Response:
     blob_service_client: BlobServiceClient = current_app.config["blob_service_client"]
 
     try:
-        blob_service_client.get_account_information(retry_policy=LinearRetry(retry_total=0))
+        _ = blob_service_client.get_account_information()
         return Response("ok", status=200, content_type="text/plain")
     except Exception as e:
         return Response(str(e), status=503, content_type="text/plain")
