@@ -27,8 +27,7 @@ api_albums_controller = Blueprint(
 )
 
 DEFAULT_ALBUM_THUMBNAIL: str = "/static/photo_album-512.webp"
-NONE_ALBUM_NAME = "__NONE__"
-
+NONE_ALBUM_NAME: str = "__NONE__"
 
 @api_albums_controller.route("/<album_name>", methods=["POST"])
 def create_album(album_name: str) -> Response | dict[str, Any]:
@@ -39,7 +38,9 @@ def create_album(album_name: str) -> Response | dict[str, Any]:
     """
 
     if album_name == NONE_ALBUM_NAME:
-        return Response(f"Album name {NONE_ALBUM_NAME} is reserved", status=403)
+        return Response(f"{album_name=} is reserved", status=403)
+    if not is_valid_album_name(album_name):
+        return Response(f"{album_name=} is not allowed due to length or charset restrictions", status=422)
 
     table_client = current_app.config["albums_table_client"]
 
@@ -94,13 +95,11 @@ def rename_album(album_name: str, new_name: str) -> Response:
     """
 
     if album_name == NONE_ALBUM_NAME:
-        return Response(
-            f"Album '{NONE_ALBUM_NAME}' is reserved and cannot be renamed", status=403
-        )
+        return Response(f"{album_name=} is reserved and cannot be renamed", status=403)
     if new_name == NONE_ALBUM_NAME:
-        return Response(
-            f"Album name '{NONE_ALBUM_NAME}' is reserved and cannot be renamed to", status=403
-        )
+        return Response(f"{new_name=} is reserved and cannot be renamed to", status=403)
+    if not is_valid_album_name(new_name):
+        return Response(f"{new_name=} is not allowed due to length or charset restrictions", status=422)
 
     table_client: TableClient = current_app.config["albums_table_client"]
 
@@ -138,10 +137,9 @@ def delete_album(album_name: str) -> Response:
     """
 
     if album_name == NONE_ALBUM_NAME:
-        return Response(
-            f"Album name '{NONE_ALBUM_NAME}' is reserved and cannot be deleted",
-            status=403,
-        )
+        return Response(f"{album_name=} is reserved and cannot be deleted", status=403)
+    if not is_valid_album_name(album_name):
+        return Response(f"{album_name=} is not allowed due to length or charset restrictions", status=422)
 
     table_client: TableClient = current_app.config["albums_table_client"]
 
@@ -181,10 +179,9 @@ def move_to_album(album_name: str, filename: str) -> Response:
     """
 
     if album_name == NONE_ALBUM_NAME:
-        return Response(
-            f"Album name '{NONE_ALBUM_NAME}' is reserved and cannot be added to directly",
-            status=403
-        )
+        return Response(f"{album_name=} is reserved and cannot be added to directly", status=403)
+    if not is_valid_album_name(album_name):
+        return Response(f"{album_name=} is not allowed due to length or charset restrictions", status=422)
 
     table_client: TableClient = current_app.config["albums_table_client"]
 
@@ -240,6 +237,9 @@ def upload_to_album(filename: str, date_taken: datetime, album_name: str) -> Res
     :param album_name: Name of album to add to
     """
 
+    if not is_valid_album_name(album_name):
+        return Response(f"{album_name=} is not allowed due to length or charset restrictions", status=422)
+
     table_client: TableClient = current_app.config["albums_table_client"]
 
     # Check that album exists
@@ -268,6 +268,9 @@ def list_album(album_name: str) -> Response | list[MediaRecord]:
 
     :param album_name: The name of the album to list files for.
     """
+
+    if not is_valid_album_name(album_name):
+        return Response(f"{album_name=} is not allowed due to length or charset restrictions", status=422)
 
     table_client: TableClient = current_app.config["albums_table_client"]
 
@@ -308,10 +311,9 @@ def remove_from_album(album_name: str, filename: str) -> Response:
     """
 
     if album_name == NONE_ALBUM_NAME:
-        return Response(
-            f"Album name '{NONE_ALBUM_NAME}' is reserved and cannot be deleted from",
-            status=403
-        )
+        return Response(f"{album_name=} is reserved and cannot be deleted from", status=403)
+    if not is_valid_album_name(album_name):
+        return Response(f"{album_name=} is not allowed due to length or charset restrictions", status=422)
 
     table_client: TableClient = current_app.config["albums_table_client"]
 
@@ -346,6 +348,9 @@ def get_album_thumbnail(album_name: str) -> Response:
 
     :param album_name: The name of the album to get the thumbnail for.
     """
+
+    if not is_valid_album_name(album_name):
+        return Response(f"{album_name=} is not allowed due to length or charset restrictions", status=422)
 
     table_client: TableClient = current_app.config["albums_table_client"]
 
@@ -417,3 +422,29 @@ def non_album_file_names() -> list[MediaRecord]:
             results.append(result)
 
     return results
+
+def is_valid_album_name(name: str) -> bool:
+    """
+    Check if an album name is valid.
+    See: https://learn.microsoft.com/en-us/rest/api/storageservices/Understanding-the-Table-Service-Data-Model
+
+    :param name: Album name
+    :return: Whether the name is valid
+    """
+    
+    # Cannot be empty or more than 1024 characters
+    if not name or len(name) > 1024:
+        return False
+    
+    for char in name:
+        o = ord(char)
+
+        # Unicode control characters U+0000 to U+001F, U+007F to U+009F
+        if o <= 0x1F or 0x7F <= o <= 0x9F:
+            return False
+        
+        # / = 47; \ = 92, # = 35, ? = 63
+        if o == 47 or o == 92 or o == 35 or o == 63:
+            return False
+    
+    return True
