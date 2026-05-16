@@ -65,10 +65,25 @@
   {% block albums %}
   <div class="container-fluid">
     <h2 class="display-6">Albums</h2>
-    <!-- Button trigger modal -->
-    <button type="button" class="btn btn-primary" id="createAlbumBtn">New Album</button>
-
+    <!-- Create album form -->
+    <div class="d-none row p-3 mb-4" id="createAlbumFormContainer">
+      <div class="col-12 col-sm-10 col-md-8 col-lg-6">
+        <form>
+          <input type="text" id="createAlbumInput" name="createAlbumInput" class="form-control mb-2" required placeholder="Album name" minlength="1" maxlength="1024">
+          <div class="invalid-feedback mb-2">Invalid album name</div>
+          <button type="submit" id="createAlbumSubmit" class="btn btn-primary w-100 mb-2" disabled>Create</button>
+          <button type="button" id="createAlbumCancel" class="btn btn-secondary w-100">Cancel</button>
+        </form>
+      </div>
+    </div>
     <div class="row row-cols-3 row-cols-lg-4 grid">
+      <!-- Create album button -->
+      <div class="col">
+        <div class="photo-card position-relative" id="createAlbumCard">
+          <img src="/static/create_album-512.webp" class="img-fluid img-thumbnail">
+        </div>
+      </div>
+
       {% for album in albums %}
       <div class="col">
         <a href="/albums/{{album}}" title="{{album}}">

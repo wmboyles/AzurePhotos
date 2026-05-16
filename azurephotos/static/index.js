@@ -67,6 +67,45 @@ function isVideo(filename) {
 }
 
 /**
+ * Validates if an album name is valid or not.
+ * This logic should match src.api.albums.is_valid_album_name
+ * @param {string | null | undefined} albumName 
+ * @param {Array<string>} existingAlbumNames
+ * @returns {boolean}
+ */
+function isValidAlbumName(albumName, existingAlbumNames) {
+    if (typeof albumName !== "string") {
+        return false;
+    }
+
+    const trimmedAlbumName = albumName.trim();
+    if (!trimmedAlbumName.trim() || trimmedAlbumName.length > 1024) {
+        return false;
+    }
+
+    for (const char of trimmedAlbumName) {
+        const o = char.codePointAt(0);
+        
+        // Unicode control characters
+        // U+0000 to U+001F and U+007F to U+009F
+        if (o <= 0x1F || (o >= 0x7F && o <= 0x9F)) {
+            return false;
+        }
+
+        // / \ # ?
+        if (o === 47 || o === 92 || o === 35 || o === 63) {
+            return false;
+        }
+    }
+
+    if (existingAlbumNames.includes(trimmedAlbumName)) {
+        return false;
+    }
+
+    return true;
+}
+
+/**
  * Perform an action on a collection of items
  * Update the progress bar as actions are successful or failed
  * Limit the number of concurrent actions run at once.
@@ -248,7 +287,7 @@ function moveToAlbum(file, path) {
 }
 
 // Some variables are passed here from HTML from Flask.
-// We'll have `albums` on the main page, `album` on an album page, and `videoUrls` on the video page.
+// We'll have `albums` on the main page and `album` on an album page
 $(document).ready(() => {
     /**
      * Last viewed photo or video in modal
@@ -505,22 +544,56 @@ $(document).ready(() => {
         }
     });
 
-    // Create album
-    $("#createAlbumBtn").click(function (_) {
-        const albumName = prompt("Enter album name");
-        fetch(`/api/albums/${albumName}`, { method: "POST" })
+    // Show create album form
+    $("#createAlbumCard").click(function() {
+        $("#createAlbumFormContainer").removeClass("d-none");
+        $("#createAlbumInput").trigger("focus");
+    });
+
+    // Hide create album form
+    $("#createAlbumCancel").click(function (e) {
+        // Prevent the click even from going up to #createAlbumCard, which would reopen the form
+        e.stopPropagation();
+
+        $("#createAlbumFormContainer form")[0].reset();
+        $("#createAlbumInput").removeClass("is-valid is-invalid");
+        $("#createAlbumSubmit").prop("disabled", true);
+        $("#createAlbumFormContainer").addClass("d-none");
+    });
+
+    // Validate create album input
+    $("#createAlbumInput").on("input", function() {
+        const input = $(this);
+        const valid = isValidAlbumName(input.val(), albums); // TODO: Could albums be a set?
+        if (valid) {
+            input.removeClass("is-invalid").addClass("is-valid");
+        } else {
+            input.removeClass("is-valid").addClass("is-invalid");
+        }
+
+        $("#createAlbumSubmit").prop("disabled", !valid);
+    });
+
+    // Submit create album form
+    // Precondition: Validation is successful
+    $("#createAlbumFormContainer form").submit(function (e) {
+        e.preventDefault();
+        
+        const input = $("#createAlbumInput");
+        const albumName = input.val().trim();
+        fetch(`/api/albums/${encodeURIComponent(albumName)}`, { method: "POST" })
             .then(response => {
                 if (response.ok) {
                     // TODO: Instead of reloading, can we just append to the albums list with a thumbnail of /static/album_thumbnail
                     albums.push(albumName);
                     window.location.reload();
+                    console.log(response);
                 } else {
+                    input.addClass("is-invalid");
                     console.log(response);
                 }
             })
-            .catch(error => {
-                console.log(error);
-            });
+            .catch(console.error);
     });
 
     // Delete album
