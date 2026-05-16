@@ -287,7 +287,7 @@ function moveToAlbum(file, path) {
 }
 
 // Some variables are passed here from HTML from Flask.
-// We'll have `albums` on the main page and `album` on an album page
+// We'll have `albums` on all pages and `album` on an album page
 $(document).ready(() => {
     /**
      * Last viewed photo or video in modal
@@ -471,7 +471,8 @@ $(document).ready(() => {
     // Place photos and videos in album
     $(".photo-action.album-btn").siblings("ul").find("li .dropdown-item").each(function () {
         const li = $(this);
-        const album = li.text()
+        const targetAlbum = li.text()
+        const inAlbum = (typeof album) !== "undefined"
 
         li.click((_) => {
             const name = li.closest("ul.dropdown-menu")
@@ -483,17 +484,22 @@ $(document).ready(() => {
                 .prop("checked", true)
                 .trigger("change")
 
-            if (!confirm(`Are you sure you want to move ${selectedItems.size} items to '${album}?'`)) {
+            if (!confirm(`Are you sure you want to move ${selectedItems.size} items to '${targetAlbum}?'`)) {
                 return;
             }
 
             $("#operationProgress .progress-bar").addClass("progress-bar-animated");
             $("#operationProgress").show();
 
-            const basePath = `/api/albums/${album}`;
+            const basePath = `/api/albums/${targetAlbum}`;
+            const queryString = inAlbum 
+                ? new URLSearchParams({
+                    "currentAlbum": album
+                }).toString()
+                : "";
             doWithProgressBarWithConcurrency(
                 selectedItems,
-                (file) => moveToAlbum(file, `${basePath}/${file}`),
+                (file) => moveToAlbum(file, `${basePath}/${file}?${queryString}`),
                 4
             )
                 .then(({ successCount, failureCount, totalCount, errors }) => {

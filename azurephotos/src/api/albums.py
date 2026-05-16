@@ -11,7 +11,7 @@ An empty row key represents the album itself.
 from azure.core.exceptions import ResourceNotFoundError, ResourceExistsError
 from azure.data.tables import TableClient
 from datetime import datetime, timezone, timedelta
-from flask import Blueprint, Response, current_app, url_for, redirect
+from flask import Blueprint, Response, current_app, request, url_for, redirect
 from typing import Any
 
 from .media_cache import invalidate_media_cache
@@ -173,16 +173,23 @@ def move_to_album(album_name: str, filename: str) -> Response:
     if not is_valid_album_name(album_name):
         return Response(f"{album_name=} is not allowed due to length or charset restrictions", status=422)
 
+    current_album = request.args.get("currentAlbum", NONE_ALBUM_NAME)
+    if current_album == album_name:
+        # TODO: Should we give an error or just do a no-op?
+        return Response(status=200)
+    if not is_valid_album_name(current_album):
+        return Response(f"{current_album=} is not allowed due to length or charset restrictions", status=422)
+
     table_client: TableClient = current_app.config["albums_table_client"]
 
-    # Find file in "none" album
+    # Find file in current album
     try:
-        non_album_entity = table_client.get_entity(
-            partition_key=NONE_ALBUM_NAME, row_key=filename
+        current_entity = table_client.get_entity(
+            partition_key=current_album, row_key=filename
         )
     except ResourceNotFoundError:
         return Response(
-            f"Filename '{filename}' does not exist or is already in an album",
+            f"{filename=} does not exist or is not in {current_album=}",
             status=404,
         )
 
@@ -190,10 +197,10 @@ def move_to_album(album_name: str, filename: str) -> Response:
     try:
         _ = table_client.get_entity(partition_key=album_name, row_key="")
     except ResourceNotFoundError:
-        return Response(f"Album '{album_name}' does not exist", status=404)
+        return Response(f"{album_name=} does not exist", status=404)
 
     # Add new entity to album
-    new_file = dict(non_album_entity)
+    new_file = dict(current_entity)
     new_file["PartitionKey"] = album_name
     try:
         _ = table_client.create_entity(new_file)
@@ -203,12 +210,14 @@ def move_to_album(album_name: str, filename: str) -> Response:
 
     # Delete existing entity
     try:
-        _ = table_client.delete_entity(partition_key=NONE_ALBUM_NAME, row_key=filename)
+        _ = table_client.delete_entity(partition_key=current_album, row_key=filename)
     except ResourceNotFoundError:
         # Entry already deleted
         pass
 
-    invalidate_media_cache()
+    if current_album == NONE_ALBUM_NAME:
+        invalidate_media_cache()
+    
     return Response(status=201)
 
 

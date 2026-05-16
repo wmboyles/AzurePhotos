@@ -15,8 +15,10 @@
             <i class="bi bi-journal-album"></i>
         </button>
         <ul class="dropdown-menu">
-            {% for album in albums %}
-            <li><a class="dropdown-item" href="#">{{ album }}</a></li>
+            {% for albumName in albums %}
+                {% if album != albumName %}
+                <li><a class="dropdown-item" href="#">{{ albumName }}</a></li>
+                {% endif %}
             {% endfor %}
         </ul>
         {% endif %}

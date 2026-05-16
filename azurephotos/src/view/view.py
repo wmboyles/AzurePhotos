@@ -47,8 +47,22 @@ def main() -> str:
 
 @albums_view_controller.route("/<album_name>", methods=["GET"])
 def album(album_name: str) -> str | Response:
-    files_in_album = list_album(album_name)
+    def list_album_threaded(app_context: AppContext):
+        with app_context:
+            return list_album(album_name)
+    
+    def list_albums_threaded(app_context: AppContext):
+        with app_context:
+            return list_albums()
+        
+    with ThreadPoolExecutor() as executor:
+        files_in_album_future = executor.submit(list_album_threaded, current_app.app_context())
+        list_albums_future = executor.submit(list_albums_threaded, current_app.app_context())
+
+        files_in_album = files_in_album_future.result()
+        album_names = list_albums_future.result()
+
     if isinstance(files_in_album, Response):
         return files_in_album
     
-    return render_template("album.html", album=album_name, medias=files_in_album)
+    return render_template("album.html", medias=files_in_album, albums=album_names, album=album_name)
