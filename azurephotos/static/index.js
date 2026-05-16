@@ -371,6 +371,44 @@ $(document).ready(() => {
         modalPhotoName = null;
     });
 
+    // Drag and drop photos for upload
+    $("#uploadDropZone").on("dragenter dragover", function (event) {
+        event.preventDefault();
+
+        $("#uploadDropZone").addClass("border-primary bg-primary-subtle");
+    });
+    $("#uploadDropZone").on("dragleave", function (event) {
+        event.preventDefault();
+
+        $("#uploadDropZone").removeClass("border-primary bg-primary-subtle");
+    });
+    $("#uploadDropZone").on("drop", function (event) {
+        event.preventDefault();
+
+        $("#uploadDropZone").removeClass("border-primary bg-primary-subtle");
+
+        const files = event.originalEvent.dataTransfer.files;
+        $("#formFileLg")[0].files = files;
+        updateSelectedFiles(files);
+    });
+    $("#formFileLg").on("change", function() {
+        updateSelectedFiles(this.files);
+    });
+    function updateSelectedFiles(files) {
+        const container = $("#uploadSelectedFiles");
+
+        if (!files.length) {
+            container.empty();
+            return;
+        }
+
+        const fileNames = Array.from(files)
+            .map(file => `<div>${file.name}</div>`)
+            .join("")
+
+        container.html(fileNames);
+    }
+
     // Submit photos and videos for upload
     $("#uploadForm").on('submit', function (event) {
         event.preventDefault();
@@ -378,8 +416,10 @@ $(document).ready(() => {
         const isAlbum = (typeof album) !== "undefined";
         const path = isAlbum ? `/upload/${album}` : `/upload`;
 
-        const input = document.getElementById("formFileLg");
-        const validFiles = Array.from(input.files).filter(file => {
+        const files = $("#formFileLg")[0].files;
+        console.log(files);
+
+        const validFiles = Array.from(files).filter(file => {
             if (!isPhoto(file.name) && !isVideo(file.name)) {
                 alert(`${file.name} is not a supported extension`);
                 return false;

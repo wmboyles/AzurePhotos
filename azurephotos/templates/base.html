@@ -36,11 +36,16 @@
   <div class="container-fluid">
     <h2 class="display-6">Upload</h2>
     <form class="mb-3" id="uploadForm">
-      <!-- TODO: Submit request without refreshing page. Would probably have to update DOM to include new image -->
-      <label for="formFile">File</label>
-      <input class="form-control form-control-lg" id="formFileLg" type="file" accept="image/*,video/*" required="true"
-        multiple="true" name="upload" />
-      <button class="btn btn-primary" type="submit" id="submitUpload">Submit</button>
+      <div id="uploadDropZone" class="border border-2 rounded p-5 mb-3 bg-light">
+        <p class="mb-2">Drag and drop files here</p>
+        <p class="text-muted mb-3">or click below to select files</p>
+        <!-- TODO: Submit request without refreshing page. Would probably have to update DOM to include new image -->
+        <label for="formFileLg" class="btn btn-outline-primary">Choose files</label>
+        <input class="form-control form-control-lg d-none" id="formFileLg" type="file" accept="image/*,video/*" required="true"
+          multiple="true" name="upload" />
+        <div id="uploadSelectedFiles" class="mb-3"></div>
+        <button class="btn btn-primary" type="submit" id="submitUpload">Submit</button>
+      </div>
     </form>
     <div class="progress" id="operationProgress" style="display: none;">
       <div class="progress-bar progress-bar-striped bg-success"
