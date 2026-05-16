@@ -46,7 +46,7 @@ def thumbnail(filename: str) -> Response:
         case MediaType.VIDEO:
             filename += ".webp"
         case _:
-            raise ValueError(f"Unrecognized {media_type=} for {filename=}")
+            return Response(f"Unrecognized {media_type=} for {filename=}", status=404)
 
     blob_account_url: str = current_app.config["blob_account_url"]
     thumbnails_container_name: str = "thumbnails"
@@ -75,7 +75,7 @@ def fullsize(filename: str) -> Response:
         case MediaType.VIDEO:
             return videos.fullsize(filename)
         case _:
-            raise ValueError(f"Unrecognized media type for {filename=}")
+            return Response(f"Unrecognized media type for {filename=}", status=404)
 
 
 @crud_controller.route("/upload", methods=["POST"])
