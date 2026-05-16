@@ -62,16 +62,6 @@ def list_albums() -> list[str]:
     List all album names.
     """
 
-    return _list_albums()
-
-
-@refreshed(every=timedelta(seconds=30))
-def _list_albums() -> list[str]:
-
-    """
-    List all album names.
-    """
-
     table_client: TableClient = current_app.config["albums_table_client"]
 
     query = "PartitionKey ne @reserved_album_name and RowKey eq ''"
@@ -433,7 +423,7 @@ def is_valid_album_name(name: str) -> bool:
     """
     
     # Cannot be empty or more than 1024 characters
-    if not name or len(name) > 1024:
+    if not name or len(name.strip()) > 1024:
         return False
     
     for char in name:
