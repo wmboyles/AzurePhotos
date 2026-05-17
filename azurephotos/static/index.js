@@ -199,6 +199,7 @@ function uploadFile(file, path) {
         const formData = new FormData();
         formData.append("upload", file);
 
+        console.log(file);
         const lastModified = new Date(file.lastModified);
         formData.append("dateTaken", lastModified.toISOString());
 
@@ -519,19 +520,21 @@ $(document).ready(() => {
         const isAlbum = (typeof album) !== "undefined";
         const path = isAlbum ? `/upload/${album}` : `/upload`;
 
-        const validFiles = Array.from(itemsToUpload).filter(file => {
-            if (!isPhoto(file.name) && !isVideo(file.name)) {
-                alert(`${file.name} is not a supported extension`);
-                return false;
-            }
+        const validFiles = Array.from(itemsToUpload)
+            .map(item => item.file)
+            .filter(file => {
+                if (!isPhoto(file.name) && !isVideo(file.name)) {
+                    alert(`${file.name} is not a supported extension`);
+                    return false;
+                }
 
-            if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
-                alert(`${file.name} is not a photo nor a video`);
-                return false
-            }
+                if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
+                    alert(`${file.name} is not a photo nor a video`);
+                    return false
+                }
 
-            return true;
-        });
+                return true;
+            });
 
         if (validFiles.length === 0) {
             return;
