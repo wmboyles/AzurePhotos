@@ -199,7 +199,6 @@ function uploadFile(file, path) {
         const formData = new FormData();
         formData.append("upload", file);
 
-        console.log(file);
         const lastModified = new Date(file.lastModified);
         formData.append("dateTaken", lastModified.toISOString());
 
