@@ -328,6 +328,10 @@ $(document).ready(() => {
      */
     let itemsToUploadFingerprints = new Set();
 
+    function updateUploadSubmitState() {
+        $("#submitUpload").prop("disabled", itemsToUpload.length === 0);
+    }
+
     // Open fullsize modal when clicking on a thumbnail
     $("#fullsizeModal").on('show.bs.modal', function (event) {
         const trigger = event.relatedTarget;
@@ -419,6 +423,7 @@ $(document).ready(() => {
     $("#formFileLg").on("change", function() {
         enqueueFilesToUpload(this.files);
     });
+    updateUploadSubmitState();
     /**
      * Add files to upload queue and render them in the UI.
      * @param {File[]} files 
@@ -441,6 +446,8 @@ $(document).ready(() => {
             itemsToUpload.push(item);
             appendUploadPreview(item);
         }
+
+        updateUploadSubmitState();
     }
     /**
      * Add an item to the UI for rendering
@@ -510,6 +517,7 @@ $(document).ready(() => {
         URL.revokeObjectURL(item.previewUrl);
         
         previewElement.remove();
+        updateUploadSubmitState();
     });
 
     // Submit photos and videos for upload
@@ -561,7 +569,7 @@ $(document).ready(() => {
             })
             .finally(() => {
                 $("#formFileLg").prop("disabled", false);
-                $("#submitUpload").prop("disabled", false);
+                updateUploadSubmitState();
                 $("#operationProgress .progress-bar").removeClass("progress-bar-animated");
                 setTimeout(() => { 
                     $("#operationProgress").hide();
