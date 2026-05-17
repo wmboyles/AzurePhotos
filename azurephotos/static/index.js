@@ -359,7 +359,7 @@ $(document).ready(() => {
             img.className = "img-fluid";
             img.src = fullSrc;
             img.alt = modalPhotoName;
-            innerHeight.draggable = false;
+            img.draggable = false;
 
             fullsizeModalBody.appendChild(img);
         }
