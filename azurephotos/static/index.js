@@ -447,6 +447,7 @@ $(document).ready(() => {
      * Add an item to the UI for rendering
      * @param {{
      *  id: `${string}-${string}-${string}-${string}-${string}`;
+     *  fingerprint: string;
      *  file: File;
      *  previewUrl: string;
      * }} item 
@@ -455,43 +456,49 @@ $(document).ready(() => {
         const isImage = item.file.type.startsWith("image/");
         const isVideo = item.file.type.startsWith("video/");
 
-        const preview = isImage
-            ? `
-                <img
-                    src="${item.previewUrl}"
-                    class="img-fluid img-thumbnail"
-                    title="${item.file.name}"
-                    draggable="false"
-                />
-            `
-            : isVideo
-                ? `
-                    <video
-                        class="img-thumbnail"
-                        muted
-                        title="${item.file.name}"
-                        draggable="false"
-                    >
-                        <source src="${item.previewUrl}" type="${item.file.type}">
-                    </video>
-                `
-                : "";
+        const col = $("<div>")
+            .addClass("col")
+            .attr("data-upload-id", item.id);
+        const photoCard = $("<div>")
+            .addClass("photo-card position-relative");
 
-        const card = $(`
-            <div class="col" data-upload-id="${item.id}">
-                <div class="photo-card position-relative">
+        let previewElement = null;
+        if (isImage) {
+            previewElement = $("<img>")
+                .addClass("img-fluid img-thumbnail")
+                .attr("src", item.previewUrl)
+                .attr("title", item.file.name)
+                .prop("draggable", false);
+        } else if (isVideo) {
+            previewElement = $("<video>")
+                .addClass("img-thumbnail")
+                .attr("title", item.file.name)
+                .prop("muted", true)
+                .prop("draggable", false)
+                .prop("playsInline", true)
+                .prop("preload", "metadata");
+            
+            const source = $("<source>")
+                .attr("src", item.previewUrl)
+                .attr("type", item.file.type);
 
-                    ${preview}
+            previewElement.append(source);
+        }
 
-                    <button
-                        class="btn btn-sm btn-danger photo-action remove-file-btn"
-                        type="button"
-                    >x</button>
-                </div>
-            </div>
-        `);
+        const removeButton = $("<button>")
+            .addClass(
+                "btn btn-sm btn-danger photo-action remove-file-btn"
+            )
+            .attr("type", "button")
+            .text("x");
 
-        $("#uploadSelectedFiles").append(card);
+        if (previewElement) {
+            photoCard.append(previewElement);
+        }
+        photoCard.append(removeButton);
+        col.append(photoCard);
+
+        $("#uploadSelectedFiles").append(col);
     }
 
     // Remove enqueued file from upload
