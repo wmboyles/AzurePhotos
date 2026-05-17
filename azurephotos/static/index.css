@@ -47,7 +47,8 @@
     transition: opacity 0.2s;
 }
 
-.photo-action.delete-btn {
+.photo-action.delete-btn,
+.photo-action.remove-file-btn {
     opacity: 0;
     position: absolute;
     bottom: 0.5rem;

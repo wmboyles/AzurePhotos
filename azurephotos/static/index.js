@@ -286,6 +286,19 @@ function moveToAlbum(file, path) {
     });
 }
 
+/**
+ * Get fingerprint representing file for dedupe.
+ * @param {File} file 
+ * @returns {string}
+ */
+function fileFingerprint(file) {
+    return [
+        file.name,
+        file.size,
+        file.lastModified
+    ].join(":");
+}
+
 // Some variables are passed here from HTML from Flask.
 // We'll have `albums` on all pages and `album` on an album page
 $(document).ready(() => {
@@ -295,12 +308,27 @@ $(document).ready(() => {
      */
     let modalPhotoName = null;
     /**
-     * Photo or video selected by checkbox
+     * Items selected by checkbox
      * @type {Set<string>}
      */
-    let selectedItems = new Set();
+    let checkedItems = new Set();
+    /**
+     * Items queued for upload
+     * @type {Array<{
+     *  id: `${string}-${string}-${string}-${string}-${string}`;
+     *  fingerprint: string;
+     *  file: File;
+     *  previewUrl: string;
+     * }>}
+     */
+    let itemsToUpload = [];
+    /**
+     * Collection of fingerprints of files queued for upload
+     * @type {Set<string>}
+     */
+    let itemsToUploadFingerprints = new Set();
 
-    // Open modal when clicking on a thumbnail
+    // Open fullsize modal when clicking on a thumbnail
     $("#fullsizeModal").on('show.bs.modal', function (event) {
         const trigger = event.relatedTarget;
         const fullSrc = trigger.getAttribute('data-full');
@@ -317,6 +345,7 @@ $(document).ready(() => {
             video.className = "img-fluid";
             video.controls = true;
             video.title = modalPhotoName;
+            video.draggable = false;
 
             const source = document.createElement("source");
             source.src = fullSrc;
@@ -330,12 +359,13 @@ $(document).ready(() => {
             img.className = "img-fluid";
             img.src = fullSrc;
             img.alt = modalPhotoName;
+            innerHeight.draggable = false;
 
             fullsizeModalBody.appendChild(img);
         }
     });
 
-    // Close modal
+    // Close fullsize modal
     $("#fullsizeModal").on("hidden.bs.modal", async function () {
         // Clear any existing parts of the modal body
         // This should also stop a video that was playing
@@ -372,42 +402,115 @@ $(document).ready(() => {
     });
 
     // Drag and drop photos for upload
-    $("#uploadDropZone").on("dragenter dragover", function (event) {
+    $("#uploadDropZone").on("dragover", function (event) {
         event.preventDefault();
 
         $("#uploadDropZone").addClass("border-primary bg-primary-subtle");
     });
-    $("#uploadDropZone").on("dragleave", function (event) {
+    $("#uploadDropZone").on("dragleave drop", function (event) {
         event.preventDefault();
 
         $("#uploadDropZone").removeClass("border-primary bg-primary-subtle");
     });
     $("#uploadDropZone").on("drop", function (event) {
-        event.preventDefault();
-
-        $("#uploadDropZone").removeClass("border-primary bg-primary-subtle");
-
         const files = event.originalEvent.dataTransfer.files;
-        $("#formFileLg")[0].files = files;
-        updateSelectedFiles(files);
+        enqueueFilesToUpload(files);
     });
     $("#formFileLg").on("change", function() {
-        updateSelectedFiles(this.files);
+        enqueueFilesToUpload(this.files);
     });
-    function updateSelectedFiles(files) {
-        const container = $("#uploadSelectedFiles");
+    /**
+     * Add files to upload queue and render them in the UI.
+     * @param {File[]} files 
+     */
+    function enqueueFilesToUpload(files) {
+        for (const file of files) {
+            const fingerprint = fileFingerprint(file);
+            if (itemsToUploadFingerprints.has(fingerprint)) {
+                continue;
+            }
+            itemsToUploadFingerprints.add(fingerprint);
 
-        if (!files.length) {
-            container.empty();
+            const item = {
+                id: crypto.randomUUID(),
+                fingerprint,
+                file,
+                previewUrl: URL.createObjectURL(file)
+            };
+
+            itemsToUpload.push(item);
+            appendUploadPreview(item);
+        }
+    }
+    /**
+     * Add an item to the UI for rendering
+     * @param {{
+     *  id: `${string}-${string}-${string}-${string}-${string}`;
+     *  file: File;
+     *  previewUrl: string;
+     * }} item 
+     */
+    function appendUploadPreview(item) {
+        const isImage = item.file.type.startsWith("image/");
+        const isVideo = item.file.type.startsWith("video/");
+
+        const preview = isImage
+            ? `
+                <img
+                    src="${item.previewUrl}"
+                    class="img-fluid img-thumbnail"
+                    title="${item.file.name}"
+                    draggable="false"
+                />
+            `
+            : isVideo
+                ? `
+                    <video
+                        class="img-thumbnail"
+                        muted
+                        title="${item.file.name}"
+                        draggable="false"
+                    >
+                        <source src="${item.previewUrl}" type="${item.file.type}">
+                    </video>
+                `
+                : "";
+
+        const card = $(`
+            <div class="col" data-upload-id="${item.id}">
+                <div class="photo-card position-relative">
+
+                    ${preview}
+
+                    <button
+                        class="btn btn-sm btn-danger photo-action remove-file-btn"
+                        type="button"
+                    >x</button>
+                </div>
+            </div>
+        `);
+
+        $("#uploadSelectedFiles").append(card);
+    }
+
+    // Remove enqueued file from upload
+    $("#uploadSelectedFiles").on("click", ".remove-file-btn", function () {
+        const previewElement = $(this)
+            .closest("[data-upload-id]");
+        const uploadId = previewElement.data("upload-id");
+
+        const index = itemsToUpload.findIndex(x => x.id === uploadId);
+        if (index === -1) {
             return;
         }
 
-        const fileNames = Array.from(files)
-            .map(file => `<div>${file.name}</div>`)
-            .join("")
-
-        container.html(fileNames);
-    }
+        const item = itemsToUpload[index];
+        itemsToUploadFingerprints.delete(item.fingerprint);
+        itemsToUpload.splice(index, 1);
+        URL.revokeObjectURL(item.previewUrl);
+        
+        previewElement.remove();
+    });
 
     // Submit photos and videos for upload
     $("#uploadForm").on('submit', function (event) {
@@ -416,10 +519,7 @@ $(document).ready(() => {
         const isAlbum = (typeof album) !== "undefined";
         const path = isAlbum ? `/upload/${album}` : `/upload`;
 
-        const files = $("#formFileLg")[0].files;
-        console.log(files);
-
-        const validFiles = Array.from(files).filter(file => {
+        const validFiles = Array.from(itemsToUpload).filter(file => {
             if (!isPhoto(file.name) && !isVideo(file.name)) {
                 alert(`${file.name} is not a supported extension`);
                 return false;
@@ -435,7 +535,7 @@ $(document).ready(() => {
 
         if (validFiles.length === 0) {
             return;
-            // TODO: Should we show some erorr here?
+            // TODO: Should we show some error here?
         }
 
         $("#formFileLg").prop("disabled", true);
@@ -478,7 +578,7 @@ $(document).ready(() => {
             .prop("checked", true)
             .trigger("change")
 
-        const confirmMessage = `Are you sure you want to remove ${selectedItems.size} items${isAlbum ? ' from this album' : ''}?`;
+        const confirmMessage = `Are you sure you want to remove ${checkedItems.size} items${isAlbum ? ' from this album' : ''}?`;
         if (!confirm(confirmMessage)) {
             return;
         }
@@ -487,7 +587,7 @@ $(document).ready(() => {
         $("#operationProgress").show();
 
         doWithProgressBarWithConcurrency(
-            selectedItems,
+            checkedItems,
             (file) => deleteFile(file, `${basePath}/${file}`),
             4
         )
@@ -498,7 +598,7 @@ $(document).ready(() => {
                     return;
                 }
 
-                selectedItems.clear();
+                checkedItems.clear();
             })
             .finally(() => {
                 $("#operationProgress .progress-bar").removeClass("progress-bar-animated");
@@ -524,7 +624,7 @@ $(document).ready(() => {
                 .prop("checked", true)
                 .trigger("change")
 
-            if (!confirm(`Are you sure you want to move ${selectedItems.size} items to '${targetAlbum}?'`)) {
+            if (!confirm(`Are you sure you want to move ${checkedItems.size} items to '${targetAlbum}?'`)) {
                 return;
             }
 
@@ -538,7 +638,7 @@ $(document).ready(() => {
                 }).toString()
                 : "";
             doWithProgressBarWithConcurrency(
-                selectedItems,
+                checkedItems,
                 (file) => moveToAlbum(file, `${basePath}/${file}?${queryString}`),
                 4
             )
@@ -554,7 +654,7 @@ $(document).ready(() => {
                         modalPhotoName = null;
                     }
 
-                    selectedItems.clear();
+                    checkedItems.clear();
                 })
                 .finally(() => {
                     $("#operationProgress .progress-bar").removeClass("progress-bar-animated");
@@ -569,9 +669,9 @@ $(document).ready(() => {
     $(".photo-checkbox").on("change", function (_) {
         const selected = $(this).val()
         if (this.checked) {
-            selectedItems.add(selected)
+            checkedItems.add(selected)
         } else {
-            selectedItems.delete(selected)
+            checkedItems.delete(selected)
         }
     });
 
@@ -586,7 +686,7 @@ $(document).ready(() => {
             $(".photo-checkbox")
                 .prop("checked", false)
                 .trigger("change")
-            selectedItems.clear();
+            checkedItems.clear();
         }
     });
 

@@ -2,7 +2,7 @@
     <div class="photo-card position-relative">
         <img src="/thumbnail/{{ media.filename }}" title="{{ media.filename }}" class="img-fluid img-thumbnail"
             loading="lazy" data-bs-toggle="modal" data-bs-target="#fullsizeModal"
-            data-full="/fullsize/{{ media.filename }}">
+            data-full="/fullsize/{{ media.filename }}" draggable="false">
         <input class="form-check-input photo-checkbox" type="checkbox" name="selected_photos"
             value="{{ media.filename }}">
         <button type="button" class="btn btn-sm btn-danger photo-action delete-btn"
