@@ -275,6 +275,8 @@ def list_album(album_name: str) -> Response | list[MediaRecord]:
     """
 
     album_name = album_name.strip()
+    if album_name == NONE_ALBUM_NAME:
+        return Response(f"{album_name=} is reserved", status=403)
     if not is_valid_album_name(album_name):
         return Response(f"{album_name=} is not allowed due to length or charset restrictions", status=422)
 
@@ -357,6 +359,8 @@ def get_album_thumbnail(album_name: str) -> Response:
     """
 
     album_name = album_name.strip()
+    if album_name == NONE_ALBUM_NAME:
+        return Response(f"{album_name=} is reserved", status=403)
     if not is_valid_album_name(album_name):
         return Response(f"{album_name=} is not allowed due to length or charset restrictions", status=422)
 
