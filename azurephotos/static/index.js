@@ -79,7 +79,7 @@ function isValidAlbumName(albumName, existingAlbumNames) {
     }
 
     const trimmedAlbumName = albumName.trim();
-    if (!trimmedAlbumName.trim() || trimmedAlbumName.length > 1024) {
+    if (!trimmedAlbumName || trimmedAlbumName.length > 1024) {
         return false;
     }
 
@@ -727,7 +727,7 @@ $(document).ready(() => {
     // Validate create album input
     $("#createAlbumInput").on("input", function() {
         const input = $(this);
-        const valid = isValidAlbumName(input.val(), albums); // TODO: Could albums be a set?
+        const valid = isValidAlbumName(input.val().trim(), albums); // TODO: Could albums be a set?
         if (valid) {
             input.removeClass("is-invalid").addClass("is-valid");
         } else {
