@@ -37,6 +37,7 @@ def create_album(album_name: str) -> Response | dict[str, Any]:
     :param album_name: The name of the album to create. Must be unique.
     """
 
+    album_name = album_name.strip()
     if album_name == NONE_ALBUM_NAME:
         return Response(f"{album_name=} is reserved", status=403)
     if not is_valid_album_name(album_name):
@@ -84,6 +85,8 @@ def rename_album(album_name: str, new_name: str) -> Response:
     old album with the new name and then delete the old album.
     """
 
+    album_name = album_name.strip()
+    new_name = new_name.strip()
     if album_name == NONE_ALBUM_NAME:
         return Response(f"{album_name=} is reserved and cannot be renamed", status=403)
     if new_name == NONE_ALBUM_NAME:
@@ -126,6 +129,7 @@ def delete_album(album_name: str) -> Response:
     :param album_name: The name of the album to delete.
     """
 
+    album_name = album_name.strip()
     if album_name == NONE_ALBUM_NAME:
         return Response(f"{album_name=} is reserved and cannot be deleted", status=403)
     if not is_valid_album_name(album_name):
@@ -168,15 +172,16 @@ def move_to_album(album_name: str, filename: str) -> Response:
     :param filename: The filename to add to the album.
     """
 
+    album_name = album_name.strip()
     if album_name == NONE_ALBUM_NAME:
         return Response(f"{album_name=} is reserved and cannot be added to directly", status=403)
     if not is_valid_album_name(album_name):
         return Response(f"{album_name=} is not allowed due to length or charset restrictions", status=422)
 
-    current_album = request.args.get("currentAlbum", NONE_ALBUM_NAME)
+    current_album = request.args.get("currentAlbum", NONE_ALBUM_NAME).strip()
     if current_album == album_name:
-        # TODO: Should we give an error or just do a no-op?
-        return Response(status=200)
+        # No-op, file is already in the target album. Return 204 to indicate success with no content.
+        return Response(status=204)
     if not is_valid_album_name(current_album):
         return Response(f"{current_album=} is not allowed due to length or charset restrictions", status=422)
 
@@ -236,6 +241,7 @@ def upload_to_album(filename: str, date_taken: datetime, album_name: str) -> Res
     :param album_name: Name of album to add to
     """
 
+    album_name = album_name.strip()
     if not is_valid_album_name(album_name):
         return Response(f"{album_name=} is not allowed due to length or charset restrictions", status=422)
 
@@ -268,6 +274,9 @@ def list_album(album_name: str) -> Response | list[MediaRecord]:
     :param album_name: The name of the album to list files for.
     """
 
+    album_name = album_name.strip()
+    if album_name == NONE_ALBUM_NAME:
+        return Response(f"{album_name=} is reserved", status=403)
     if not is_valid_album_name(album_name):
         return Response(f"{album_name=} is not allowed due to length or charset restrictions", status=422)
 
@@ -309,6 +318,7 @@ def remove_from_album(album_name: str, filename: str) -> Response:
     :param filename: The filename of the photo to remove from the album.
     """
 
+    album_name = album_name.strip()
     if album_name == NONE_ALBUM_NAME:
         return Response(f"{album_name=} is reserved and cannot be deleted from", status=403)
     if not is_valid_album_name(album_name):
@@ -348,6 +358,9 @@ def get_album_thumbnail(album_name: str) -> Response:
     :param album_name: The name of the album to get the thumbnail for.
     """
 
+    album_name = album_name.strip()
+    if album_name == NONE_ALBUM_NAME:
+        return Response(f"{album_name=} is reserved", status=403)
     if not is_valid_album_name(album_name):
         return Response(f"{album_name=} is not allowed due to length or charset restrictions", status=422)
 
@@ -426,13 +439,14 @@ def is_valid_album_name(name: str) -> bool:
     """
     Check if an album name is valid.
     See: https://learn.microsoft.com/en-us/rest/api/storageservices/Understanding-the-Table-Service-Data-Model
+    Precondition: name is stripped of leading/trailing whitespace
 
     :param name: Album name
     :return: Whether the name is valid
     """
     
     # Cannot be empty or more than 1024 characters
-    if not name or len(name.strip()) > 1024:
+    if not name or len(name) > 1024:
         return False
     
     for char in name:
