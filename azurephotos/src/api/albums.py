@@ -180,8 +180,8 @@ def move_to_album(album_name: str, filename: str) -> Response:
 
     current_album = request.args.get("currentAlbum", NONE_ALBUM_NAME).strip()
     if current_album == album_name:
-        # TODO: Should we give an error or just do a no-op?
-        return Response(status=200)
+        # No-op, file is already in the target album. Return 204 to indicate success with no content.
+        return Response(status=204)
     if not is_valid_album_name(current_album):
         return Response(f"{current_album=} is not allowed due to length or charset restrictions", status=422)
 
