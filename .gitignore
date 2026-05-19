@@ -6,6 +6,12 @@ csx
 edge
 Publish
 
+# Build and test artifacts
+out/
+.pytest_cache/
+.coverage
+htmlcov/
+
 *.user
 *.suo
 *.cscfg
@@ -42,6 +48,7 @@ venv.bak/
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyc
 
 # Azurite artifacts
 __blobstorage__
