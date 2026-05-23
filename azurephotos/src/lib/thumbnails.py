@@ -104,7 +104,10 @@ def thumbnail(photo_bytes: IO[bytes]) -> BytesIO:
     except DecompressionBombError:
         raise ValueError("Image is too large")
 
-def video_thumbnail(video_path: str) -> bytes:
+def video_thumbnail(
+    video_path: str,
+    *,
+    ffmpeg_path: str | None = None) -> bytes:
     """
     Create a compressed thumbnail of a video.
 
@@ -116,7 +119,7 @@ def video_thumbnail(video_path: str) -> bytes:
     """
     
     # find ffmpeg
-    ffmpeg_path = shutil.which("ffmpeg")
+    ffmpeg_path = ffmpeg_path or shutil.which("ffmpeg")
     if ffmpeg_path is None:
         raise Exception("Cannot find ffmpeg")
     
