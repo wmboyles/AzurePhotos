@@ -2,7 +2,7 @@
 """
 Package the deployment artifact
 - Zip up azurephotos/
-- Exclude test/, other non-prod files, and git-ignored items
+- Exclude tests/, other non-prod files, and git-ignored items
 
 Output: out/azurephotos-<sha>.zip
 """
@@ -21,7 +21,7 @@ SOURCE_DIR = REPO_ROOT / "azurephotos"
 OUT_DIR = REPO_ROOT / "out"
 
 # Anything matching these relative paths will be excluded
-EXCLUDE_DIRS = {"test"}
+EXCLUDE_DIRS = {"tests"}
 
 
 class Spinner:

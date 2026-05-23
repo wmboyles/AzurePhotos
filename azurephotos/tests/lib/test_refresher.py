@@ -2,18 +2,7 @@ import pytest
 from datetime import datetime, timedelta, timezone
 
 from src.lib import refresher
-
-
-class FakeDateTime:
-    current = datetime(2026, 1, 1, tzinfo=timezone.utc)
-
-    @classmethod
-    def now(cls, tz=None):
-        if tz is not None:
-            return cls.current.astimezone(tz)
-
-        return cls.current
-
+from tests.mocks import FakeDateTime
 
 class TestRefresher:
     CACHE_WINDOW = timedelta(seconds=10)
