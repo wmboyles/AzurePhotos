@@ -1,8 +1,11 @@
+# type: ignore[attr-defined] We can't cleanly express that mocks are both Mock and some other class instances
+
 import pytest
 
+from azure.storage.blob import ContainerClient, BlobServiceClient
 from flask import Flask
 from flask.testing import FlaskClient
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, create_autospec
 
 import src.view.view as view
 import src.api.api as api
@@ -11,26 +14,34 @@ ACCOUNT_NAME = "testaccount"
 
 
 @pytest.fixture
-def fake_blob_service_client() -> MagicMock:
-    client = MagicMock(name="blob_service_client")
+def fake_blob_service_client() -> BlobServiceClient:
+    client: BlobServiceClient = create_autospec(BlobServiceClient, instance=True)
+    client._mock_name = "blob_service_client"
     client.account_name = ACCOUNT_NAME
     client.get_user_delegation_key.return_value = "fake-key"
+
     return client
 
 
 @pytest.fixture
-def fake_photos_container_client() -> MagicMock:
-    return MagicMock(name="photos_container_client")
+def fake_photos_container_client() -> ContainerClient:
+    mock = create_autospec(ContainerClient, instance=True)
+    mock._mock_name = "photos_container_client"
+    return mock
 
 
 @pytest.fixture
-def fake_videos_container_client() -> MagicMock:
-    return MagicMock(name="videos_container_client")
+def fake_videos_container_client() -> ContainerClient:
+    mock = create_autospec(ContainerClient, instance=True)
+    mock._mock_name = "videos_container_client"
+    return mock
 
 
 @pytest.fixture
-def fake_thumbnails_container_client() -> MagicMock:
-    return MagicMock(name="thumbnails_container_client")
+def fake_thumbnails_container_client() -> ContainerClient:
+    mock = create_autospec(ContainerClient, instance=True)
+    mock._mock_name = "thumbnails_container_client"
+    return mock
 
 
 @pytest.fixture

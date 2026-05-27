@@ -1,14 +1,14 @@
 import pytest
 
+from azure.storage.blob import BlobServiceClient
 from flask import Flask
-from unittest.mock import MagicMock
 
 from src.lib import storage_helper
-
+from tests.mocks import as_mock
 
 def test_get_container_sas_cached(
     app: Flask,
-    fake_blob_service_client: MagicMock,
+    fake_blob_service_client: BlobServiceClient,
     monkeypatch: pytest.MonkeyPatch,
 ):
     monkeypatch.setattr(
@@ -23,4 +23,4 @@ def test_get_container_sas_cached(
 
     assert first == second
 
-    assert fake_blob_service_client.get_user_delegation_key.call_count == 1
+    assert as_mock(fake_blob_service_client.get_user_delegation_key).call_count == 1
