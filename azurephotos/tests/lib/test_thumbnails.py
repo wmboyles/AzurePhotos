@@ -8,6 +8,27 @@ from unittest.mock import Mock
 
 from src.lib import thumbnails
 
+class TestFormats:
+    def test_supported_formats(self) -> None:
+        supported_formats = thumbnails._supported_formats()
+        assert supported_formats == thumbnails.SUPPORTED_FORMATS
+        assert supported_formats.issuperset(thumbnails._BASE_SUPPORTED_FORMATS)
+
+    def test_supported_formats_without_heif(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        original_import = __import__
+        def fake_import(name: str, *args, **kwargs):
+            if name == "pillow_heif":
+                raise ImportError(name=name)
+            
+            return original_import(name, *args, **kwargs)
+        
+        monkeypatch.setattr("builtins.__import__", fake_import)
+
+        supported_formats = thumbnails._supported_formats()
+        assert supported_formats == thumbnails._BASE_SUPPORTED_FORMATS
+        assert "HEIC" not in supported_formats
+        assert "HEIF" not in supported_formats
+
 
 class TestPhotoThumbnail:
     @staticmethod
