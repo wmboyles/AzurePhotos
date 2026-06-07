@@ -41,7 +41,7 @@ class TestUpload:
         self.video_client = fake_videos_container_client
         self.thumbnails_client = fake_thumbnails_container_client
 
-        monkeypatch.setattr(videos, "compute_thumbnail", lambda _: b"thumbnail-bytes")
+        monkeypatch.setattr(videos, "compute_thumbnail", lambda _, __: b"thumbnail-bytes")
 
     @staticmethod
     def make_file(

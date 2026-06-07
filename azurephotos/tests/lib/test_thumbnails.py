@@ -152,7 +152,7 @@ class TestVideoThumbnail:
 
         with self.app.app_context():
             result = thumbnails.video_thumbnail(
-                "video.mp4", ffmpeg_path="/usr/bin/ffmpeg"
+                "video.mp4", str(), ffmpeg_path="/usr/bin/ffmpeg"
             )
 
         assert result == b"thumbnail-bytes"
@@ -176,7 +176,7 @@ class TestVideoThumbnail:
 
         with self.app.app_context():
             result = thumbnails.video_thumbnail(
-                "video.mp4", ffmpeg_path="/usr/bin/ffmpeg"
+                "video.mp4", str(), ffmpeg_path="/usr/bin/ffmpeg"
             )
 
         assert result == b"thumbnail-bytes"
@@ -192,7 +192,7 @@ class TestVideoThumbnail:
         monkeypatch.setattr(thumbnails.shutil, "which", lambda _: None)
 
         with pytest.raises(Exception, match="Cannot find ffmpeg"):
-            thumbnails.video_thumbnail("video.mp4", ffmpeg_path=None)
+            thumbnails.video_thumbnail("video.mp4", str(), ffmpeg_path=None)
 
     def test_video_thumbnail_missing_icon(
         self, monkeypatch: pytest.MonkeyPatch
@@ -201,7 +201,7 @@ class TestVideoThumbnail:
 
         with self.app.app_context():
             with pytest.raises(Exception, match="Cannot find video icon"):
-                thumbnails.video_thumbnail("video.mp4", ffmpeg_path="/usr/bin/ffmpeg")
+                thumbnails.video_thumbnail("video.mp4", str(), ffmpeg_path="/usr/bin/ffmpeg")
 
     def test_video_thumbnail_no_output(self, monkeypatch: pytest.MonkeyPatch) -> None:
         def fake_run(*args, **kwargs):
@@ -211,7 +211,7 @@ class TestVideoThumbnail:
 
         with self.app.app_context():
             with pytest.raises(RuntimeError, match="No output from ffmpeg process"):
-                thumbnails.video_thumbnail("video.mp4", ffmpeg_path="/usr/bin/ffmpeg")
+                thumbnails.video_thumbnail("video.mp4", str(), ffmpeg_path="/usr/bin/ffmpeg")
 
     def test_video_thumbnail_ffmpeg_failed(
         self, monkeypatch: pytest.MonkeyPatch
@@ -223,4 +223,4 @@ class TestVideoThumbnail:
 
         with self.app.app_context():
             with pytest.raises(RuntimeError, match="ffmpeg failed"):
-                thumbnails.video_thumbnail("video.mp4", ffmpeg_path="/usr/bin/ffmpeg")
+                thumbnails.video_thumbnail("video.mp4", str(), ffmpeg_path="/usr/bin/ffmpeg")

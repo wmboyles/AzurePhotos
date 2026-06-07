@@ -1,4 +1,3 @@
-from flask import current_app
 from io import BytesIO
 from PIL import Image, ImageFile, ImageOps
 from PIL.Image import DecompressionBombError
@@ -7,7 +6,6 @@ from typing import IO
 import os
 import shutil
 import subprocess
-import tempfile
 
 WIDTH = 384
 HEIGHT = 384
@@ -111,6 +109,7 @@ def thumbnail(photo_bytes: IO[bytes]) -> BytesIO:
 
 def video_thumbnail(
     video_path: str,
+    static_folder: str,
     *,
     ffmpeg_path: str | None = None) -> bytes:
     """
@@ -129,7 +128,7 @@ def video_thumbnail(
         raise Exception("Cannot find ffmpeg")
     
     # find video icon
-    video_icon_path = os.path.join(str(current_app.static_folder), "video_icon.png")
+    video_icon_path = os.path.join(static_folder, "video_icon.png")
     if not os.path.exists(video_icon_path):
         raise Exception("Cannot find video icon")
 

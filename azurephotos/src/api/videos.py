@@ -57,8 +57,9 @@ def upload(file: FileStorage, date_taken: datetime) -> str:
     file_size = os.path.getsize(temp_path)                                  
 
     try:
+        static_folder = str(current_app.static_folder)
         def upload_thumbnail(client: ContainerClient) -> None:
-            thumbnail_bytes = compute_thumbnail(temp_path)
+            thumbnail_bytes = compute_thumbnail(temp_path, static_folder)
             _ = client.upload_blob(
                 name=f"{save_filename}.webp",
                 data=thumbnail_bytes,
