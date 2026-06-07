@@ -33,7 +33,7 @@ def create_app() -> Flask:
             thumbnails_container_client=thumbnails_container_client,
             albums_table_client=albums_table_client,
             SEND_FILE_MAX_AGE_DEFAULT=86400,
-            MAX_CONTENT_LENGTH=200 * 1024 * 1024,  # 200 MB
+            MAX_CONTENT_LENGTH=1 * 1024 * 1024 * 1024,  # 1 GB
         )
         for blueprint in view.blueprints:
             app.register_blueprint(blueprint)
