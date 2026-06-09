@@ -18,7 +18,7 @@ def test_health_success(
         response = health.health()
 
     assert response.status_code == 200
-    assert response.content_type == "text/plain"
+    assert response.content_type == "text/plain; charset=utf-8"
     assert response.get_data(as_text=True) == "ok"
 
     as_mock(
@@ -55,7 +55,7 @@ def test_health_container_failure(
     )
 
     assert response.status_code == 503
-    assert response.content_type == "text/plain"
+    assert response.content_type == "text/plain; charset=utf-8"
     assert response.get_data(as_text=True) == error_message
 
 
@@ -79,5 +79,5 @@ def test_health_table_failure(
     )
 
     assert response.status_code == 503
-    assert response.content_type == "text/plain"
+    assert response.content_type == "text/plain; charset=utf-8"
     assert response.get_data(as_text=True) == error_message

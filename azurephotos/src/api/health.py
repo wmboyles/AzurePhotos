@@ -38,6 +38,6 @@ def health() -> Response:
         for table_client in table_clients:
             _ = next(table_client.list_entities(results_per_page=1), None)
         
-        return Response("ok", status=200, content_type="text/plain")
+        return Response("ok", status=200, content_type="text/plain; charset=utf-8")
     except Exception as e:
-        return Response(str(e), status=503, content_type="text/plain")
+        return Response(str(e), status=503, content_type="text/plain; charset=utf-8")

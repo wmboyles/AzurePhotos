@@ -10,7 +10,7 @@ def test_get_container_sas_cached(
     app: Flask,
     fake_blob_service_client: BlobServiceClient,
     monkeypatch: pytest.MonkeyPatch,
-):
+) -> None:
     monkeypatch.setattr(
         storage_helper,
         "generate_container_sas",
