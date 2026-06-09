@@ -75,7 +75,7 @@ def fullsize(filename: str) -> Response:
         case MediaType.VIDEO:
             return videos.fullsize(filename)
         case _:
-            return Response(f"Unrecognized media type for {filename=}", status=404)
+            return Response(f"Unrecognized {media_type=} for {filename=}", status=404)
 
 
 @crud_controller.route("/upload", methods=["POST"])

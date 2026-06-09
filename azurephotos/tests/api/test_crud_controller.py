@@ -79,3 +79,15 @@ def test_fullsize_video(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
 
     expected_location = f"{app.config["blob_account_url"]}/videos/{filename}?{videos_container_sas}"
     assert response.location == expected_location
+
+def test_fullsize_unknown_media_type(app: Flask) -> None:
+    filename = "unknown_extension.idk"
+    with app.app_context():
+        response = crud_controller.fullsize(filename)
+
+    assert isinstance(response, Response)
+    assert response.status_code == 404
+    assert response.content_type == "text/plain; charset=utf-8"
+    response_text = response.get_data(as_text=True)
+    assert response_text.startswith("Unrecognized media_type")
+    assert response_text.endswith(f"{filename=}")
