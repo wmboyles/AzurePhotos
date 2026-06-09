@@ -2,6 +2,7 @@
 
 import pytest
 
+from azure.data.tables import TableClient
 from azure.storage.blob import ContainerClient, BlobServiceClient
 from flask import Flask
 from flask.testing import FlaskClient
@@ -45,8 +46,10 @@ def fake_thumbnails_container_client() -> ContainerClient:
 
 
 @pytest.fixture
-def fake_albums_table_client() -> MagicMock:
-    return MagicMock(name="albums_table_client")
+def fake_albums_table_client() -> TableClient:
+    mock = create_autospec(TableClient, instance=True)
+    mock._mock_name = "albums_table_client"
+    return mock
 
 
 @pytest.fixture
