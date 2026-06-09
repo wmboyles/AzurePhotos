@@ -35,38 +35,6 @@ def fullsize(filename: str) -> Response:
     )
 
 
-def delete_fullsize(filename: str) -> None:
-    """
-    Deletes the fullsize photo from the storage account.
-
-    :param filename: The name of the photo file
-    """
-
-    photos_container_client: ContainerClient = current_app.config["photos_container_client"]
-
-    try:
-        photos_container_client.delete_blob(filename)
-    except ResourceNotFoundError:
-        # Blob already deleted
-        pass
-
-
-def delete_thumbnail(filename: str) -> None:
-    """
-    Deletes the thumbnail photo from the storage account.
-
-    :param filename: The name of the photo file
-    """
-
-    thumbnails_container_client: ContainerClient = current_app.config["thumbnails_container_client"]
-
-    try:
-        thumbnails_container_client.delete_blob(filename)
-    except ResourceNotFoundError:
-        # Blob already deleted
-        pass
-
-
 def upload(file: FileStorage, date_taken: datetime) -> str:
     """
     Upload photos to blob storage.
@@ -111,3 +79,35 @@ def upload(file: FileStorage, date_taken: datetime) -> str:
         # TODO: Try to delete thumbnail blob if fullsize upload failed
 
     return save_filename
+
+
+def delete_fullsize(filename: str) -> None:
+    """
+    Deletes the fullsize photo from the storage account.
+
+    :param filename: The name of the photo file
+    """
+
+    photos_container_client: ContainerClient = current_app.config["photos_container_client"]
+
+    try:
+        photos_container_client.delete_blob(filename)
+    except ResourceNotFoundError:
+        # Blob already deleted
+        pass
+
+
+def delete_thumbnail(filename: str) -> None:
+    """
+    Deletes the thumbnail photo from the storage account.
+
+    :param filename: The name of the photo file
+    """
+
+    thumbnails_container_client: ContainerClient = current_app.config["thumbnails_container_client"]
+
+    try:
+        thumbnails_container_client.delete_blob(filename)
+    except ResourceNotFoundError:
+        # Blob already deleted
+        pass
