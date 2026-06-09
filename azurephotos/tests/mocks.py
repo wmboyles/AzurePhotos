@@ -6,7 +6,7 @@ class FakeDateTime:
     current = datetime(2026, 1, 1, tzinfo=timezone.utc)
 
     @classmethod
-    def now(cls, tz=None):
+    def now(cls, tz: timezone | None=None) -> datetime:
         if tz is not None:
             return cls.current.astimezone(tz)
 
