@@ -1,13 +1,11 @@
-from typing import Sequence
-
 from ..lib.models.media import MediaRecord
 
-media_cache: Sequence[MediaRecord] | None = None
+media_cache: list[MediaRecord] | None = None
 """
 All existing photos and videos not in an album, sorted by last modified time
 """
 
-def all_media() -> Sequence[MediaRecord]:
+def all_media() -> list[MediaRecord]:
     from .albums import non_album_file_names
     global media_cache
 
