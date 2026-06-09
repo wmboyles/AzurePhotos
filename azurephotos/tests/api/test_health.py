@@ -1,7 +1,3 @@
-from urllib import response
-
-import pytest
-
 from azure.core.exceptions import ClientAuthenticationError
 from azure.data.tables import TableClient
 from azure.storage.blob import ContainerClient
