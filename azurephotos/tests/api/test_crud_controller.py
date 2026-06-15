@@ -1,18 +1,23 @@
-from urllib import response
-
 import pytest
 
+from azure.core.exceptions import ResourceExistsError
+from azure.data.tables import TableClient
+from azure.storage.blob import ContainerClient, ContentSettings
+from datetime import datetime, timezone
 from flask import Flask
+from io import BytesIO
+from unittest.mock import ANY
 from werkzeug.wrappers.response import Response
+from werkzeug.datastructures.file_storage import FileStorage
 
 from src.api import crud_controller, photos, videos
+from src.api.albums import NONE_ALBUM_NAME
 from src.lib.models.media import MediaType
+from tests.mocks import as_mock
 
 
 @pytest.mark.parametrize("filename", ("photo.jpg", "video.mp4"))
-def test_thumbnail(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, filename: str
-) -> None:
+def test_thumbnail(app: Flask, monkeypatch: pytest.MonkeyPatch, filename: str) -> None:
     thumbnails_container_sas = "sas=thumbnails-container-sas"
     monkeypatch.setattr(
         crud_controller,
@@ -32,6 +37,7 @@ def test_thumbnail(
     expected_location = f"{app.config["blob_account_url"]}/thumbnails/{expected_filename}?{thumbnails_container_sas}"
     assert response.location == expected_location
 
+
 def test_thumbnail_unknown_media_type(app: Flask) -> None:
     filename = "unknown_extension.idk"
     with app.app_context():
@@ -43,6 +49,7 @@ def test_thumbnail_unknown_media_type(app: Flask) -> None:
     response_text = response.get_data(as_text=True)
     assert response_text.startswith("Unrecognized media_type")
     assert response_text.endswith(f"{filename=}")
+
 
 def test_fullsize_photo(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     photos_container_sas = "sas=photos-container-sas"
@@ -59,8 +66,11 @@ def test_fullsize_photo(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     assert isinstance(response, Response)
     assert response.status_code == 302
 
-    expected_location = f"{app.config["blob_account_url"]}/photos/{filename}?{photos_container_sas}"
+    expected_location = (
+        f"{app.config["blob_account_url"]}/photos/{filename}?{photos_container_sas}"
+    )
     assert response.location == expected_location
+
 
 def test_fullsize_video(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     videos_container_sas = "sas=videos-container-sas"
@@ -77,8 +87,11 @@ def test_fullsize_video(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     assert isinstance(response, Response)
     assert response.status_code == 302
 
-    expected_location = f"{app.config["blob_account_url"]}/videos/{filename}?{videos_container_sas}"
+    expected_location = (
+        f"{app.config["blob_account_url"]}/videos/{filename}?{videos_container_sas}"
+    )
     assert response.location == expected_location
+
 
 def test_fullsize_unknown_media_type(app: Flask) -> None:
     filename = "unknown_extension.idk"
@@ -91,3 +104,309 @@ def test_fullsize_unknown_media_type(app: Flask) -> None:
     response_text = response.get_data(as_text=True)
     assert response_text.startswith("Unrecognized media_type")
     assert response_text.endswith(f"{filename=}")
+
+
+class TestUpload:
+    _THUMBNAIL_BYTES = BytesIO(b"thumbnail-bytes")
+
+    @pytest.fixture(autouse=True)
+    def _setup(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        fake_photos_container_client: ContainerClient,
+        fake_videos_container_client: ContainerClient,
+        fake_thumbnails_container_client: ContainerClient,
+        fake_albums_table_client: TableClient,
+    ) -> None:
+        self.app = app
+        self.photo_client = fake_photos_container_client
+        self.video_client = fake_videos_container_client
+        self.thumbnails_client = fake_thumbnails_container_client
+        self.table_client = fake_albums_table_client
+
+        monkeypatch.setattr(
+            photos, "compute_thumbnail", lambda _: TestUpload._THUMBNAIL_BYTES
+        )
+        monkeypatch.setattr(
+            videos, "compute_thumbnail", lambda _, __: TestUpload._THUMBNAIL_BYTES
+        )
+
+    @staticmethod
+    def make_file(
+        filename: str = "photo.jpg", content: bytes = b"photo-data"
+    ) -> FileStorage:
+        return FileStorage(stream=BytesIO(content), filename=filename)
+
+    @pytest.mark.parametrize("album_name", (NONE_ALBUM_NAME, "Test Album"))
+    def test_upload_photo(self, album_name: str) -> None:
+        filename = "photo.jpg"
+        content = b"photo-bytes"
+        file = self.make_file(filename=filename, content=content)
+        date_taken = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+        with self.app.test_request_context(
+            method="POST", data={"upload": file, "dateTaken": date_taken}
+        ):
+            result = (
+                crud_controller.upload()
+                if album_name == NONE_ALBUM_NAME
+                else crud_controller.upload_to_album(album_name)
+            )
+
+        assert result.status_code == 201
+
+        expected_metadata = {"lastModified": date_taken.isoformat()}
+
+        upload_fullsize_blob_mock = as_mock(self.photo_client.upload_blob)
+        upload_fullsize_blob_mock.assert_called_once_with(
+            name=filename,
+            data=ANY,  # by reference, so can't compare
+            length=len(content),
+            max_concurrency=4,
+            metadata=expected_metadata,
+        )
+
+        upload_thumbnail_blob_mock = as_mock(self.thumbnails_client.upload_blob)
+        upload_thumbnail_blob_mock.assert_called_once_with(
+            name=filename,
+            data=TestUpload._THUMBNAIL_BYTES,
+            metadata=expected_metadata,
+            content_settings=ContentSettings(
+                cache_control="public, max-age=31536000, immutable"
+            ),
+        )
+
+        upload_album_mock = as_mock(self.table_client.create_entity)
+        expected_album_entry = {
+            "PartitionKey": album_name,
+            "RowKey": filename,
+            "Created": date_taken,
+        }
+        upload_album_mock.assert_called_once_with(expected_album_entry)
+
+    @pytest.mark.parametrize("album_name", (NONE_ALBUM_NAME, "Test Album"))
+    def test_upload_video(self, album_name: str) -> None:
+        filename = "video.mp4"
+        content = b"video-bytes"
+        file = self.make_file(filename=filename, content=content)
+        date_taken = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+        with self.app.test_request_context(
+            method="POST", data={"upload": file, "dateTaken": date_taken}
+        ):
+            result = (
+                crud_controller.upload()
+                if album_name == NONE_ALBUM_NAME
+                else crud_controller.upload_to_album(album_name)
+            )
+
+        assert result.status_code == 201
+
+        expected_metadata = {"lastModified": date_taken.isoformat()}
+
+        upload_fullsize_blob_mock = as_mock(self.video_client.upload_blob)
+        upload_fullsize_blob_mock.assert_called_once_with(
+            name=filename,
+            data=ANY,  # by reference, so can't compare
+            length=len(content),
+            max_concurrency=4,
+            metadata=expected_metadata,
+        )
+
+        upload_thumbnail_blob_mock = as_mock(self.thumbnails_client.upload_blob)
+        upload_thumbnail_blob_mock.assert_called_once_with(
+            name=f"{filename}.webp",
+            data=TestUpload._THUMBNAIL_BYTES,
+            metadata=expected_metadata,
+            content_settings=ContentSettings(
+                cache_control="public, max-age=31536000, immutable"
+            ),
+        )
+
+        upload_album_mock = as_mock(self.table_client.create_entity)
+        expected_album_entry = {
+            "PartitionKey": album_name,
+            "RowKey": filename,
+            "Created": date_taken,
+        }
+        upload_album_mock.assert_called_once_with(expected_album_entry)
+
+    @pytest.mark.parametrize("album_name", (NONE_ALBUM_NAME, "Test Album"))
+    def test_upload_no_files(self, album_name: str) -> None:
+        date_taken = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+        with pytest.raises(
+            ValueError, match="No files provided for upload"
+        ), self.app.test_request_context(
+            method="POST", data={"upload": None, "dateTaken": date_taken}
+        ):
+            _ = (
+                crud_controller.upload()
+                if album_name == NONE_ALBUM_NAME
+                else crud_controller.upload_to_album(album_name)
+            )
+
+    @pytest.mark.parametrize("album_name", (NONE_ALBUM_NAME, "Test Album"))
+    def test_upload_no_dates(self, album_name: str) -> None:
+        filename = "photo.jpg"
+        content = b"photo-bytes"
+        file = self.make_file(filename=filename, content=content)
+
+        with pytest.raises(
+            ValueError, match="No dates provided for uploaded items"
+        ), self.app.test_request_context(
+            method="POST", data={"upload": file, "dateTaken": []}
+        ):
+            _ = (
+                crud_controller.upload()
+                if album_name == NONE_ALBUM_NAME
+                else crud_controller.upload_to_album(album_name)
+            )
+
+    @pytest.mark.parametrize("album_name", (NONE_ALBUM_NAME, "Test Album"))
+    def test_upload_extra_files(self, album_name: str) -> None:
+        content = b"photo-bytes"
+        file1 = self.make_file(filename="photo1.jpg", content=content)
+        file2 = self.make_file(filename="photo2.jpg", content=content)
+        date_taken = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+        with pytest.raises(
+            ValueError,
+            match="Number of uploaded files and number of dates do not match",
+        ), self.app.test_request_context(
+            method="POST", data={"upload": [file1, file2], "dateTaken": date_taken}
+        ):
+            _ = (
+                crud_controller.upload()
+                if album_name == NONE_ALBUM_NAME
+                else crud_controller.upload_to_album(album_name)
+            )
+
+    @pytest.mark.parametrize("album_name", (NONE_ALBUM_NAME, "Test Album"))
+    def test_upload_extra_dates(self, album_name: str) -> None:
+        content = b"photo-bytes"
+        file = self.make_file(filename="photo1.jpg", content=content)
+        date_taken1 = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        date_taken2 = datetime(2026, 1, 2, tzinfo=timezone.utc)
+
+        with pytest.raises(
+            ValueError,
+            match="Number of uploaded files and number of dates do not match",
+        ), self.app.test_request_context(
+            method="POST",
+            data={"upload": file, "dateTaken": [date_taken1, date_taken2]},
+        ):
+            _ = (
+                crud_controller.upload()
+                if album_name == NONE_ALBUM_NAME
+                else crud_controller.upload_to_album(album_name)
+            )
+
+    @pytest.mark.parametrize("album_name", (NONE_ALBUM_NAME, "Test Album"))
+    def test_upload_unrecognized_extension(self, album_name: str) -> None:
+        filename = "unknown_extension.idk"
+        content = b"photo-bytes"
+        file = self.make_file(filename=filename, content=content)
+        date_taken1 = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+        with pytest.raises(
+            ValueError,
+            match=f"Unrecognized media type for {file.filename=}",
+        ), self.app.test_request_context(
+            method="POST", data={"upload": file, "dateTaken": date_taken1}
+        ):
+            _ = (
+                crud_controller.upload()
+                if album_name == NONE_ALBUM_NAME
+                else crud_controller.upload_to_album(album_name)
+            )
+
+    @pytest.mark.parametrize("album_name", (NONE_ALBUM_NAME, "Test Album"))
+    def test_upload_no_filename(self, album_name: str) -> None:
+        content = b"photo-bytes"
+        file = self.make_file(filename="", content=content)
+        date_taken = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+        with pytest.raises(
+            ValueError, match="File must have filename"
+        ), self.app.test_request_context(
+            method="POST", data={"upload": [file], "dateTaken": date_taken}
+        ):
+            _ = (
+                crud_controller.upload()
+                if album_name == NONE_ALBUM_NAME
+                else crud_controller.upload_to_album(album_name)
+            )
+
+    def test_upload_to_album_reserved_album(self) -> None:
+        filename = "photo.jpg"
+        content = b"photo-bytes"
+        file = self.make_file(filename=filename, content=content)
+        date_taken = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+        with self.app.test_request_context(
+            method="POST", data={"upload": file, "dateTaken": date_taken}
+        ):
+            response = crud_controller.upload_to_album(NONE_ALBUM_NAME)
+
+        assert response.status_code == 403
+        assert response.content_type == "text/plain; charset=utf-8"
+        response_text = response.get_data(as_text=True)
+        assert (
+            response_text
+            == f"Album name '{NONE_ALBUM_NAME}' is reserved and cannot be uploaded to directly"
+        )
+
+    @pytest.mark.parametrize(
+        "album_name", ["", "a" * 1025, "/", "\\", "#", "?", "\\U1F", "\\U7F", "\\U9F"]
+    )
+    def test_upload_bad_album_name(self, album_name: str) -> None:
+        filename = "photo.jpg"
+        content = b"photo-bytes"
+        file = self.make_file(filename=filename, content=content)
+        date_taken = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+        with self.app.test_request_context(
+            method="POST", data={"upload": file, "dateTaken": date_taken}
+        ):
+            response = crud_controller.upload_to_album(album_name)
+
+        assert response.status_code == 400
+        assert response.content_type == "application/json"
+        assert response.json == [
+            {
+                "filename": filename,
+                "status_code": 422,
+                "message": f"{album_name=} is not allowed due to length or charset restrictions",
+            }
+        ]
+
+    @pytest.mark.parametrize("album_name", (NONE_ALBUM_NAME, "Test Album"))
+    def test_upload_resource_exists(
+        self, album_name: str, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        filename = "photo.jpg"
+        content = b"photo-bytes"
+        file = self.make_file(filename=filename, content=content)
+        date_taken = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+        error_message = f"{filename=} already exists"
+        as_mock(self.photo_client.upload_blob).side_effect = ResourceExistsError(
+            error_message
+        )
+
+        with self.app.test_request_context(
+            method="POST", data={"upload": file, "dateTaken": date_taken}
+        ):
+            response = (
+                crud_controller.upload()
+                if album_name == NONE_ALBUM_NAME
+                else crud_controller.upload_to_album(album_name)
+            )
+
+        assert response.status_code == 400
+        assert response.content_type == "application/json"
+        assert response.json == [
+            {"filename": filename, "status_code": 409, "message": error_message}
+        ]

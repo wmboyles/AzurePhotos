@@ -88,7 +88,7 @@ def upload() -> Response:
     return _upload_to_album(NONE_ALBUM_NAME)
 
 def _upload(file: FileStorage, date_string: str, album_name: str = NONE_ALBUM_NAME) -> Response:
-    if file.filename is None:
+    if not file.filename:
         raise ValueError("File must have filename")
     
     date_taken = datetime.fromisoformat(date_string.strip())
