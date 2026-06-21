@@ -359,7 +359,7 @@ class TestUpload:
         )
 
     @pytest.mark.parametrize(
-        "album_name", ["", "a" * 1025, "/", "\\", "#", "?", "\\U1F", "\\U7F", "\\U9F"]
+        "album_name", ["", "a" * 1025, "/", "\\", "#", "?", "\x1F", "\x7F", "\x9F"]
     )
     def test_upload_bad_album_name(self, album_name: str) -> None:
         filename = "photo.jpg"
@@ -374,6 +374,7 @@ class TestUpload:
 
         assert response.status_code == 400
         assert response.content_type == "application/json"
+        album_name = album_name.strip()
         assert response.json == [
             {
                 "filename": filename,

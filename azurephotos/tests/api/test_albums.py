@@ -33,7 +33,7 @@ class TestCreateAlbum:
         assert response_text == f"{album_name=} is reserved"
 
     @pytest.mark.parametrize(
-        "album_name", ["", "a" * 1025, "/", "\\", "#", "?", "\\U1F", "\\U7F", "\\U9F"]
+        "album_name", ["", "a" * 1025, "/", "\\", "#", "?", "\x1F", "\x7F", "\x9F"]
     )
     def test_create_album_invalid_name(self, album_name: str) -> None:
         album_name = ""
@@ -136,7 +136,7 @@ class TestRenameAlbum:
         assert response_text == f"{new_name=} is reserved and cannot be renamed to"
 
     @pytest.mark.parametrize(
-        "new_name", ["", "a" * 1025, "/", "\\", "#", "?", "\\U1F", "\\U7F", "\\U9F"]
+        "new_name", ["", "a" * 1025, "/", "\\", "#", "?", "\x1F", "\x7F", "\x9F"]
     )
     def test_rename_album_new_invalid(self, new_name: str) -> None:
         album_name = "Old Album Name"
@@ -146,6 +146,7 @@ class TestRenameAlbum:
         assert response.status_code == 422
 
         response_text = response.get_data(as_text=True)
+        new_name = new_name.strip()
         assert (
             response_text
             == f"{new_name=} is not allowed due to length or charset restrictions"
@@ -275,7 +276,7 @@ class TestDeleteAlbum:
         assert response_text == f"{album_name=} is reserved and cannot be deleted"
 
     @pytest.mark.parametrize(
-        "album_name", ["", "a" * 1025, "/", "\\", "#", "?", "\\U1F", "\\U7F", "\\U9F"]
+        "album_name", ["", "a" * 1025, "/", "\\", "#", "?", "\x1F", "\x7F", "\x9F"]
     )
     def test_delete_album_invalid_name(self, album_name: str) -> None:
         with self.app.app_context():
@@ -284,6 +285,7 @@ class TestDeleteAlbum:
         assert response.status_code == 422
 
         response_text = response.get_data(as_text=True)
+        album_name = album_name.strip()
         assert (
             response_text
             == f"{album_name=} is not allowed due to length or charset restrictions"
