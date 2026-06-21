@@ -185,7 +185,7 @@ def delete(filename: str) -> Response:
             videos.delete_fullsize(filename)
             videos.delete_thumbnail(filename)
         case _:
-            raise ValueError(f"Unrecognized media type for {filename=}")
+            return Response(f"Unrecognized media type for {filename=}", status=415)
 
     albums_affected = remove_from_all_albums(filename)
     if NONE_ALBUM_NAME in albums_affected:

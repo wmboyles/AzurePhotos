@@ -1,12 +1,12 @@
 import pytest
 
-from azure.core.exceptions import ResourceExistsError
+from azure.core.exceptions import ResourceExistsError, ResourceNotFoundError
 from azure.data.tables import TableClient
 from azure.storage.blob import ContainerClient, ContentSettings
 from datetime import datetime, timezone
 from flask import Flask
 from io import BytesIO
-from unittest.mock import ANY
+from unittest.mock import ANY, call
 from werkzeug.wrappers.response import Response
 from werkzeug.datastructures.file_storage import FileStorage
 
@@ -410,3 +410,149 @@ class TestUpload:
         assert response.json == [
             {"filename": filename, "status_code": 409, "message": error_message}
         ]
+
+
+class TestDelete:
+    @pytest.fixture(autouse=True)
+    def _setup(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        fake_photos_container_client: ContainerClient,
+        fake_videos_container_client: ContainerClient,
+        fake_thumbnails_container_client: ContainerClient,
+        fake_albums_table_client: TableClient,
+    ) -> None:
+        self.app = app
+        self.photo_client = fake_photos_container_client
+        self.video_client = fake_videos_container_client
+        self.thumbnails_client = fake_thumbnails_container_client
+        self.table_client = fake_albums_table_client
+
+    def test_delete_unknown_extension(self) -> None:
+        filename = "unknown_extension.idk"
+
+        with self.app.test_request_context(method="DELETE"):
+            response = crud_controller.delete(filename)
+
+        assert response.status_code == 415
+        response_text = response.get_data(as_text=True)
+        assert response_text == f"Unrecognized media type for {filename=}"
+
+    @pytest.mark.parametrize(
+        "albums_affected",
+        ([NONE_ALBUM_NAME], ["Album1"], ["Album1", "Album2", "Album3"]),
+    )
+    def test_delete_photo(self, albums_affected: list[str]) -> None:
+        filename = "photo.jpg"
+        table_client_query_mock = as_mock(self.table_client.query_entities)
+        table_client_query_mock_return_value = [
+            {"PartitionKey": album, "RowKey": filename} for album in albums_affected
+        ]
+        table_client_query_mock.return_value = table_client_query_mock_return_value
+        with self.app.test_request_context(method="DELETE"):
+            response = crud_controller.delete(filename)
+
+        assert response.status_code == 204
+
+        photo_client_delete_blob_mock = as_mock(self.photo_client.delete_blob)
+        photo_client_delete_blob_mock.assert_called_once_with(filename)
+
+        thumbnails_client_delete_blob_mock = as_mock(self.thumbnails_client.delete_blob)
+        thumbnails_client_delete_blob_mock.assert_called_once_with(filename)
+
+        table_client_query_mock.assert_called_once_with(
+            query_filter="RowKey eq @filename", parameters={"filename": filename}
+        )
+
+        table_client_delete_mock = as_mock(self.table_client.delete_entity)
+        table_client_delete_mock.assert_has_calls(
+            [call(entity) for entity in table_client_query_mock_return_value]
+        )
+
+    def test_delete_photo_missing_fullsize(self) -> None:
+        photo_client_delete_blob_mock = as_mock(self.photo_client.delete_blob)
+        photo_client_delete_blob_mock.side_effect = ResourceNotFoundError()
+        filename = "photo.jpg"
+        with self.app.test_request_context(method="DELETE"):
+            response = crud_controller.delete(filename)
+
+        assert response.status_code == 204
+
+        photo_client_delete_blob_mock.assert_called_once_with(filename)
+
+        thumbnails_client_delete_blob_mock = as_mock(self.thumbnails_client.delete_blob)
+        thumbnails_client_delete_blob_mock.assert_called_once_with(filename)
+
+    def test_delete_photo_missing_thumbnail(self) -> None:
+        thumbnails_client_delete_blob_mock = as_mock(self.thumbnails_client.delete_blob)
+        thumbnails_client_delete_blob_mock.side_effect = ResourceNotFoundError()
+        filename = "photo.jpg"
+        with self.app.test_request_context(method="DELETE"):
+            response = crud_controller.delete(filename)
+
+        assert response.status_code == 204
+
+        photo_client_delete_blob_mock = as_mock(self.photo_client.delete_blob)
+        photo_client_delete_blob_mock.assert_called_once_with(filename)
+
+        thumbnails_client_delete_blob_mock.assert_called_once_with(filename)
+
+    @pytest.mark.parametrize(
+        "albums_affected",
+        ([NONE_ALBUM_NAME], ["Album1"], ["Album1", "Album2", "Album3"]),
+    )
+    def test_delete_video(self, albums_affected: list[str]) -> None:
+        filename = "video.mp4"
+        table_client_query_mock = as_mock(self.table_client.query_entities)
+        table_client_query_mock_return_value = [
+            {"PartitionKey": album, "RowKey": filename} for album in albums_affected
+        ]
+        table_client_query_mock.return_value = table_client_query_mock_return_value
+        with self.app.test_request_context(method="DELETE"):
+            response = crud_controller.delete(filename)
+
+        assert response.status_code == 204
+
+        video_client_delete_blob_mock = as_mock(self.video_client.delete_blob)
+        video_client_delete_blob_mock.assert_called_once_with(filename)
+
+        thumbnails_client_delete_blob_mock = as_mock(self.thumbnails_client.delete_blob)
+        thumbnails_client_delete_blob_mock.assert_called_once_with(f"{filename}.webp")
+
+        table_client_query_mock.assert_called_once_with(
+            query_filter="RowKey eq @filename", parameters={"filename": filename}
+        )
+
+        table_client_delete_mock = as_mock(self.table_client.delete_entity)
+        table_client_delete_mock.assert_has_calls(
+            [call(entity) for entity in table_client_query_mock_return_value]
+        )
+
+    def test_delete_video_missing_fullsize(self) -> None:
+        video_client_delete_blob_mock = as_mock(self.video_client.delete_blob)
+        video_client_delete_blob_mock.side_effect = ResourceNotFoundError()
+        filename = "video.mp4"
+        with self.app.test_request_context(method="DELETE"):
+            response = crud_controller.delete(filename)
+
+        assert response.status_code == 204
+
+        video_client_delete_blob_mock.assert_called_once_with(filename)
+
+        thumbnails_client_delete_blob_mock = as_mock(self.thumbnails_client.delete_blob)
+        thumbnails_client_delete_blob_mock.assert_called_once_with(f"{filename}.webp")
+
+    def test_delete_video_missing_thumbnail(self) -> None:
+        thumbnails_client_delete_blob_mock = as_mock(self.thumbnails_client.delete_blob)
+        thumbnails_client_delete_blob_mock.side_effect = ResourceNotFoundError()
+        filename = "video.mp4"
+        with self.app.test_request_context(method="DELETE"):
+            response = crud_controller.delete(filename)
+
+        assert response.status_code == 204
+
+        video_client_delete_blob_mock = as_mock(self.video_client.delete_blob)
+        video_client_delete_blob_mock.assert_called_once_with(filename)
+
+        thumbnails_client_delete_blob_mock.assert_called_once_with(f"{filename}.webp")
