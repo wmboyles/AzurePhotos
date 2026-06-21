@@ -417,7 +417,6 @@ class TestDelete:
     def _setup(
         self,
         app: Flask,
-        monkeypatch: pytest.MonkeyPatch,
         fake_photos_container_client: ContainerClient,
         fake_videos_container_client: ContainerClient,
         fake_thumbnails_container_client: ContainerClient,
@@ -432,7 +431,7 @@ class TestDelete:
     def test_delete_unknown_extension(self) -> None:
         filename = "unknown_extension.idk"
 
-        with self.app.test_request_context(method="DELETE"):
+        with self.app.app_context():
             response = crud_controller.delete(filename)
 
         assert response.status_code == 415
@@ -450,7 +449,7 @@ class TestDelete:
             {"PartitionKey": album, "RowKey": filename} for album in albums_affected
         ]
         table_client_query_mock.return_value = table_client_query_mock_return_value
-        with self.app.test_request_context(method="DELETE"):
+        with self.app.app_context():
             response = crud_controller.delete(filename)
 
         assert response.status_code == 204
@@ -474,7 +473,7 @@ class TestDelete:
         photo_client_delete_blob_mock = as_mock(self.photo_client.delete_blob)
         photo_client_delete_blob_mock.side_effect = ResourceNotFoundError()
         filename = "photo.jpg"
-        with self.app.test_request_context(method="DELETE"):
+        with self.app.app_context():
             response = crud_controller.delete(filename)
 
         assert response.status_code == 204
@@ -488,7 +487,7 @@ class TestDelete:
         thumbnails_client_delete_blob_mock = as_mock(self.thumbnails_client.delete_blob)
         thumbnails_client_delete_blob_mock.side_effect = ResourceNotFoundError()
         filename = "photo.jpg"
-        with self.app.test_request_context(method="DELETE"):
+        with self.app.app_context():
             response = crud_controller.delete(filename)
 
         assert response.status_code == 204
@@ -509,7 +508,7 @@ class TestDelete:
             {"PartitionKey": album, "RowKey": filename} for album in albums_affected
         ]
         table_client_query_mock.return_value = table_client_query_mock_return_value
-        with self.app.test_request_context(method="DELETE"):
+        with self.app.app_context():
             response = crud_controller.delete(filename)
 
         assert response.status_code == 204
@@ -533,7 +532,7 @@ class TestDelete:
         video_client_delete_blob_mock = as_mock(self.video_client.delete_blob)
         video_client_delete_blob_mock.side_effect = ResourceNotFoundError()
         filename = "video.mp4"
-        with self.app.test_request_context(method="DELETE"):
+        with self.app.app_context():
             response = crud_controller.delete(filename)
 
         assert response.status_code == 204
@@ -547,7 +546,7 @@ class TestDelete:
         thumbnails_client_delete_blob_mock = as_mock(self.thumbnails_client.delete_blob)
         thumbnails_client_delete_blob_mock.side_effect = ResourceNotFoundError()
         filename = "video.mp4"
-        with self.app.test_request_context(method="DELETE"):
+        with self.app.app_context():
             response = crud_controller.delete(filename)
 
         assert response.status_code == 204

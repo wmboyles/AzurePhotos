@@ -52,9 +52,9 @@ def create_album(album_name: str) -> Response | dict[str, Any]:
     }
 
     try:
-        return table_client.create_entity(new_album)  # type: ignore
+        return table_client.create_entity(new_album)
     except ResourceExistsError:
-        return Response("Album already exists", status=409)
+        return Response(f"{album_name=} already exists", status=409)
 
 
 @api_albums_controller.route("/albums", methods=["GET"])
@@ -115,7 +115,7 @@ def rename_album(album_name: str, new_name: str) -> Response:
             pass
 
     if not entity:  # No results. Loop didn't run
-        return Response(f"Album '{album_name}' not found", status=404)
+        return Response(f"{album_name=} not found", status=404)
 
     return Response(status=204)
 
@@ -156,7 +156,7 @@ def delete_album(album_name: str) -> Response:
             pass
 
     if not entity:  # No results. Loop didn't run
-        return Response(f"Album '{album_name}' not found", status=404)
+        return Response(f"{album_name=} not found", status=404)
     
     invalidate_media_cache()
     return Response(status=204)
