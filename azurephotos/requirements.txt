@@ -2,5 +2,5 @@ flask
 azure-identity
 azure-storage-blob
 azure-data-tables
-Pillow
-pillow-heif
+Pillow>=13.0.0
+pillow-heif>=1.3.0
