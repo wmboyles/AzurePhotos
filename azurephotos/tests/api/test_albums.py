@@ -33,7 +33,7 @@ class TestCreateAlbum:
         assert response_text == f"{album_name=} is reserved"
 
     @pytest.mark.parametrize(
-        "album_name", ["", "a" * 1025, "/", "\\", "#", "?", "\x1F", "\x7F", "\x9F"]
+        "album_name", ["", "a" * 1025, "/", "\\", "#", "?", "\x1f", "\x7f", "\x9f"]
     )
     def test_create_album_invalid_name(self, album_name: str) -> None:
         album_name = ""
@@ -136,7 +136,7 @@ class TestRenameAlbum:
         assert response_text == f"{new_name=} is reserved and cannot be renamed to"
 
     @pytest.mark.parametrize(
-        "new_name", ["", "a" * 1025, "/", "\\", "#", "?", "\x1F", "\x7F", "\x9F"]
+        "new_name", ["", "a" * 1025, "/", "\\", "#", "?", "\x1f", "\x7f", "\x9f"]
     )
     def test_rename_album_new_invalid(self, new_name: str) -> None:
         album_name = "Old Album Name"
@@ -276,7 +276,7 @@ class TestDeleteAlbum:
         assert response_text == f"{album_name=} is reserved and cannot be deleted"
 
     @pytest.mark.parametrize(
-        "album_name", ["", "a" * 1025, "/", "\\", "#", "?", "\x1F", "\x7F", "\x9F"]
+        "album_name", ["", "a" * 1025, "/", "\\", "#", "?", "\x1f", "\x7f", "\x9f"]
     )
     def test_delete_album_invalid_name(self, album_name: str) -> None:
         with self.app.app_context():
@@ -389,3 +389,74 @@ class TestDeleteAlbum:
             query_filter="PartitionKey eq @album_name",
             parameters={"album_name": album_name},
         )
+
+
+class TestMoveToAlbum:
+    @pytest.fixture(autouse=True)
+    def _setup(
+        self,
+        app: Flask,
+        fake_albums_table_client: TableClient,
+    ) -> None:
+        self.app = app
+        self.table_client = fake_albums_table_client
+
+    def test_move_to_album_reserved(self) -> None:
+        album_name = NONE_ALBUM_NAME
+        filename = "photo.jpg"
+        with self.app.app_context():
+            response = albums.move_to_album(album_name, filename)
+
+        assert response.status_code == 403
+
+        response_text = response.get_data(as_text=True)
+        assert (
+            response_text
+            == f"{album_name=} is reserved and cannot be added to directly"
+        )
+
+    @pytest.mark.parametrize(
+        "album_name", ["", "a" * 1025, "/", "\\", "#", "?", "\x1f", "\x7f", "\x9f"]
+    )
+    def test_move_to_album_invalid(self, album_name: str) -> None:
+        filename = "photo.jpg"
+        with self.app.app_context():
+            response = albums.move_to_album(album_name, filename)
+
+        assert response.status_code == 422
+
+        response_text = response.get_data(as_text=True)
+        album_name = album_name.strip()
+        assert (
+            response_text
+            == f"{album_name=} is not allowed due to length or charset restrictions"
+        )
+
+    def test_move_to_album_noop(self) -> None:
+        filename = "photo.jpg"
+        album_name = "Album1"
+        with self.app.test_request_context(query_string={"currentAlbum": album_name}):
+            response = albums.move_to_album(album_name, filename)
+
+        assert response.status_code == 204
+
+    @pytest.mark.parametrize(
+        "current_album", ["", "a" * 1025, "/", "\\", "#", "?", "\x1f", "\x7f", "\x9f"]
+    )
+    def test_move_to_album_current_invalid(self, current_album: str) -> None:
+        filename = "photo.jpg"
+        album_name = "Album1"
+        with self.app.test_request_context(query_string={"currentAlbum": current_album}):
+            response = albums.move_to_album(album_name, filename)
+
+        assert response.status_code == 422
+
+        response_text = response.get_data(as_text=True)
+        current_album = current_album.strip()
+        assert (
+            response_text
+            == f"{current_album=} is not allowed due to length or charset restrictions"
+        )
+
+    def test_move_to_album_target_not_found(self) -> None:
+        
