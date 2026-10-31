@@ -80,30 +80,38 @@ class TestCreateAlbum:
         assert response_text == f"{album_name=} already exists"
 
 
-@pytest.mark.parametrize(
-    "albums_returned",
-    ([], [NONE_ALBUM_NAME], ["Album1"], ["Album1", "Album2", "Album3"]),
-)
-def test_list_albums(
-    app: Flask, fake_albums_table_client: TableClient, albums_returned: list[str]
-) -> None:
-    table_client_query_entities_mock = as_mock(fake_albums_table_client.query_entities)
-    table_client_query_entities_mock_return_value = [
-        {"RowKey": "", "PartitionKey": album} for album in albums_returned
-    ]
-    table_client_query_entities_mock.return_value = (
-        table_client_query_entities_mock_return_value
-    )
-    with app.app_context():
-        result = albums.list_albums()
+class TestListAlbums:
+    @pytest.fixture(autouse=True)
+    def _setup(
+        self,
+        app: Flask,
+        fake_albums_table_client: TableClient,
+    ) -> None:
+        self.app = app
+        self.table_client = fake_albums_table_client
 
-    table_client_query_entities_mock.assert_called_once_with(
-        query_filter="PartitionKey ne @reserved_album_name and RowKey eq ''",
-        parameters={"reserved_album_name": NONE_ALBUM_NAME},
+    @pytest.mark.parametrize(
+        "albums_returned",
+        ([], [NONE_ALBUM_NAME], ["Album1"], ["Album1", "Album2", "Album3"]),
     )
-    assert result == [
-        row["PartitionKey"] for row in table_client_query_entities_mock_return_value
-    ]
+    def test_list_albums(self, albums_returned: list[str]) -> None:
+        table_client_query_entities_mock = as_mock(self.table_client.query_entities)
+        table_client_query_entities_mock_return_value = [
+            {"RowKey": "", "PartitionKey": album} for album in albums_returned
+        ]
+        table_client_query_entities_mock.return_value = (
+            table_client_query_entities_mock_return_value
+        )
+        with self.app.test_request_context():
+            result = albums.list_albums()
+
+        table_client_query_entities_mock.assert_called_once_with(
+            query_filter="PartitionKey ne @reserved_album_name and RowKey eq ''",
+            parameters={"reserved_album_name": NONE_ALBUM_NAME},
+        )
+        assert result == [
+            row["PartitionKey"] for row in table_client_query_entities_mock_return_value
+        ]
 
 
 class TestRenameAlbum:
@@ -300,6 +308,8 @@ class TestDeleteAlbum:
         query_results = [
             {"PartitionKey": album_name, "RowKey": f"photo_{i}.jpg", "Created": created}
             for i in range(4)
+        ] + [
+            {"PartitionKey": album_name, "RowKey": "", "Created": created}
         ]
         query_results_mock = as_mock(self.table_client.query_entities)
         query_results_mock.return_value = query_results
@@ -315,23 +325,20 @@ class TestDeleteAlbum:
         )
 
         create_entity_mock = as_mock(self.table_client.create_entity)
-        create_entity_mock.assert_has_calls(
-            [
-                call(
-                    {
-                        "PartitionKey": NONE_ALBUM_NAME,
-                        "RowKey": result["RowKey"],
-                        "Created": result["Created"],
-                    }
-                )
-                for result in query_results
-            ]
-        )
+        create_entity_mock.assert_has_calls([
+            call({
+                "PartitionKey": NONE_ALBUM_NAME,
+                "RowKey": result["RowKey"],
+                "Created": result["Created"],
+            })
+            for result in query_results
+            if result["RowKey"]
+        ])
 
         delete_entity_mock = as_mock(self.table_client.delete_entity)
-        delete_entity_mock.assert_has_calls(
-            [call(result["PartitionKey"], result["RowKey"]) for result in query_results]
-        )
+        delete_entity_mock.assert_has_calls([
+            call(result["PartitionKey"], result["RowKey"]) for result in query_results
+        ])
 
     def test_delete_album_missing_old(self) -> None:
         album_name = "Old Album Name"
@@ -624,6 +631,7 @@ class TestMoveToAlbum:
         create_entity_mock.assert_called_once_with(entity=entity)
         delete_entity_mock.assert_called_once_with(partition_key=current_album, row_key=filename)
 
+
 class TestUploadToAlbum:
     @pytest.fixture(autouse=True)
     def _setup(
@@ -718,6 +726,7 @@ class TestListAlbum:
         assert result[0] == valid_entity1
         assert result[1] == valid_entity2
 
+
 class TestRemoveFromAlbum:
     @pytest.fixture(autouse=True)
     def _setup(
@@ -729,19 +738,76 @@ class TestRemoveFromAlbum:
         self.table_client = fake_albums_table_client
     
     def test_remove_from_album_reserved(self) -> None:
-        ...
+        album_name = NONE_ALBUM_NAME
+        filename = "photo.jpg"
+
+        with self.app.test_request_context():
+            response = albums.remove_from_album(album_name, filename)
+
+        assert response.status_code == 403
+        response_text = response.get_data(as_text=True)
+        assert response_text == f"{album_name=} is reserved and cannot be deleted from"
 
     def test_remove_from_album_invalid(self) -> None:
-        ...
+        album_name = ""
+        filename = "photo.jpg"
+
+        with self.app.test_request_context():
+            response = albums.remove_from_album(album_name, filename)
+
+        assert response.status_code == 422
+        response_text = response.get_data(as_text=True)
+        assert response_text == f"{album_name=} is not allowed due to length or charset restrictions"
 
     def test_remove_from_album_missing(self) -> None:
-        ...
+        album_name = "Album1"
+        filename = "missing.jpg"
+
+        get_entity_mock = as_mock(self.table_client.get_entity)
+        get_entity_mock.side_effect = ResourceNotFoundError()
+
+        with self.app.test_request_context():
+            response = albums.remove_from_album(album_name, filename)
+
+        assert response.status_code == 404
+        response_text = response.get_data(as_text=True)
+        assert response_text == f"{filename=} not found in {album_name=}"
 
     def test_remove_from_album_already_deleted(self) -> None:
-        ...
+        album_name = "Album1"
+        filename = "photo.jpg"
+        created = datetime.now(timezone.utc)
+
+        get_entity_mock = as_mock(self.table_client.get_entity)
+        get_entity_mock.return_value = {"PartitionKey": album_name, "RowKey": filename, "Created": created}
+
+        delete_entity_mock = as_mock(self.table_client.delete_entity)
+        delete_entity_mock.side_effect = ResourceNotFoundError()
+
+        with self.app.test_request_context():
+            response = albums.remove_from_album(album_name, filename)
+
+        assert response.status_code == 204
+        get_entity_mock.assert_called_once_with(partition_key=album_name, row_key=filename)
+        delete_entity_mock.assert_called_once_with(partition_key=album_name, row_key=filename)
 
     def test_remove_from_album_success(self) -> None:
-        ...
+        album_name = "Album1"
+        filename = "photo.jpg"
+        created = datetime.now(timezone.utc)
+
+        get_entity_mock = as_mock(self.table_client.get_entity)
+        get_entity_mock.return_value = {"PartitionKey": album_name, "RowKey": filename, "Created": created}
+
+        delete_entity_mock = as_mock(self.table_client.delete_entity)
+
+        with self.app.test_request_context():
+            response = albums.remove_from_album(album_name, filename)
+
+        assert response.status_code == 204
+        get_entity_mock.assert_called_once_with(partition_key=album_name, row_key=filename)
+        delete_entity_mock.assert_called_once_with(partition_key=album_name, row_key=filename)
+
 
 class TestGetAlbumThumbnail:
     @pytest.fixture(autouse=True)
@@ -765,9 +831,11 @@ class TestGetAlbumThumbnail:
     def test_get_album_thumbnail_success(self) -> None:
         ...
 
+
 class TestRemoveFromAllAlbums:
     def test_remove_from_all_albums_missing(self) -> None:
         ...
+
 
 class TestNonAlbumFileNames:
     def test_non_album_file_names_success(self) -> None:

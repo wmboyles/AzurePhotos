@@ -328,11 +328,9 @@ def remove_from_album(album_name: str, filename: str) -> Response:
 
     # Get existing entity
     try:
-        existing_entity = table_client.get_entity(
-            partition_key=album_name, row_key=filename
-        )
+        existing_entity = table_client.get_entity(partition_key=album_name, row_key=filename)
     except ResourceNotFoundError:
-        return Response(f"'{filename}' not found in album '{album_name}'", status=404)
+        return Response(f"{filename=} not found in {album_name=}", status=404)
 
     # Add new entity to NONE album
     new_entity = dict[str, Any](existing_entity)
