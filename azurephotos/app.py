@@ -24,7 +24,6 @@ def create_app() -> Flask:
         ).get_table_client("Albums2")
 
         app.config.update(
-            credential=credential,
             account_name=account_name,
             blob_account_url=blob_account_url,
             blob_service_client=blob_service_client,

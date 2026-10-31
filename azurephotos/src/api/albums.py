@@ -43,7 +43,7 @@ def create_album(album_name: str) -> Response | dict[str, Any]:
     if not is_valid_album_name(album_name):
         return Response(f"{album_name=} is not allowed due to length or charset restrictions", status=422)
 
-    table_client = current_app.config["albums_table_client"]
+    table_client: TableClient = current_app.config["albums_table_client"]
 
     new_album = {
         "PartitionKey": album_name,
@@ -52,9 +52,9 @@ def create_album(album_name: str) -> Response | dict[str, Any]:
     }
 
     try:
-        return table_client.create_entity(new_album)  # type: ignore
+        return table_client.create_entity(new_album)
     except ResourceExistsError:
-        return Response("Album already exists", status=409)
+        return Response(f"{album_name=} already exists", status=409)
 
 
 @api_albums_controller.route("/albums", methods=["GET"])
@@ -115,7 +115,7 @@ def rename_album(album_name: str, new_name: str) -> Response:
             pass
 
     if not entity:  # No results. Loop didn't run
-        return Response(f"Album '{album_name}' not found", status=404)
+        return Response(f"{album_name=} not found", status=404)
 
     return Response(status=204)
 
@@ -142,10 +142,10 @@ def delete_album(album_name: str) -> Response:
     entities = table_client.query_entities(query_filter=query, parameters=parameters)
     entity = None
     for entity in entities:
-        partition_key = entity["PartitionKey"]
-        row_key = entity["RowKey"]
+        partition_key: str = entity["PartitionKey"]
+        row_key: str = entity["RowKey"]
         if row_key:
-            new_entity = dict(entity)
+            new_entity = dict[str, Any](entity)
             new_entity["PartitionKey"] = NONE_ALBUM_NAME
             _ = table_client.create_entity(new_entity)
 
@@ -156,7 +156,7 @@ def delete_album(album_name: str) -> Response:
             pass
 
     if not entity:  # No results. Loop didn't run
-        return Response(f"Album '{album_name}' not found", status=404)
+        return Response(f"{album_name=} not found", status=404)
     
     invalidate_media_cache()
     return Response(status=204)
@@ -205,7 +205,7 @@ def move_to_album(album_name: str, filename: str) -> Response:
         return Response(f"{album_name=} does not exist", status=404)
 
     # Add new entity to album
-    new_file = dict(current_entity)
+    new_file = dict[str, Any](current_entity)
     new_file["PartitionKey"] = album_name
     try:
         _ = table_client.create_entity(new_file)
@@ -254,9 +254,9 @@ def upload_to_album(filename: str, date_taken: datetime, album_name: str) -> Res
         if album_name != NONE_ALBUM_NAME:
             _ = table_client.get_entity(partition_key=album_name, row_key="")
     except ResourceNotFoundError:
-        return Response(f"Album '{album_name}' does not exist", status=404)
+        return Response(f"{album_name=} does not exist", status=404)
 
-    new_file = {
+    new_file: dict[str, Any] = {
         "PartitionKey": album_name,
         "RowKey": filename,
         "Created": date_taken,
@@ -292,18 +292,18 @@ def list_album(album_name: str) -> Response | list[MediaRecord]:
     for entity in query_results:
         album_exists = True
 
-        filename = entity["RowKey"]
+        filename: str = entity["RowKey"]
         if len(filename) == 0:
             continue
 
-        last_modified = entity["Created"]
+        last_modified: datetime = entity["Created"]
         media_record = MediaRecord.from_filename(last_modified, filename)
 
         if media_record:
             medias.append(media_record)
 
     if not album_exists:
-        return Response("Album does not exist", status=404)
+        return Response(f"{album_name=} does not exist", status=404)
 
     return sorted(medias, reverse=True)
 
@@ -328,14 +328,12 @@ def remove_from_album(album_name: str, filename: str) -> Response:
 
     # Get existing entity
     try:
-        existing_entity = table_client.get_entity(
-            partition_key=album_name, row_key=filename
-        )
+        existing_entity = table_client.get_entity(partition_key=album_name, row_key=filename)
     except ResourceNotFoundError:
-        return Response(f"'{filename}' not found in album '{album_name}'", status=404)
+        return Response(f"{filename=} not found in {album_name=}", status=404)
 
     # Add new entity to NONE album
-    new_entity = dict(existing_entity)
+    new_entity = dict[str, Any](existing_entity)
     new_entity["PartitionKey"] = NONE_ALBUM_NAME
     _ = table_client.create_entity(new_entity)
 
@@ -375,7 +373,7 @@ def get_album_thumbnail(album_name: str) -> Response:
     if (result := next(query_results, None)) is None:
         return redirect(DEFAULT_ALBUM_THUMBNAIL)  # type: ignore
 
-    thumbnail_filename = result["RowKey"]
+    thumbnail_filename: str = result["RowKey"]
     # TODO: Instead if redirecting back to ourselves, should we invoke thumbnail directly?
     response = redirect(
         url_for("crud_controller.thumbnail", filename=thumbnail_filename)
@@ -426,8 +424,8 @@ def non_album_file_names() -> list[MediaRecord]:
 
     results = list[MediaRecord]()
     for row in entities:
-        filename = row["RowKey"]
-        last_modified = row["Created"]
+        filename: str = row["RowKey"]
+        last_modified: datetime = row["Created"]
 
         result = MediaRecord.from_filename(last_modified, filename)
         if result:

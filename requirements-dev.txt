@@ -1,0 +1,4 @@
+-r azurephotos/requirements.txt
+pytest
+pytest-cov
+pytest-mock

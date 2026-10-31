@@ -75,7 +75,7 @@ def fullsize(filename: str) -> Response:
         case MediaType.VIDEO:
             return videos.fullsize(filename)
         case _:
-            return Response(f"Unrecognized media type for {filename=}", status=404)
+            return Response(f"Unrecognized {media_type=} for {filename=}", status=404)
 
 
 @crud_controller.route("/upload", methods=["POST"])
@@ -88,7 +88,7 @@ def upload() -> Response:
     return _upload_to_album(NONE_ALBUM_NAME)
 
 def _upload(file: FileStorage, date_string: str, album_name: str = NONE_ALBUM_NAME) -> Response:
-    if file.filename is None:
+    if not file.filename:
         raise ValueError("File must have filename")
     
     date_taken = datetime.fromisoformat(date_string.strip())
@@ -185,7 +185,7 @@ def delete(filename: str) -> Response:
             videos.delete_fullsize(filename)
             videos.delete_thumbnail(filename)
         case _:
-            raise ValueError(f"Unrecognized media type for {filename=}")
+            return Response(f"Unrecognized media type for {filename=}", status=415)
 
     albums_affected = remove_from_all_albums(filename)
     if NONE_ALBUM_NAME in albums_affected:

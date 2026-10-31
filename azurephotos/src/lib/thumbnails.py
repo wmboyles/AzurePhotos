@@ -20,8 +20,7 @@ Image.MAX_IMAGE_PIXELS = 1 << 26
 # Allow truncated images
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-# Base formats supported by Pillow
-_supported_formats: set[str] = {
+_BASE_SUPPORTED_FORMATS: frozenset[str] = frozenset({
     "JPEG",
     "PNG",
     "WEBP",
@@ -29,17 +28,23 @@ _supported_formats: set[str] = {
     "TIFF",
     "GIF",
     "MPO"
-}
+})
 
-# Optional HEIC/HEIF support
-try:
-    from pillow_heif import register_heif_opener
-    register_heif_opener()
-    _supported_formats.update({"HEIC", "HEIF"})
-except ImportError:
-    pass
+def _supported_formats() -> frozenset[str]:
+    # Base formats supported by Pillow
+    formats = set(_BASE_SUPPORTED_FORMATS)
 
-SUPPORTED_FORMATS = frozenset(_supported_formats)
+    # Optional HEIC/HEIF support
+    try:
+        from pillow_heif import register_heif_opener
+        register_heif_opener()
+        formats.update({"HEIC", "HEIF"})
+    except ImportError:
+        pass
+
+    return frozenset(formats)
+
+SUPPORTED_FORMATS = _supported_formats()
 
 def thumbnail(photo_bytes: IO[bytes]) -> BytesIO:
     """
@@ -102,7 +107,11 @@ def thumbnail(photo_bytes: IO[bytes]) -> BytesIO:
     except DecompressionBombError:
         raise ValueError("Image is too large")
 
-def video_thumbnail(video_path: str, static_folder: str) -> bytes:
+def video_thumbnail(
+    video_path: str,
+    static_folder: str,
+    *,
+    ffmpeg_path: str | None = None) -> bytes:
     """
     Create a compressed thumbnail of a video.
 
@@ -114,7 +123,7 @@ def video_thumbnail(video_path: str, static_folder: str) -> bytes:
     """
     
     # find ffmpeg
-    ffmpeg_path = shutil.which("ffmpeg")
+    ffmpeg_path = ffmpeg_path or shutil.which("ffmpeg")
     if ffmpeg_path is None:
         raise Exception("Cannot find ffmpeg")
     
