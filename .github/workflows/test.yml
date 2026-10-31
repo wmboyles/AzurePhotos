@@ -9,7 +9,6 @@ on:
 permissions:
   contents: read
   pull-requests: write
-  code-quality: write
 
 jobs:
   test:
@@ -33,7 +32,7 @@ jobs:
           pip install -r requirements-dev.txt
 
       - name: Run tests (with coverage)
-        run: pytest --cov-report=json:coverage.json --cov-report=xml:coverage.xml
+        run: pytest --cov-report=json:coverage.json
 
       - name: Upload HTML coverage report
         if: always()
@@ -44,14 +43,6 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-      - name: Upload XML coverage report
-        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-        uses: actions/upload-code-coverage@v1
-        with:
-          file: coverage.xml
-          language: Python
-          label: code-coverage/pytest
-            
       - name: Comment coverage on PR
         if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         uses: actions/github-script@v8
