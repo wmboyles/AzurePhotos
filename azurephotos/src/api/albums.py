@@ -254,7 +254,7 @@ def upload_to_album(filename: str, date_taken: datetime, album_name: str) -> Res
         if album_name != NONE_ALBUM_NAME:
             _ = table_client.get_entity(partition_key=album_name, row_key="")
     except ResourceNotFoundError:
-        return Response(f"Album '{album_name}' does not exist", status=404)
+        return Response(f"{album_name=} does not exist", status=404)
 
     new_file: dict[str, Any] = {
         "PartitionKey": album_name,
@@ -303,7 +303,7 @@ def list_album(album_name: str) -> Response | list[MediaRecord]:
             medias.append(media_record)
 
     if not album_exists:
-        return Response("Album does not exist", status=404)
+        return Response(f"{album_name=} does not exist", status=404)
 
     return sorted(medias, reverse=True)
 

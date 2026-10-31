@@ -10,7 +10,8 @@ from unittest.mock import ANY, call
 
 from tests.mocks import as_mock
 from src.api import albums
-from src.api.albums import NONE_ALBUM_NAME, delete_album
+from src.api.albums import NONE_ALBUM_NAME, MediaRecord, delete_album
+from src.lib.models.media import MediaType
 
 
 class TestCreateAlbum:
@@ -622,3 +623,152 @@ class TestMoveToAlbum:
 
         create_entity_mock.assert_called_once_with(entity=entity)
         delete_entity_mock.assert_called_once_with(partition_key=current_album, row_key=filename)
+
+class TestUploadToAlbum:
+    @pytest.fixture(autouse=True)
+    def _setup(
+        self,
+        app: Flask,
+        fake_albums_table_client: TableClient,
+    ) -> None:
+        self.app = app
+        self.table_client = fake_albums_table_client
+
+    def test_upload_to_album_not_exists(self) -> None:
+        filename = "photo.jpg"
+        date_taken = datetime.now(timezone.utc)
+        album_name = "Album1"
+        get_entity_mock = as_mock(self.table_client.get_entity)
+        get_entity_mock.side_effect = ResourceNotFoundError()
+
+        with self.app.test_request_context():
+            response = albums.upload_to_album(filename, date_taken, album_name)
+
+        assert response.status_code == 404
+        response_text = response.get_data(as_text=True)
+        assert response_text == f"{album_name=} does not exist"
+
+
+class TestListAlbum:
+    @pytest.fixture(autouse=True)
+    def _setup(
+        self,
+        app: Flask,
+        fake_albums_table_client: TableClient,
+    ) -> None:
+        self.app = app
+        self.table_client = fake_albums_table_client
+
+    def test_list_album_reserved(self) -> None:
+        album_name = NONE_ALBUM_NAME
+        with self.app.test_request_context():
+            response = albums.list_album(album_name)
+
+        assert isinstance(response, Response)
+        assert response.status_code == 403
+        response_text = response.get_data(as_text=True)
+        assert response_text == f"{album_name=} is reserved"
+
+    def test_list_album_invalid(self) -> None:
+        album_name = ""
+        with self.app.test_request_context():
+            response = albums.list_album(album_name)
+
+        assert isinstance(response, Response)
+
+        assert response.status_code == 422
+        response_text = response.get_data(as_text=True)
+        assert response_text == f"{album_name=} is not allowed due to length or charset restrictions"
+
+    def test_list_album_no_album(self) -> None:
+        album_name = "Album1"
+        created = datetime.now(timezone.utc)
+        query_entites_mock = as_mock(self.table_client.query_entities)
+
+        query_entites_mock.return_value = []
+
+        with self.app.test_request_context():
+            response = albums.list_album(album_name)
+
+        assert isinstance(response, Response)
+        assert response.status_code == 404
+        response_text = response.get_data(as_text=True)
+        assert response_text == f"{album_name=} does not exist"
+
+    def test_list_album_success(self) -> None:
+        album_name = "Album1"
+        created = datetime.now(timezone.utc)
+        query_entites_mock = as_mock(self.table_client.query_entities)
+
+        valid_entity1 = MediaRecord(created, "video.mp4", MediaType.VIDEO)
+        valid_entity2 = MediaRecord(created, "photo.jpg", MediaType.PHOTO)
+        query_entites_mock.return_value = [
+            {"PartitionKey": album_name, "RowKey": "", "Created": created},
+            {"PartitionKey": album_name, "RowKey": valid_entity1.filename, "Created": valid_entity1.last_modified},
+            {"PartitionKey": album_name, "RowKey": f"", "Created": created},
+            {"PartitionKey": album_name, "RowKey": f"photo.unknownextension", "Created": created},
+            {"PartitionKey": album_name, "RowKey": valid_entity2.filename, "Created": valid_entity2.last_modified},
+        ]
+
+        with self.app.test_request_context():
+            result = albums.list_album(album_name)
+
+        assert isinstance(result, list)
+        assert len(result) == 2
+        assert result[0] == valid_entity1
+        assert result[1] == valid_entity2
+
+class TestRemoveFromAlbum:
+    @pytest.fixture(autouse=True)
+    def _setup(
+        self,
+        app: Flask,
+        fake_albums_table_client: TableClient,
+    ) -> None:
+        self.app = app
+        self.table_client = fake_albums_table_client
+    
+    def test_remove_from_album_reserved(self) -> None:
+        ...
+
+    def test_remove_from_album_invalid(self) -> None:
+        ...
+
+    def test_remove_from_album_missing(self) -> None:
+        ...
+
+    def test_remove_from_album_already_deleted(self) -> None:
+        ...
+
+    def test_remove_from_album_success(self) -> None:
+        ...
+
+class TestGetAlbumThumbnail:
+    @pytest.fixture(autouse=True)
+    def _setup(
+        self,
+        app: Flask,
+        fake_albums_table_client: TableClient,
+    ) -> None:
+        self.app = app
+        self.table_client = fake_albums_table_client
+
+    def test_get_album_thumbnail_reserved(self) -> None:
+        ...
+
+    def test_get_album_thumbnail_invalid(self) -> None:
+        ...
+
+    def test_get_album_thumbnail_empty(self) -> None:
+        ...
+
+    def test_get_album_thumbnail_success(self) -> None:
+        ...
+
+class TestRemoveFromAllAlbums:
+    def test_remove_from_all_albums_missing(self) -> None:
+        ...
+
+class TestNonAlbumFileNames:
+    def test_non_album_file_names_success(self) -> None:
+        ...
