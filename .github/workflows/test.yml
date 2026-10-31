@@ -30,7 +30,7 @@ jobs:
           pip install -r requirements-dev.txt
 
       - name: Run tests (with coverage)
-        run: pytest --cov-report=json:coverage.json
+        run: pytest --cov-report=json:coverage.json --cov-report=xml:coverage.xml
 
       - name: Upload coverage report
         if: always()
