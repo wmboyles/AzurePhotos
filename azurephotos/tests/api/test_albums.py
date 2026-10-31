@@ -453,10 +453,20 @@ class TestMoveToAlbum:
 
         response_text = response.get_data(as_text=True)
         current_album = current_album.strip()
-        assert (
-            response_text
-            == f"{current_album=} is not allowed due to length or charset restrictions"
-        )
+        assert response_text == f"{current_album=} is not allowed due to length or charset restrictions"
 
     def test_move_to_album_target_not_found(self) -> None:
-        
+        filename = "missing.jpg"
+        current_album = "Album1"
+        target_album_name = "Album2"
+        get_entity_mock = as_mock(self.table_client.get_entity)
+        get_entity_mock.side_effect = ResourceNotFoundError()
+
+        with self.app.test_request_context(query_string={"currentAlbum": current_album}):
+            response = albums.move_to_album(target_album_name, filename)
+
+        assert response.status_code == 404
+        get_entity_mock.assert_called_once_with(partition_key=current_album, row_key=filename)
+
+        response_text = response.get_data(as_text=True)
+        assert response_text == f"{filename=} does not exist or is not in {current_album=}"
