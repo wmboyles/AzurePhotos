@@ -5,7 +5,6 @@ on:
     branches: [main]
   push:
     branches: [main]
-  workflow_dispatch: # TODO: Remove after development finished
 
 permissions:
   contents: read
@@ -30,7 +29,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
-      - name: Run tests
+      - name: Run tests (with coverage)
         run: pytest --cov-report=json:coverage.json
 
       - name: Upload coverage report

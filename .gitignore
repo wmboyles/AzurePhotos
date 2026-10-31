@@ -10,6 +10,7 @@ Publish
 out/
 .pytest_cache/
 .coverage
+coverage.json
 htmlcov/
 
 *.user
