@@ -4,13 +4,13 @@ import pytest
 
 from azure.core.exceptions import ResourceExistsError, ResourceNotFoundError
 from azure.data.tables import TableClient
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from flask import Flask, Response, url_for
 from unittest.mock import ANY, call
 
 from tests.mocks import as_mock
 from src.api import albums
-from src.api.albums import DEFAULT_ALBUM_THUMBNAIL, NONE_ALBUM_NAME, MediaRecord, delete_album
+from src.api.albums import DEFAULT_ALBUM_THUMBNAIL, NONE_ALBUM_NAME, MediaRecord
 from src.lib.models.media import MediaType
 
 
@@ -909,5 +909,29 @@ class TestRemoveFromAllAlbums:
 
 
 class TestNonAlbumFileNames:
+    @pytest.fixture(autouse=True)
+    def _setup(
+        self,
+        app: Flask,
+        fake_albums_table_client: TableClient,
+    ) -> None:
+        self.app = app
+        self.table_client = fake_albums_table_client
+
     def test_non_album_file_names_success(self) -> None:
-        ...
+        created = datetime.now(timezone.utc)
+        extensions = [".jpg", ".mp4", ".unknown", ""]
+
+        query_entities_mock = as_mock(self.table_client.query_entities)
+        query_entities_mock.return_value = (
+            {"PartitionKey": NONE_ALBUM_NAME, "RowKey": f"entry{extension}", "Created": created}
+            for extension in extensions
+        )
+
+        with self.app.test_request_context():
+            results = albums.non_album_file_names()
+
+        assert results == [
+            MediaRecord(created, "entry.jpg", MediaType.PHOTO),
+            MediaRecord(created, "entry.mp4", MediaType.VIDEO)
+        ]
