@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 
 from azure.core.exceptions import ResourceExistsError, ResourceNotFoundError
@@ -470,3 +472,153 @@ class TestMoveToAlbum:
 
         response_text = response.get_data(as_text=True)
         assert response_text == f"{filename=} does not exist or is not in {current_album=}"
+
+    def test_move_to_album_missing_album(self) -> None:
+        filename = "photo.jpg"
+        current_album = "Album1"
+        album_name = "Album2"
+        
+        def get_entity_side_effect(*, partition_key: str, row_key: str) -> dict[str, Any]:
+            if partition_key == current_album and row_key == filename:
+                return {
+                    "PartitionKey": partition_key,
+                    "RowKey": filename,
+                    "Created": datetime.now(timezone.utc).isoformat()
+                }
+
+            if partition_key == album_name and row_key == "":
+                raise ResourceNotFoundError()
+
+            raise NotImplementedError()
+        get_entity_mock = as_mock(self.table_client.get_entity)
+        get_entity_mock.side_effect = get_entity_side_effect
+
+        with self.app.test_request_context(query_string={"currentAlbum": current_album}):
+            response = albums.move_to_album(album_name, filename)
+
+        assert response.status_code == 404
+        assert get_entity_mock.call_count == 2
+        assert get_entity_mock.call_args_list == [
+            call(partition_key=current_album, row_key=filename),
+            call(partition_key=album_name, row_key=""),
+        ]
+
+        response_text = response.get_data(as_text=True)
+        assert response_text == f"{album_name=} does not exist"
+
+    def test_move_to_album_already_exists(self) -> None:
+        filename = "photo.jpg"
+        current_album = "Album1"
+        album_name = "Album2"
+        created = datetime.now(timezone.utc).isoformat()
+        
+        def get_entity_side_effect(*, partition_key: str, row_key: str) -> dict[str, Any]:
+            return {
+                "PartitionKey": partition_key,
+                "RowKey": filename,
+                "Created": created
+            }
+        get_entity_mock = as_mock(self.table_client.get_entity)
+        get_entity_mock.side_effect = get_entity_side_effect
+
+        entity = {
+            "PartitionKey": album_name,
+            "RowKey": filename,
+            "Created": created
+        }
+        create_entity_mock = as_mock(self.table_client.create_entity)
+        create_entity_mock.side_effect = ResourceExistsError()
+
+        delete_entity_mock = as_mock(self.table_client.delete_entity)
+
+        with self.app.test_request_context(query_string={"currentAlbum": current_album}):
+            response = albums.move_to_album(album_name, filename)
+
+        assert response.status_code == 201
+        assert get_entity_mock.call_count == 2
+        assert get_entity_mock.call_args_list == [
+            call(partition_key=current_album, row_key=filename),
+            call(partition_key=album_name, row_key=""),
+        ]
+
+        create_entity_mock.assert_called_once_with(entity=entity)
+        delete_entity_mock.assert_called_once_with(partition_key=current_album, row_key=filename)
+
+    def test_move_to_album_already_deleted(self) -> None:
+        filename = "photo.jpg"
+        current_album = "Album1"
+        album_name = "Album2"
+        created = datetime.now(timezone.utc).isoformat()
+        
+        def get_entity_side_effect(*, partition_key: str, row_key: str) -> dict[str, Any]:
+            return {
+                "PartitionKey": partition_key,
+                "RowKey": filename,
+                "Created": created
+            }
+        get_entity_mock = as_mock(self.table_client.get_entity)
+        get_entity_mock.side_effect = get_entity_side_effect
+
+        entity = {
+            "PartitionKey": album_name,
+            "RowKey": filename,
+            "Created": created
+        }
+        create_entity_mock = as_mock(self.table_client.create_entity)
+        create_entity_mock.return_value = entity
+
+        delete_entity_mock = as_mock(self.table_client.delete_entity)
+        delete_entity_mock.side_effect = ResourceNotFoundError()
+
+        with self.app.test_request_context(query_string={"currentAlbum": current_album}):
+            response = albums.move_to_album(album_name, filename)
+
+        assert response.status_code == 201
+        assert get_entity_mock.call_count == 2
+        assert get_entity_mock.call_args_list == [
+            call(partition_key=current_album, row_key=filename),
+            call(partition_key=album_name, row_key=""),
+        ]
+
+        create_entity_mock.assert_called_once_with(entity=entity)
+        delete_entity_mock.assert_called_once_with(partition_key=current_album, row_key=filename)
+
+    @pytest.mark.parametrize(
+        "current_album", ["Album1", NONE_ALBUM_NAME]
+    )
+    def test_move_to_album_success(self, current_album: str) -> None:
+        filename = "photo.jpg"
+        album_name = "Album2"
+        created = datetime.now(timezone.utc).isoformat()
+        
+        def get_entity_side_effect(*, partition_key: str, row_key: str) -> dict[str, Any]:
+            return {
+                "PartitionKey": partition_key,
+                "RowKey": filename,
+                "Created": created
+            }
+        get_entity_mock = as_mock(self.table_client.get_entity)
+        get_entity_mock.side_effect = get_entity_side_effect
+
+        entity = {
+            "PartitionKey": album_name,
+            "RowKey": filename,
+            "Created": created
+        }
+        create_entity_mock = as_mock(self.table_client.create_entity)
+        create_entity_mock.return_value = entity
+
+        delete_entity_mock = as_mock(self.table_client.delete_entity)
+
+        with self.app.test_request_context(query_string={"currentAlbum": current_album}):
+            response = albums.move_to_album(album_name, filename)
+
+        assert response.status_code == 201
+        assert get_entity_mock.call_count == 2
+        assert get_entity_mock.call_args_list == [
+            call(partition_key=current_album, row_key=filename),
+            call(partition_key=album_name, row_key=""),
+        ]
+
+        create_entity_mock.assert_called_once_with(entity=entity)
+        delete_entity_mock.assert_called_once_with(partition_key=current_album, row_key=filename)
