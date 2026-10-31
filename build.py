@@ -8,13 +8,13 @@ Output: out/azurephotos-<sha>.zip
 """
 
 import itertools
+import shutil
 import subprocess
 import sys
 import threading
 import zipfile
 
 from pathlib import Path
-from typing import TypeVar
 
 REPO_ROOT = Path(__file__).resolve().parent
 SOURCE_DIR = REPO_ROOT / "azurephotos"
@@ -41,8 +41,12 @@ class Spinner:
     def _run(self) -> None:
         # Event.wait returns True only when .set() is called; False on timeout.
         while not self._stop.wait(self._interval):
-            sys.stdout.write(f"\r\x1b[2K{next(self._frames)} {self._message}")
+            # Some weirdness happens when message exceeds number of columns
+            width = shutil.get_terminal_size().columns
+            message = self._message[-(width - 3):]
+            sys.stdout.write(f"\r\x1b[2K{next(self._frames)} {message}")
             sys.stdout.flush()
+
 
     def __enter__(self) -> "Spinner":
         if self._enabled:
@@ -56,7 +60,6 @@ class Spinner:
             self._thread.join()
             sys.stdout.write("\r\x1b[2K")
             sys.stdout.flush()
-
 
 def main() -> int:
     if not SOURCE_DIR.is_dir():
@@ -78,7 +81,7 @@ def main() -> int:
             if not path.is_file():
                 continue
 
-            spinner.update(str(path))
+            spinner.update(str(path.relative_to(REPO_ROOT)))
 
             zf.write(path, path.relative_to(SOURCE_DIR))
             count += 1

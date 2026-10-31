@@ -40,6 +40,9 @@ You should have all the required software from dev setup before testing.
 pytest
 ```
 
+This will run all the tests and produce a coverage report in the `htmlcov` directory.
+
+
 ## Deployment
 
 You should have all the required software from dev setup before deploying.
@@ -52,7 +55,7 @@ python build.py
 This will create a zip file in the `out/` directory called `azurephotos-<sha>.zip`, where `<sha>` is the git SHA of the current commit.
 ```ps
 az login --scope https://management.core.windows.net/.default 
-az webapp deploy --resource-group azure-photos --name azurephotos --src-path .\out\azurephotos.zip --type zip
+az webapp deploy --resource-group azure-photos --name azurephotos --src-path .\out\azurephotos-<sha>.zip --type zip
 ```
 
 The command _should_ complete successfully. However, sometimes you may get a 504 (Gateway Timeout) even when the deployment eventually succeeds.
