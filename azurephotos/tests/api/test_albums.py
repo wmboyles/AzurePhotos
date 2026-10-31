@@ -4,13 +4,13 @@ import pytest
 
 from azure.core.exceptions import ResourceExistsError, ResourceNotFoundError
 from azure.data.tables import TableClient
-from datetime import datetime, timezone
-from flask import Flask, Response
+from datetime import date, datetime, timezone
+from flask import Flask, Response, url_for
 from unittest.mock import ANY, call
 
 from tests.mocks import as_mock
 from src.api import albums
-from src.api.albums import NONE_ALBUM_NAME, MediaRecord, delete_album
+from src.api.albums import DEFAULT_ALBUM_THUMBNAIL, NONE_ALBUM_NAME, MediaRecord, delete_album
 from src.lib.models.media import MediaType
 
 
@@ -820,21 +820,92 @@ class TestGetAlbumThumbnail:
         self.table_client = fake_albums_table_client
 
     def test_get_album_thumbnail_reserved(self) -> None:
-        ...
+        album_name = NONE_ALBUM_NAME
+
+        with self.app.test_request_context():
+            response = albums.get_album_thumbnail(album_name)
+
+        assert response.status_code == 403
+
+        response_text = response.get_data(as_text=True)
+        assert response_text == f"{album_name=} is reserved"
 
     def test_get_album_thumbnail_invalid(self) -> None:
-        ...
+        album_name = ""
+
+        with self.app.test_request_context():
+            response = albums.get_album_thumbnail(album_name)
+
+        assert response.status_code == 422
+
+        response_text = response.get_data(as_text=True)
+        assert response_text == f"{album_name=} is not allowed due to length or charset restrictions"
 
     def test_get_album_thumbnail_empty(self) -> None:
-        ...
+        album_name = "Album1"
+
+        query_entities_mock = as_mock(self.table_client.query_entities)
+        query_entities_mock.return_value = iter(list())
+
+        with self.app.test_request_context():
+            response = albums.get_album_thumbnail(album_name)
+
+        query_entities_mock.assert_called_once()
+
+        assert response.status_code == 302
+        assert response.headers["Location"] == DEFAULT_ALBUM_THUMBNAIL
 
     def test_get_album_thumbnail_success(self) -> None:
-        ...
+        album_name = "Album1"
+        created = datetime.now(timezone.utc)
+
+        query_entities_mock = as_mock(self.table_client.query_entities)
+        query_entities_mock.return_value = (
+            {"PartitionKey": album_name, "RowKey": f"photo_{i}.jpg", "Created": created}
+            for i in range(4)
+        )
+
+        with self.app.test_request_context():
+            response = albums.get_album_thumbnail(album_name)
+            expected_location = url_for("crud_controller.thumbnail", filename="photo_0.jpg")
+
+        query_entities_mock.assert_called_once()
+
+        assert response.status_code == 302
+        assert response.headers["Location"] == expected_location
 
 
 class TestRemoveFromAllAlbums:
-    def test_remove_from_all_albums_missing(self) -> None:
-        ...
+    @pytest.fixture(autouse=True)
+    def _setup(
+        self,
+        app: Flask,
+        fake_albums_table_client: TableClient,
+    ) -> None:
+        self.app = app
+        self.table_client = fake_albums_table_client
+
+    def test_remove_from_all_albums_already_deleted(self) -> None:
+        filename = "photo1.jpg"
+        created = datetime.now(timezone.utc)
+
+        query_entity_mock = as_mock(self.table_client.query_entities)
+        query_entity_mock.return_value = (
+            {"PartitionKey": f"Album{i}", "RowKey": filename, "Created": created}
+            for i in range(4)
+        )
+
+        def delete_entity_side_effect(entity: dict[str, Any]) -> None:
+            if entity["PartitionKey"] == "Album3":
+                raise ResourceNotFoundError()
+        delete_entity_mock = as_mock(self.table_client.delete_entity)
+        delete_entity_mock.side_effect = delete_entity_side_effect
+
+        with self.app.test_request_context():
+            albums_affected = albums.remove_from_all_albums(filename)
+
+        delete_entity_mock.assert_called_with({"PartitionKey": f"Album3", "RowKey": filename, "Created": created})
+        assert albums_affected == {"Album0", "Album1", "Album2"}
 
 
 class TestNonAlbumFileNames:
