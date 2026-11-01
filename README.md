@@ -4,6 +4,9 @@ Azure Photos is my personal cloud-based photo and video storage solution.
 I have Azure credits through work, and I don't want to pay for Google Photos.
 It leverages Azure App Service and of course Azure Blob Storage.
 
+[![Build](https://github.com/wmboyles/AzurePhotos/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/wmboyles/AzurePhotos/actions/workflows/build.yml)
+[![Deploy](https://github.com/wmboyles/AzurePhotos/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/wmboyles/AzurePhotos/actions/workflows/release.yml)
+
 ## Dev Setup
 
 ### Software to Install
