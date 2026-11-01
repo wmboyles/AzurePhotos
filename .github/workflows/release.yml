@@ -1,0 +1,163 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_run_id:
+        description: "GitHub Actions run id of the successful Build workflow"
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: write
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    concurrency:
+      group: production-deployment
+      cancel-in-progress: false
+
+    steps:
+      - name: Validate build run
+        id: build
+        uses: actions/github-script@v8
+        env:
+          BUILD_RUN_ID: ${{ inputs.build_run_id }}
+        with:
+          script: |
+            const runId = Number(process.env.BUILD_RUN_ID);
+
+            if (!Number.isSafeInteger(runId) || runId <= 0) {
+              throw new Error('Invalid build run ID');
+            }
+
+            const { data: run } = await github.rest.actions.getWorkflowRun({
+              ...context.repo,
+              run_id: runId
+            });
+
+            if (run.name !== 'Build' ||
+                run.path !== '.github/workflows/build.yml@main' ||
+                run.status !== 'completed' ||
+                run.conclusion !== 'success' ||
+                run.head_branch !== 'main' ||
+                !['push', 'workflow_dispatch'].includes(run.event)) {
+              throw new Error('Select a successful Build workflow run from main');
+            }
+
+            core.setOutput('sha', run.head_sha);
+            core.setOutput('short_sha', run.head_sha.substring(0, 7));
+            core.setOutput('run_url', run.html_url);
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: azurephotos-build
+          run-id: ${{ inputs.build_run_id }}
+          github-token: ${{ github.token }}
+          path: artifact/
+
+      - name: Find deployment ZIP
+        id: package
+        shell: bash
+        run: |
+          mapfile -t files < <(find artifact -maxdepth 1 -type f -name '*.zip')
+
+          if [ "${#files[@]}" -ne 1 ]; then
+            echo "Expected exactly one ZIP file; found ${#files[@]}"
+            exit 1
+          fi
+
+          filename=$(basename "${files[0]}")
+          expected="azurephotos-${{ steps.build.outputs.short_sha }}.zip"
+
+          if [ "$filename" != "$expected" ]; then
+            echo "Unexpected artifact: $filename (expected $expected)"
+            exit 1
+          fi
+
+          echo "path=${files[0]}" >> "$GITHUB_OUTPUT"
+          echo "Deploying ${files[0]}"
+
+      - name: Log in to Azure
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy to Azure App Service
+        run: |
+          az webapp deploy \
+            --resource-group azure-photos \
+            --name azurephotos \
+            --src-path "${{ steps.package.outputs.path }}" \
+            --type zip
+      
+      
+      - name: Record production deployment
+        uses: actions/github-script@v8
+        env:
+          BUILD_SHA: ${{ steps.build.outputs.sha }}
+          SHORT_SHA: ${{ steps.build.outputs.short_sha }}
+          BUILD_RUN_URL: ${{ steps.build.outputs.run_url }}
+          BUILD_RUN_ID: ${{ inputs.build_run_id }}
+        with:
+          script: |
+            const sha = process.env.BUILD_SHA;
+            const shortSha = process.env.SHORT_SHA;
+            const runId = process.env.BUILD_RUN_ID;
+            const tag = `production-${shortSha}-${runId}`;
+
+            const releaseData = {
+              ...context.repo,
+              tag_name: tag,
+              target_commitish: sha,
+              name: `Production deployment - ${shortSha}`,
+              body: [
+                `Deployed commit: ${sha}`,
+                `Build run: ${process.env.BUILD_RUN_URL}`,
+                `Deployment run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+              ].join('\n\n')
+            };
+
+            try {
+              const existing = await github.rest.repos.getReleaseByTag({
+                ...context.repo,
+                tag
+              });
+
+              await github.rest.repos.updateRelease({
+                ...context.repo,
+                release_id: existing.data.id,
+                name: releaseData.name,
+                body: releaseData.body
+              });
+            } catch (error) {
+              if (error.status !== 404) throw error;
+
+              await github.rest.repos.createRelease(releaseData);
+            }
+
+            // Update the movable tag pointing to the deployed commit.
+            try {
+              await github.rest.git.updateRef({
+                ...context.repo,
+                ref: 'tags/production',
+                sha,
+                force: true
+              });
+            } catch (error) {
+              if (error.status !== 404) throw error;
+
+              await github.rest.git.createRef({
+                ...context.repo,
+                ref: 'refs/tags/production',
+                sha
+              });
+            }

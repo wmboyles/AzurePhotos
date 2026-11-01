@@ -36,7 +36,7 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v7
         with:
+          name: azure-photos-build
           path: out/*.zip
-          archive: false
           if-no-files-found: error
           retention-days: 90
