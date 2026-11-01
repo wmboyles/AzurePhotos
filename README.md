@@ -10,7 +10,6 @@ It leverages Azure App Service and of course Azure Blob Storage.
 
 * Python 3.14
 * Azure CLI
-* (Optional): Jupyter, ipykernel for notebooks
 
 ### Running Locally
 
@@ -41,22 +40,11 @@ pytest
 ```
 
 This will run all the tests and produce a coverage report in the `htmlcov` directory.
+The `test.yml` workflow will also run these same actions on PRs to main and generate a coverage report.
 
 
 ## Deployment
 
-You should have all the required software from dev setup before deploying.
-
-Build the project
-```ps
-python build.py
-```
-
-This will create a zip file in the `out/` directory called `azurephotos-<sha>.zip`, where `<sha>` is the git SHA of the current commit.
-```ps
-az login --scope https://management.core.windows.net/.default 
-az webapp deploy --resource-group azure-photos --name azurephotos --src-path .\out\azurephotos-<sha>.zip --type zip
-```
-
-The command _should_ complete successfully. However, sometimes you may get a 504 (Gateway Timeout) even when the deployment eventually succeeds.
-In this case, you'll need to view the recent deployments in the Azure portal to get the correct status.
+The `build.yml` workflow will run automatically when a commit is merged to main and produce artifacts.
+Find the run id of the build.yml version you want to deploy, then provide it as input to the `release.yml` workflow.
+The workflow will take care of federating from GitHub to Azure and deploying the artifacts.
