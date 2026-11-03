@@ -25,14 +25,14 @@
 </head>
 
 <body>
-  <header class="app-header">
+  <header class="app-header d-flex align-items-center gap-3 bg-white border-bottom">
   {% block title %}
-    <h1 class="app-title">Azure Photos</h1>
+    <h1 class="app-title h5 mb-0 fw-semibold text-truncate flex-grow-1">Azure Photos</h1>
   {% endblock %}
   </header>
 
   <main class="app-main">
-    <div class="progress operation-progress" id="operationProgress" style="display: none;" aria-label="Operation progress">
+    <div class="progress mb-3" id="operationProgress" style="display: none;" aria-label="Operation progress">
       <div class="progress-bar progress-bar-striped bg-success"
         role="progressbar"
         id="successProgress"
@@ -51,10 +51,10 @@
 
     <section class="app-panel" id="photos" aria-labelledby="photosHeading">
   {% block media %}
-      <div class="section-heading">
-        <h2 id="photosHeading">Photos</h2>
+      <div class="section-heading d-flex align-items-center justify-content-between gap-3 mb-3">
+        <h2 class="h5 mb-0" id="photosHeading">Photos</h2>
       </div>
-      <p class="text-body-secondary selection-hint">
+      <p class="text-body-secondary small">
         {% if album is not defined %}Photos and videos not in an album. {% endif %}
         Touch and hold a photo to select it.
       </p>
@@ -63,9 +63,9 @@
           {% include "partials/thumbnail.html" %}
         {% endfor %}
       </div>
-      <div class="empty-state" id="mediaEmptyState" {% if medias %}hidden{% endif %}>
-        <i class="bi bi-images" aria-hidden="true"></i>
-        <h3>{% if album is defined %}This album is empty{% else %}No photos here yet{% endif %}</h3>
+      <div class="empty-state text-center py-5 px-3" id="mediaEmptyState" {% if medias %}hidden{% endif %}>
+        <i class="bi bi-images d-block mb-3 text-secondary" aria-hidden="true"></i>
+        <h3 class="h5">{% if album is defined %}This album is empty{% else %}No photos here yet{% endif %}</h3>
         <p>{% if album is defined %}Upload some photos to get started.{% else %}Upload photos or browse your albums.{% endif %}</p>
         <a class="btn btn-primary" href="#upload">Upload photos</a>
       </div>
@@ -74,8 +74,8 @@
 
     <section class="app-panel" id="upload" aria-labelledby="uploadHeading" hidden>
   {% block upload %}
-    <div class="section-heading">
-      <h2 id="uploadHeading">Upload{% if album is defined %} to {{ album }}{% endif %}</h2>
+    <div class="section-heading d-flex align-items-center justify-content-between gap-3 mb-3">
+      <h2 class="h5 mb-0" id="uploadHeading">Upload{% if album is defined %} to {{ album }}{% endif %}</h2>
     </div>
     <form class="mb-3" id="uploadForm">
       <div id="uploadDropZone" class="border border-2 rounded p-3 my-3 bg-light">
@@ -92,8 +92,8 @@
   {% if album is not defined %}
     <section class="app-panel" id="albums" aria-labelledby="albumsHeading" hidden>
   {% block albums %}
-    <div class="section-heading">
-      <h2 id="albumsHeading">Albums</h2>
+    <div class="section-heading d-flex align-items-center justify-content-between gap-3 mb-3">
+      <h2 class="h5 mb-0" id="albumsHeading">Albums</h2>
       <button type="button" class="btn btn-primary" id="createAlbumCard">
         <i class="bi bi-plus-lg" aria-hidden="true"></i> New album
       </button>
@@ -113,10 +113,10 @@
     <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-6 g-3">
       {% for albumName in albums %}
       <div class="col">
-        <a href="/albums/{{ albumName | urlencode }}" class="album-card" title="{{ albumName }}">
-          <img src="/api/albums/thumbnail/{{ albumName | urlencode }}" class="img-fluid img-thumbnail"
+        <a href="/albums/{{ albumName | urlencode }}" class="album-card d-block text-reset text-decoration-none" title="{{ albumName }}">
+          <img src="/api/albums/thumbnail/{{ albumName | urlencode }}" class="img-thumbnail d-block w-100 p-0 border-0 object-fit-cover"
             loading="lazy" alt="" draggable="false">
-          <span class="album-title">{{ albumName }}</span>
+          <span class="album-title d-block mt-2 fw-semibold">{{ albumName }}</span>
         </a>
       </div>
       {% else %}
@@ -128,11 +128,11 @@
   {% endif %}
   </main>
 
-  <div class="selection-bar" id="selectionBar" role="region" aria-label="Selected photos" hidden>
+  <div class="selection-bar d-flex align-items-center gap-2 bg-white border-top" id="selectionBar" role="region" aria-label="Selected photos" hidden>
     <button type="button" class="btn btn-outline-secondary icon-button" id="clearSelectionBtn" aria-label="Cancel selection">
       <i class="bi bi-x-lg" aria-hidden="true"></i>
     </button>
-    <span id="selectionCount" class="selection-count" role="status">0 selected</span>
+    <span id="selectionCount" class="selection-count small flex-grow-1" role="status">0 selected</span>
     {% set moveAlbums = albums | reject('equalto', album) | list if album is defined else albums %}
     {% if moveAlbums %}
     <div class="dropdown">
@@ -151,15 +151,17 @@
     </button>
   </div>
 
-  <nav class="app-navigation" aria-label="Main navigation">
-    <a href="{% if album is defined %}/{% endif %}#photos" data-view="photos">
-      <i class="bi bi-images" aria-hidden="true"></i><span>Photos</span>
+  <nav class="app-navigation fixed-bottom d-flex bg-white border-top" aria-label="Main navigation">
+    <a href="{% if album is defined %}/{% endif %}#photos" data-view="photos"
+      class="d-flex flex-column align-items-center justify-content-center text-decoration-none">
+      <i class="bi bi-images fs-5" aria-hidden="true"></i><span>Photos</span>
     </a>
-    <a href="{% if album is defined %}/{% endif %}#albums" data-view="albums">
-      <i class="bi bi-journal-album" aria-hidden="true"></i><span>Albums</span>
+    <a href="{% if album is defined %}/{% endif %}#albums" data-view="albums"
+      class="d-flex flex-column align-items-center justify-content-center text-decoration-none">
+      <i class="bi bi-journal-album fs-5" aria-hidden="true"></i><span>Albums</span>
     </a>
-    <a href="#upload" data-view="upload">
-      <i class="bi bi-cloud-arrow-up" aria-hidden="true"></i><span>Upload</span>
+    <a href="#upload" data-view="upload" class="d-flex flex-column align-items-center justify-content-center text-decoration-none">
+      <i class="bi bi-cloud-arrow-up fs-5" aria-hidden="true"></i><span>Upload</span>
     </a>
   </nav>
 
@@ -167,28 +169,28 @@
   <div class="modal fade" id="fullsizeModal" tabindex="-1" aria-labelledby="fullsizeModalLabel"
     aria-hidden="true">
     <div class="modal-dialog modal-fullscreen">
-      <div class="modal-content">
-        <div class="modal-header viewer-header">
+      <div class="modal-content text-white border-0">
+        <div class="modal-header viewer-header border-0 gap-2">
           <button type="button" class="btn viewer-action icon-button" data-bs-dismiss="modal" aria-label="Close viewer">
             <i class="bi bi-x-lg" aria-hidden="true"></i>
           </button>
-          <h2 class="modal-title" id="fullsizeModalLabel">Photo viewer</h2>
+          <h2 class="modal-title app-title fs-6 text-truncate flex-grow-1" id="fullsizeModalLabel">Photo viewer</h2>
           <a class="btn viewer-action icon-button" id="viewerOriginal" target="_blank" rel="noopener"
             aria-label="Open original in a new tab" title="Open original">
             <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
           </a>
         </div>
-        <div class="modal-body viewer-stage" id="fullsizeModalBody" aria-busy="false">
+        <div class="modal-body viewer-stage d-flex align-items-center justify-content-center p-0 overflow-hidden" id="fullsizeModalBody" aria-busy="false">
         </div>
-        <div class="viewer-notice" id="viewerNotice" role="status" hidden></div>
-        <section class="viewer-info" id="viewerInfoPanel" aria-labelledby="viewerInfoHeading" hidden>
-          <div class="section-heading">
-            <h3 id="viewerInfoHeading">Details</h3>
+        <div class="viewer-notice small flex-shrink-0" id="viewerNotice" role="status" hidden></div>
+        <section class="viewer-info flex-shrink-0" id="viewerInfoPanel" aria-labelledby="viewerInfoHeading" hidden>
+          <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+            <h3 class="h6 mb-0" id="viewerInfoHeading">Details</h3>
             <button type="button" class="btn viewer-action icon-button" id="viewerInfoClose" aria-label="Close details">
               <i class="bi bi-x-lg" aria-hidden="true"></i>
             </button>
           </div>
-          <dl>
+          <dl class="small mb-0">
             <dt>Filename</dt><dd id="viewerInfoFilename"></dd>
             <dt>File type</dt><dd id="viewerInfoType"></dd>
             <dt>Date</dt><dd><time id="viewerInfoDate"></time></dd>
@@ -197,24 +199,24 @@
             <dt>Album</dt><dd>{% if album is defined %}{{ album }}{% else %}Not in an album{% endif %}</dd>
           </dl>
         </section>
-        <div class="modal-footer viewer-footer">
-          <div class="viewer-toolbar" role="toolbar" aria-label="File actions">
+        <div class="modal-footer viewer-footer d-block border-0">
+          <div class="viewer-toolbar d-flex gap-1 w-100 mx-auto my-0" role="toolbar" aria-label="File actions">
             <button type="button" class="btn viewer-action" id="viewerInfoBtn"
               aria-controls="viewerInfoPanel" aria-expanded="false">
-              <i class="bi bi-info-circle" aria-hidden="true"></i><span>Info</span>
+              <i class="bi bi-info-circle fs-5" aria-hidden="true"></i><span>Info</span>
             </button>
             <button type="button" class="btn viewer-action" id="viewerShareBtn" title="Anonymous sharing: prototype only"
               aria-label="Share (prototype only)">
-              <i class="bi bi-share" aria-hidden="true"></i><span>Share</span>
+              <i class="bi bi-share fs-5" aria-hidden="true"></i><span>Share</span>
             </button>
             <a class="btn viewer-action" id="viewerDownload" target="_blank" rel="noopener"
               title="Open original to save or download it with your browser">
-              <i class="bi bi-download" aria-hidden="true"></i><span>Download</span>
+              <i class="bi bi-download fs-5" aria-hidden="true"></i><span>Download</span>
             </a>
             <div class="dropup">
               <button type="button" class="btn viewer-action" id="viewerMoveBtn" data-bs-toggle="dropdown"
                 aria-label="Move to album" {% if not moveAlbums %}disabled{% endif %}>
-                <i class="bi bi-journal-arrow-up" aria-hidden="true"></i><span>Move</span>
+                <i class="bi bi-journal-arrow-up fs-5" aria-hidden="true"></i><span>Move</span>
               </button>
               <ul class="dropdown-menu dropdown-menu-dark" id="viewerMoveMenu">
                 {% for albumName in moveAlbums %}
@@ -224,7 +226,7 @@
             </div>
             <button type="button" class="btn viewer-action viewer-delete" id="viewerDeleteBtn"
               aria-label="{% if album is defined %}Remove from album{% else %}Delete original{% endif %}">
-              <i class="bi {% if album is defined %}bi-journal-minus{% else %}bi-trash{% endif %}" aria-hidden="true"></i>
+              <i class="bi {% if album is defined %}bi-journal-minus{% else %}bi-trash{% endif %} fs-5" aria-hidden="true"></i>
               <span>{% if album is defined %}Remove{% else %}Delete{% endif %}</span>
             </button>
           </div>

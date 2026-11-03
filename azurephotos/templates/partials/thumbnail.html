@@ -4,10 +4,10 @@
             data-full="/fullsize/{{ media.filename | urlencode }}" data-media-type="{{ media.type.value }}"
             {% if media.last_modified is defined %}data-date="{{ media.last_modified.isoformat() }}"{% endif %}
             aria-label="View {{ media.filename }}" aria-haspopup="dialog">
-            <img src="/thumbnail/{{ media.filename | urlencode }}" title="{{ media.filename }}" class="img-fluid img-thumbnail"
+            <img src="/thumbnail/{{ media.filename | urlencode }}" title="{{ media.filename }}" class="img-thumbnail d-block w-100 p-0 border-0 object-fit-cover"
                 loading="lazy" alt="{{ media.filename }}" draggable="false">
         </button>
-        <input class="form-check-input photo-checkbox" type="checkbox" name="selected_photos"
+        <input class="form-check-input photo-checkbox position-absolute top-0 end-0 m-2" type="checkbox" name="selected_photos"
             value="{{ media.filename }}" aria-label="Select {{ media.filename }}">
     </div>
 </div>

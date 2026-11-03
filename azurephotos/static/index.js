@@ -510,12 +510,6 @@ $(document).ready(() => {
             location.reload();
         }
     });
-    window.addEventListener("pagehide", () => {
-        for (const item of uploads.values()) {
-            URL.revokeObjectURL(item.previewUrl);
-        }
-    });
-
     // Bulk actions and viewer actions use the same requests and progress handling.
     function removeMediaItem(filename) {
         const buttons = mediaButtons();
