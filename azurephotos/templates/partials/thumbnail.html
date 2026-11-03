@@ -1,26 +1,13 @@
 <div class="col">
     <div class="photo-card position-relative">
-        <img src="/thumbnail/{{ media.filename }}" title="{{ media.filename }}" class="img-fluid img-thumbnail"
-            loading="lazy" data-bs-toggle="modal" data-bs-target="#fullsizeModal"
-            data-full="/fullsize/{{ media.filename }}" draggable="false">
+        <button type="button" class="photo-open" data-filename="{{ media.filename }}"
+            data-full="/fullsize/{{ media.filename | urlencode }}" data-media-type="{{ media.type.value }}"
+            {% if media.last_modified is defined %}data-date="{{ media.last_modified.isoformat() }}"{% endif %}
+            aria-label="View {{ media.filename }}" aria-haspopup="dialog">
+            <img src="/thumbnail/{{ media.filename | urlencode }}" title="{{ media.filename }}" class="img-fluid img-thumbnail"
+                loading="lazy" alt="{{ media.filename }}" draggable="false">
+        </button>
         <input class="form-check-input photo-checkbox" type="checkbox" name="selected_photos"
-            value="{{ media.filename }}">
-        <button type="button" class="btn btn-sm btn-danger photo-action delete-btn"
-            data-selected="{{ media.filename }}">
-            <i class="bi bi-trash"></i>
-        </button>
-        {% if albums|length > 0 %}
-        <button type="button" class="btn btn-sm btn-secondary dropdown-toggle photo-action album-btn"
-            data-name="{{ media.filename }}" data-bs-toggle="dropdown">
-            <i class="bi bi-journal-album"></i>
-        </button>
-        <ul class="dropdown-menu">
-            {% for albumName in albums %}
-                {% if album != albumName %}
-                <li><a class="dropdown-item" href="#">{{ albumName }}</a></li>
-                {% endif %}
-            {% endfor %}
-        </ul>
-        {% endif %}
+            value="{{ media.filename }}" aria-label="Select {{ media.filename }}">
     </div>
 </div>

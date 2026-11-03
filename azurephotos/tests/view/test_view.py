@@ -1,8 +1,10 @@
 import pytest
 
 from datetime import datetime
-from flask import Response
+from flask import Flask, Response
 from flask.testing import FlaskClient
+from jinja2 import FileSystemLoader
+from pathlib import Path
 from typing import Any
 
 from src.view import view
@@ -39,6 +41,28 @@ class TestLandingViewController:
         assert rendered["template"] == "photos.html"
         assert rendered["kwargs"] == {"medias": media_records, "albums": albums}
 
+    def test_mobile_navigation_and_shared_album_picker(
+        self, app: Flask, client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        app.jinja_loader = FileSystemLoader(str(Path(__file__).resolve().parents[2] / "templates"))
+        records = [
+            media.MediaRecord(datetime(2026, 1, 1), filename, media.MediaType.PHOTO)
+            for filename in ["first.jpg", "second.jpg"]
+        ]
+        monkeypatch.setattr(view, "all_media", lambda: records)
+        monkeypatch.setattr(view, "list_albums", lambda: ["Family & Trips"])
+
+        response = client.get("/")
+        html = response.get_data(as_text=True)
+
+        assert response.status_code == 200
+        assert 'href="#photos" data-view="photos"' in html
+        assert 'href="#albums" data-view="albums"' in html
+        assert 'href="#upload" data-view="upload"' in html
+        assert html.count('data-target-album="Family &amp; Trips"') == 2
+        assert html.count('class="photo-open"') == len(records)
+        assert 'id="deleteSelectedBtn" disabled>\n      Delete' in html
+
 
 class TestAlbumsViewController:
     def test_albums(self, client: FlaskClient, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -74,6 +98,29 @@ class TestAlbumsViewController:
             "albums": albums,
             "album": album_name,
         }
+
+    @pytest.mark.parametrize("has_media", [True, False])
+    def test_mobile_album_navigation_and_remove_action(
+        self, app: Flask, client: FlaskClient, monkeypatch: pytest.MonkeyPatch, has_media: bool
+    ) -> None:
+        app.jinja_loader = FileSystemLoader(str(Path(__file__).resolve().parents[2] / "templates"))
+        records = [
+            media.MediaRecord(datetime(2026, 1, 1), "photo.jpg", media.MediaType.PHOTO)
+        ] if has_media else []
+        monkeypatch.setattr(view, "list_album", lambda _: records)
+        monkeypatch.setattr(view, "list_albums", lambda: ["Family", "Trips"])
+
+        response = client.get("/albums/Family")
+        html = response.get_data(as_text=True)
+
+        assert response.status_code == 200
+        assert 'href="/#photos" data-view="photos"' in html
+        assert 'href="/#albums" data-view="albums"' in html
+        assert 'href="#upload" data-view="upload"' in html
+        assert 'data-target-album="Family"' not in html
+        assert 'data-target-album="Trips"' in html
+        assert 'id="deleteSelectedBtn" disabled>\n      Remove' in html
+        assert 'id="mediaEmptyState" hidden' in html if has_media else 'id="mediaEmptyState" >' in html
 
     def test_albums_bas_response(
         self, client: FlaskClient, monkeypatch: pytest.MonkeyPatch

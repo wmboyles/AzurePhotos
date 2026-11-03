@@ -3,7 +3,7 @@
 
 <head>
   <title>Azure Photos</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <!-- Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
     integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
@@ -25,28 +25,14 @@
 </head>
 
 <body>
+  <header class="app-header">
   {% block title %}
-  <div class="container-fluid">
-    <h1 class="display-1">Azure Photos</h1>
-  </div>
-  <hr />
+    <h1 class="app-title">Azure Photos</h1>
   {% endblock %}
+  </header>
 
-  {% block upload %}
-  <div class="container-fluid">
-    <h2 class="display-6">Upload</h2>
-    <form class="mb-3" id="uploadForm">
-      <div id="uploadDropZone" class="border border-2 rounded p-3 my-3 bg-light">
-        <h6>Drag and drop files here</h6>
-        <p class="text-muted">or</p>
-        <!-- TODO: Submit request without refreshing page. Would probably have to update DOM to include new image -->
-        <label for="formFileLg" class="btn btn-outline-primary">Choose files</label>
-        <input class="d-none" id="formFileLg" type="file" accept="image/*,video/*" multiple name="upload" />
-        <div id="uploadSelectedFiles" class="row row-cols-4 row-cols-lg-6 grid g-0"></div>
-        <button class="btn btn-primary" type="submit" id="submitUpload" disabled>Submit</button>
-      </div>
-    </form>
-    <div class="progress" id="operationProgress" style="display: none;">
+  <main class="app-main">
+    <div class="progress operation-progress" id="operationProgress" style="display: none;" aria-label="Operation progress">
       <div class="progress-bar progress-bar-striped bg-success"
         role="progressbar"
         id="successProgress"
@@ -54,7 +40,7 @@
         aria-valuenow="0"
         aria-valuemin="0"
         aria-valuemax="100"></div>
-        <div class="progress-bar progress-bar-striped bg-danger"
+      <div class="progress-bar progress-bar-striped bg-danger"
         role="progressbar"
         id="failureProgress"
         style="width: 0%;"
@@ -62,17 +48,60 @@
         aria-valuemin="0"
         aria-valuemax="100"></div>
     </div>
-  </div>
-  <hr />
-  {% endblock %}
 
+    <section class="app-panel" id="photos" aria-labelledby="photosHeading">
+  {% block media %}
+      <div class="section-heading">
+        <h2 id="photosHeading">Photos</h2>
+      </div>
+      <p class="text-body-secondary selection-hint">
+        {% if album is not defined %}Photos and videos not in an album. {% endif %}
+        Touch and hold a photo to select it.
+      </p>
+      <div class="row row-cols-4 row-cols-lg-6 g-1" id="mediaGrid">
+        {% for media in medias %}
+          {% include "partials/thumbnail.html" %}
+        {% endfor %}
+      </div>
+      <div class="empty-state" id="mediaEmptyState" {% if medias %}hidden{% endif %}>
+        <i class="bi bi-images" aria-hidden="true"></i>
+        <h3>{% if album is defined %}This album is empty{% else %}No photos here yet{% endif %}</h3>
+        <p>{% if album is defined %}Upload some photos to get started.{% else %}Upload photos or browse your albums.{% endif %}</p>
+        <a class="btn btn-primary" href="#upload">Upload photos</a>
+      </div>
+  {% endblock %}
+    </section>
+
+    <section class="app-panel" id="upload" aria-labelledby="uploadHeading" hidden>
+  {% block upload %}
+    <div class="section-heading">
+      <h2 id="uploadHeading">Upload{% if album is defined %} to {{ album }}{% endif %}</h2>
+    </div>
+    <form class="mb-3" id="uploadForm">
+      <div id="uploadDropZone" class="border border-2 rounded p-3 my-3 bg-light">
+        <p class="text-body-secondary d-none d-md-block">Drag and drop photos and videos here, or choose files.</p>
+        <label for="formFileLg" class="btn btn-outline-primary mb-3">Choose photos and videos</label>
+        <input class="d-none" id="formFileLg" type="file" accept="image/*,video/*" multiple name="upload" />
+        <div id="uploadSelectedFiles" class="row row-cols-3 row-cols-md-4 row-cols-lg-6 g-1"></div>
+        <button class="btn btn-primary mt-3" type="submit" id="submitUpload" disabled>Upload</button>
+      </div>
+    </form>
+  {% endblock %}
+    </section>
+
+  {% if album is not defined %}
+    <section class="app-panel" id="albums" aria-labelledby="albumsHeading" hidden>
   {% block albums %}
-  <div class="container-fluid">
-    <h2 class="display-6">Albums</h2>
-    <!-- Create album form -->
+    <div class="section-heading">
+      <h2 id="albumsHeading">Albums</h2>
+      <button type="button" class="btn btn-primary" id="createAlbumCard">
+        <i class="bi bi-plus-lg" aria-hidden="true"></i> New album
+      </button>
+    </div>
     <div class="d-none row p-3 mb-4" id="createAlbumFormContainer">
       <div class="col-12 col-sm-10 col-md-8 col-lg-6">
         <form>
+          <label for="createAlbumInput" class="form-label">Album name</label>
           <input type="text" id="createAlbumInput" name="createAlbumInput" class="form-control mb-2" required placeholder="Album name" minlength="1" maxlength="1024">
           <div class="invalid-feedback mb-2">Invalid album name</div>
           <button type="submit" id="createAlbumSubmit" class="btn btn-primary w-100 mb-2" disabled>Create</button>
@@ -81,48 +110,124 @@
       </div>
     </div>
     
-    <div class="row row-cols-3 row-cols-lg-4 grid">
-      <!-- Create album button -->
+    <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-6 g-3">
+      {% for albumName in albums %}
       <div class="col">
-        <div class="photo-card position-relative" id="createAlbumCard">
-          <img src="/static/create_album-512.webp" class="img-fluid img-thumbnail" title="Create Album" draggable="false">
-        </div>
-      </div>
-
-      {% for album in albums %}
-      <div class="col">
-        <a href="/albums/{{album}}" title="{{album}}">
-          <div class="photo-card position-relative">
-            <img src="/api/albums/thumbnail/{{album}}" class="img-fluid img-thumbnail" draggable="false">
-            <div class="album-title-overlay fw-bold fs-6 fs-lg-3">{{album}}</div>
-          </div>
+        <a href="/albums/{{ albumName | urlencode }}" class="album-card" title="{{ albumName }}">
+          <img src="/api/albums/thumbnail/{{ albumName | urlencode }}" class="img-fluid img-thumbnail"
+            loading="lazy" alt="" draggable="false">
+          <span class="album-title">{{ albumName }}</span>
         </a>
       </div>
+      {% else %}
+      <p class="text-body-secondary">Create an album to organize your photos.</p>
       {% endfor %}
     </div>
-  </div>
   {% endblock %}
+    </section>
+  {% endif %}
+  </main>
 
-  {% block media %}
-  <div class="container-fluid">
-    <h2 class="display-6">My Files</h2>
-    <div class="row row-cols-4 row-cols-lg-6 grid g-0">
-      {% for media in medias %}
-        {% include "partials/thumbnail.html" %}
-      {% endfor %}
+  <div class="selection-bar" id="selectionBar" role="region" aria-label="Selected photos" hidden>
+    <button type="button" class="btn btn-outline-secondary icon-button" id="clearSelectionBtn" aria-label="Cancel selection">
+      <i class="bi bi-x-lg" aria-hidden="true"></i>
+    </button>
+    <span id="selectionCount" class="selection-count" role="status">0 selected</span>
+    {% set moveAlbums = albums | reject('equalto', album) | list if album is defined else albums %}
+    {% if moveAlbums %}
+    <div class="dropdown">
+      <button type="button" class="btn btn-outline-primary dropdown-toggle" id="moveSelectedBtn"
+        data-bs-toggle="dropdown" disabled>Move</button>
+      <ul class="dropdown-menu" id="moveAlbumMenu">
+        {% for albumName in moveAlbums %}
+        <li><button type="button" class="dropdown-item" data-target-album="{{ albumName }}">{{ albumName }}</button></li>
+        {% endfor %}
+      </ul>
     </div>
+    {% endif %}
+    <button type="button" class="btn {% if album is defined %}btn-outline-secondary{% else %}btn-outline-danger{% endif %}"
+      id="deleteSelectedBtn" disabled>
+      {% if album is defined %}Remove{% else %}Delete{% endif %}
+    </button>
   </div>
-  {% endblock %}
+
+  <nav class="app-navigation" aria-label="Main navigation">
+    <a href="{% if album is defined %}/{% endif %}#photos" data-view="photos">
+      <i class="bi bi-images" aria-hidden="true"></i><span>Photos</span>
+    </a>
+    <a href="{% if album is defined %}/{% endif %}#albums" data-view="albums">
+      <i class="bi bi-journal-album" aria-hidden="true"></i><span>Albums</span>
+    </a>
+    <a href="#upload" data-view="upload">
+      <i class="bi bi-cloud-arrow-up" aria-hidden="true"></i><span>Upload</span>
+    </a>
+  </nav>
 
   {% block modal %}
-  <div class="modal fade" id="fullsizeModal" tabindex="-1" role="dialog" aria-labelledby="fullsizeModalLabel"
+  <div class="modal fade" id="fullsizeModal" tabindex="-1" aria-labelledby="fullsizeModalLabel"
     aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-dialog modal-fullscreen">
       <div class="modal-content">
-        <div class="modal-body" id="fullsizeModalBody">
-          <!-- Img or video vill be added here -->
+        <div class="modal-header viewer-header">
+          <button type="button" class="btn viewer-action icon-button" data-bs-dismiss="modal" aria-label="Close viewer">
+            <i class="bi bi-x-lg" aria-hidden="true"></i>
+          </button>
+          <h2 class="modal-title" id="fullsizeModalLabel">Photo viewer</h2>
+          <a class="btn viewer-action icon-button" id="viewerOriginal" target="_blank" rel="noopener"
+            aria-label="Open original in a new tab" title="Open original">
+            <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+          </a>
         </div>
-        <div class="modal-footer m-0 p-0">
+        <div class="modal-body viewer-stage" id="fullsizeModalBody" aria-busy="false">
+        </div>
+        <div class="viewer-notice" id="viewerNotice" role="status" hidden></div>
+        <section class="viewer-info" id="viewerInfoPanel" aria-labelledby="viewerInfoHeading" hidden>
+          <div class="section-heading">
+            <h3 id="viewerInfoHeading">Details</h3>
+            <button type="button" class="btn viewer-action icon-button" id="viewerInfoClose" aria-label="Close details">
+              <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
+          </div>
+          <dl>
+            <dt>Filename</dt><dd id="viewerInfoFilename"></dd>
+            <dt>File type</dt><dd id="viewerInfoType"></dd>
+            <dt>Date</dt><dd><time id="viewerInfoDate"></time></dd>
+            <dt>Dimensions</dt><dd id="viewerInfoDimensions"></dd>
+            <dt id="viewerInfoDurationLabel" hidden>Duration</dt><dd id="viewerInfoDuration" hidden></dd>
+            <dt>Album</dt><dd>{% if album is defined %}{{ album }}{% else %}Not in an album{% endif %}</dd>
+          </dl>
+        </section>
+        <div class="modal-footer viewer-footer">
+          <div class="viewer-toolbar" role="toolbar" aria-label="File actions">
+            <button type="button" class="btn viewer-action" id="viewerInfoBtn"
+              aria-controls="viewerInfoPanel" aria-expanded="false">
+              <i class="bi bi-info-circle" aria-hidden="true"></i><span>Info</span>
+            </button>
+            <button type="button" class="btn viewer-action" id="viewerShareBtn" title="Anonymous sharing: prototype only"
+              aria-label="Share (prototype only)">
+              <i class="bi bi-share" aria-hidden="true"></i><span>Share</span>
+            </button>
+            <a class="btn viewer-action" id="viewerDownload" target="_blank" rel="noopener"
+              title="Open original to save or download it with your browser">
+              <i class="bi bi-download" aria-hidden="true"></i><span>Download</span>
+            </a>
+            <div class="dropup">
+              <button type="button" class="btn viewer-action" id="viewerMoveBtn" data-bs-toggle="dropdown"
+                aria-label="Move to album" {% if not moveAlbums %}disabled{% endif %}>
+                <i class="bi bi-journal-arrow-up" aria-hidden="true"></i><span>Move</span>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-dark" id="viewerMoveMenu">
+                {% for albumName in moveAlbums %}
+                <li><button type="button" class="dropdown-item" data-target-album="{{ albumName }}">{{ albumName }}</button></li>
+                {% endfor %}
+              </ul>
+            </div>
+            <button type="button" class="btn viewer-action viewer-delete" id="viewerDeleteBtn"
+              aria-label="{% if album is defined %}Remove from album{% else %}Delete original{% endif %}">
+              <i class="bi {% if album is defined %}bi-journal-minus{% else %}bi-trash{% endif %}" aria-hidden="true"></i>
+              <span>{% if album is defined %}Remove{% else %}Delete{% endif %}</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
