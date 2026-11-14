@@ -26,7 +26,7 @@
 
 <body>
   {% block title %}
-  <header class="container-fluid">
+  <header class="container-fluid border-bottom">
     <h1 class="h1">Azure Photos</h1>
   </header>
   {% endblock %}
@@ -126,6 +126,30 @@
       </div>
     </div>
   </div>
+  {% endblock %}
+
+  {% block nav %}
+  <nav class="fixed-bottom d-flex border-top bg-white"
+    aria-label="Main navigation">
+    <a href="#photos"
+      data-view="photos"
+      class="flex-fill d-flex flex-column align-items-center text-decoration-none text-secondary">
+      <i class="bi bi-images fs-4" aria-hidden="true"></i>
+      <span>Photos</span>
+    </a>
+    <a href="#albums"
+      data-view="albums"
+      class="flex-fill d-flex flex-column align-items-center text-decoration-none text-secondary">
+      <i class="bi bi-journal-album fs-4" aria-hidden="true"></i>
+      <span>Albums</span>
+    </a>
+    <a href="#upload"
+      data-view="upload"
+      class="flex-fill d-flex flex-column align-items-center text-decoration-none text-secondary">
+      <i class="bi bi-cloud-arrow-up fs-4" aria-hidden="true"></i>
+      <span>Upload</span>
+    </a>
+  </nav>
   {% endblock %}
 
   <script src="/static/index.js"></script>

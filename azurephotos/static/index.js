@@ -299,6 +299,30 @@ function fileFingerprint(file) {
     ].join(":");
 }
 
+/**
+ * Toggle navbar active link.
+ * @param {JQuery<HTMLAnchorElement>} navLinks 
+ */
+function updateNavigation(navLinks) {
+    const active = location.hash.slice(1) || "photos";
+
+    navLinks.each(function () {
+        /** @type {JQuery.HTMLAnchorElement} */
+        const link = $(this);
+        const selected = link.data("view") === active;
+
+        link
+            .toggleClass("text-primary", selected)
+            .toggleClass("text-secondary", !selected);
+        
+        if (selected) {
+            link.attr("aria-current", "page");
+        } else {
+            link.removeAttr("aria-current");
+        }
+    });
+}
+
 // Some variables are passed here from HTML from Flask.
 // We'll have `albums` on all pages and `album` on an album page
 $(document).ready(() => {
@@ -327,6 +351,14 @@ $(document).ready(() => {
      * @type {Set<string>}
      */
     let itemsToUploadFingerprints = new Set();
+    /**
+     * Navbar links
+     * @type {JQuery<HTMLAnchorElement>}
+     */
+    let links = $('nav[aria-label="Main navigation"] a[data-view]');
+
+    $(window).on("hashchange", () => updateNavigation(links));
+    updateNavigation(links);
 
     function updateUploadSubmitState() {
         $("#submitUpload").prop("disabled", itemsToUpload.length === 0);
