@@ -8,14 +8,13 @@
 {% endblock %}
 
 {% block title %}
-<div class="container-fluid">
-  <h1 class="display-1">
-    <a href="/" style="text-decoration: none;">&LT;</a> {{album}}
-  </h1>
-  <button type="button" class="btn btn-primary" id="renameAlbumBtn">Rename Album</button>
+<header class="container-fluid">
+    <h1 class="h1">
+      <a href="/" style="text-decoration: none;">&LT;</a> {{album}}
+    </h1>
+    <button type="button" class="btn btn-primary" id="renameAlbumBtn">Rename Album</button>
   <button type="button" class="btn btn-danger" id="deleteAlbumBtn">Delete Album</button>
-</div>
-<hr />
+</header>
 {% endblock %}
 
 <!-- Don't need to list other albums on album page -->
