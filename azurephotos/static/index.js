@@ -300,6 +300,18 @@ function fileFingerprint(file) {
 }
 
 /**
+ * Update the page view based on nav.
+ * @param {JQuery<HTMLElement>} pageViews 
+ */
+function updateView(pageViews) {
+    const active = location.hash.slice(1) || "photos";
+
+    pageViews.each(function () {
+        $(this).toggleClass("d-none", this.id !== active);
+    });
+}
+
+/**
  * Toggle navbar active link.
  * @param {JQuery<HTMLAnchorElement>} navLinks 
  */
@@ -351,14 +363,25 @@ $(document).ready(() => {
      * @type {Set<string>}
      */
     let itemsToUploadFingerprints = new Set();
+
+    /**
+     * Different page views controlled by nav
+     * @type {JQuery<HTMLElement>}
+     */
+    const views = $('section[data-page-view]');
     /**
      * Navbar links
      * @type {JQuery<HTMLAnchorElement>}
      */
-    let links = $('nav[aria-label="Main navigation"] a[data-view]');
+    const navLinks = $('nav[aria-label="Main navigation"] a[data-view]');
 
-    $(window).on("hashchange", () => updateNavigation(links));
-    updateNavigation(links);
+    // Update view and nav links
+    function updatePage() {
+        updateView(views);
+        updateNavigation(navLinks);
+    }
+    $(window).on("hashchange", updatePage);
+    updatePage();
 
     function updateUploadSubmitState() {
         $("#submitUpload").prop("disabled", itemsToUpload.length === 0);
