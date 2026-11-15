@@ -422,6 +422,12 @@ $(document).ready(() => {
 
             fullsizeModalBody.appendChild(img);
         }
+
+        // Populate title
+        $("#fullsizeModalLabel").text(modalPhotoName);
+
+        // Make new tab viewing buttons work
+        $("#viewerOriginal, #viewerDownload").attr("href", `/fullsize/${modalPhotoName}`);
     });
 
     // Close fullsize modal
@@ -640,6 +646,7 @@ $(document).ready(() => {
     });
 
     // Delete photos and videos
+    // TODO: Deduplicate these delete functions
     $(".photo-action.delete-btn").click(function (event) {
         const isAlbum = (typeof album) !== "undefined";
         const basePath = isAlbum ? `/api/albums/${album}` : `/delete`;
@@ -679,24 +686,66 @@ $(document).ready(() => {
                 }, 500);
             });
     });
+    $("#viewerDeleteBtn").click(function (event) {
+        const isAlbum = (typeof album) !== "undefined";
+        const basePath = isAlbum ? `/api/albums/${album}` : `/delete`;
+
+        const confirmMessage = `Are you sure you want to remove ${modalPhotoName}${isAlbum ? ' from this album' : ''}?`;
+        if (!confirm(confirmMessage)) {
+            return;
+        }
+
+        $("#operationProgress .progress-bar").addClass("progress-bar-animated");
+        $("#operationProgress").show();
+
+        doWithProgressBarWithConcurrency(
+            new Set([modalPhotoName]),
+            (file) => deleteFile(file, `${basePath}/${file}`),
+            4
+        )
+            .then(({ successCount, failureCount, totalCount, errors }) => {
+                if (failureCount) {
+                    console.warn("Some deletes failed:", errors);
+                    alert(`${successCount}/${totalCount} deletes succeeded`);
+                    return;
+                }
+
+                // Remove the deleted photo from the page.
+                $(`.photo-checkbox[value="${CSS.escape(modalPhotoName)}"]`)
+                    .closest(".photo-item")
+                    .remove();
+
+                // Clear the modal
+                bootstrap.Modal.getInstance(fullsizeModal).hide();
+                modalPhotoName = null;
+                fullsizeModalBody.innerHTML = "";
+            })
+            .finally(() => {
+                $("#operationProgress .progress-bar").removeClass("progress-bar-animated");
+                setTimeout(() => { 
+                    $("#operationProgress").hide(); 
+                }, 500);
+            });
+    });
 
     // Place photos and videos in album
+    // TODO: Deduplicate these move functions
     $(".photo-action.album-btn").siblings("ul").find("li .dropdown-item").each(function () {
         const li = $(this);
-        const targetAlbum = li.text()
-        const inAlbum = (typeof album) !== "undefined"
+        const targetAlbum = li.text();
+        const inAlbum = (typeof album) !== "undefined";
 
         li.click((_) => {
             const name = li.closest("ul.dropdown-menu")
                 .siblings(".photo-action.album-btn")
-                .data("name")
+                .data("name");
 
             // Add photo to selection
             $(`.photo-checkbox[value='${name}']`)
                 .prop("checked", true)
-                .trigger("change")
+                .trigger("change");
 
-            if (!confirm(`Are you sure you want to move ${checkedItems.size} items to '${targetAlbum}?'`)) {
+            if (!confirm(`Are you sure you want to move ${checkedItems.size} items to '${targetAlbum}'?`)) {
                 return;
             }
 
@@ -704,7 +753,7 @@ $(document).ready(() => {
             $("#operationProgress").show();
 
             const basePath = `/api/albums/${targetAlbum}`;
-            const queryString = inAlbum 
+            const queryString = inAlbum
                 ? new URLSearchParams({
                     "currentAlbum": album
                 }).toString()
@@ -735,6 +784,57 @@ $(document).ready(() => {
                     }, 500);
                 });
         });
+    });
+    $("#viewerMoveBtn").siblings("ul").find("li .dropdown-item").each(function() {
+        const li = $(this);
+        const targetAlbum = li.text();
+        const inAlbum = (typeof album) !== "undefined";
+
+        li.click((_) => {
+            const name = modalPhotoName;
+
+            if (!confirm(`Are you sure you want to move ${name} to '${targetAlbum}'?`)) {
+                return;
+            }
+
+            $("#operationProgress .progress-bar").addClass("progress-bar-animated");
+            $("#operationProgress").show();
+
+            const basePath = `/api/albums/${targetAlbum}`;
+            const queryString = inAlbum
+                ? new URLSearchParams({
+                    "currentAlbum": album
+                }).toString()
+                : "";
+            doWithProgressBarWithConcurrency(
+                new Set([modalPhotoName]),
+                (file) => moveToAlbum(file, `${basePath}/${file}?${queryString}`),
+                4
+            )
+                .then(({ successCount, failureCount, totalCount, errors }) => {
+                    if (failureCount) {
+                        console.warn("Some moves failed:", errors);
+                        alert(`${successCount}/${totalCount} moves succeeded`);
+                        return;
+                    }
+
+                    // Remove the deleted photo from the page.
+                    $(`.photo-checkbox[value="${CSS.escape(modalPhotoName)}"]`)
+                        .closest(".photo-item")
+                        .remove();
+                    
+                    // Clear the modal
+                    bootstrap.Modal.getInstance(fullsizeModal).hide();
+                    modalPhotoName = null;
+                    fullsizeModalBody.innerHTML = "";
+                })
+                .finally(() => {
+                    $("#operationProgress .progress-bar").removeClass("progress-bar-animated");
+                    setTimeout(() => { 
+                        $("#operationProgress").hide(); 
+                    }, 500);
+                });
+        })
     });
 
     // Select photos and videos

@@ -9,17 +9,15 @@
             data-selected="{{ media.filename }}">
             <i class="bi bi-trash"></i>
         </button>
-        {% if albums|length > 0 %}
+        {% if moveAlbums %}
         <button type="button" class="btn btn-sm btn-secondary dropdown-toggle photo-action album-btn"
             data-name="{{ media.filename }}" data-bs-toggle="dropdown">
             <i class="bi bi-journal-album"></i>
         </button>
         <ul class="dropdown-menu">
-            {% for albumName in albums %}
-                {% if album != albumName %}
-                <li><a class="dropdown-item" href="#">{{ albumName }}</a></li>
-                {% endif %}
-            {% endfor %}
+        {% for albumName in moveAlbums %}
+            <li><a class="dropdown-item" href="#">{{ albumName }}</a></li>
+        {% endfor %}
         </ul>
         {% endif %}
     </div>

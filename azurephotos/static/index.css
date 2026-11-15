@@ -3,27 +3,23 @@ main {
              64px max(12px, env(safe-area-inset-left));
 }
 
-#fullsizeModal .modal-dialog {
-    margin: auto;
-    max-height: 97vh;
-}
-
 #fullsizeModal .modal-content {
-    background-color: transparent;
-    border: none;
-    align-items: center;
-}
-
-#fullsizeModal .modal-footer {
-    border: none;
+    height: 100dvh;
+    --bs-modal-bg: #111;
+    background: var(--bs-modal-bg);
 }
 
 #fullsizeModalBody img,
 #fullsizeModalBody video {
-    max-width: 90vw;
-    max-height: 90vh;
-    width: auto;
-    height: auto;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+#fullsizeModal .modal-footer .btn {
+    display: flex;
+    flex-direction: column;
+    --bs-btn-border-color: var(--bs-modal-bg);
 }
 
 .photo-card {
@@ -34,9 +30,8 @@ main {
 }
 
 /* Hover and selected scaling */
-/* TODO: How to keep image scaled when checkbox is checked? */
-.photo-card:hover img,
-.photo-card:has(.photo-checkbox:checked) img {
+.photo-card:hover,
+.photo-card:has(.photo-checkbox:checked) {
     transform: scale(0.96);
 }
 
@@ -103,4 +98,12 @@ main {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+#createAlbumCard {
+    container-type: inline-size;
+}
+
+.create-album-icon {
+    font-size: 50cqw;
 }
