@@ -422,6 +422,12 @@ $(document).ready(() => {
 
             fullsizeModalBody.appendChild(img);
         }
+
+        // Populate title
+        $("#fullsizeModalLabel").text(modalPhotoName);
+
+        // Make new tab viewing buttons work
+        $("#viewerOriginal, #viewerDownload").attr("href", `/fullsize/${modalPhotoName}`);
     });
 
     // Close fullsize modal

@@ -5,10 +5,7 @@
         <button type="button" class="btn icon-button" data-bs-dismiss="modal">
           <i class="bi bi-x-lg text-white" aria-hidden="true"></i>
         </button>
-        <h2 class="modal-title text-truncate flex-grow-1">Photo Title</h2>
-        <a class="btn icon-button text-white" target="_blank" title="Open original">
-          <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
-        </a>
+        <h2 class="modal-title text-truncate flex-grow-1" id="fullsizeModalLabel">Photo Title</h2>
       </div>
       <div class="modal-body py-0 d-flex justify-content-center" id="fullsizeModalBody">
         <!-- Img or video will be added here -->
@@ -16,7 +13,7 @@
       <div class="modal-footer border-0 p-0 justify-content-center">
           <!-- TODO: Info -->
           <!-- TODO: Sharing -->
-          <a type="button" class="btn text-white" target="_blank" rel="noopener">
+          <a type="button" class="btn text-white" id="viewerDownload" target="_blank" rel="noopener">
             <i class="bi bi-download" aria-hidden="true"></i>
             <span>Download</span>
           </a>
