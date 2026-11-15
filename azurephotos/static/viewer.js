@@ -52,7 +52,7 @@ function createViewer({ mediaGrid, getExtension, isBusy, onDelete, onMove }) {
         const { filename, full, mediaType, date } = button.dataset;
         const video = mediaType === "video";
         $("#fullsizeModalLabel, #viewerInfoFilename").text(filename);
-        $("#viewerOriginal, #viewerDownload").attr("href", full);
+        $("#viewerDownload").attr("href", full);
         $("#viewerNotice").prop("hidden", true);
         $("#viewerInfoType").text(`${video ? "Video" : "Photo"} (${getExtension(filename).slice(1).toUpperCase()})`);
         $("#viewerInfoDimensions, #viewerInfoDuration").text("Loading...");
@@ -69,7 +69,7 @@ function createViewer({ mediaGrid, getExtension, isBusy, onDelete, onMove }) {
 
         const status = $("<p>", { class: "viewer-status", role: "status", text: "Loading..." })[0];
         const element = document.createElement(video ? "video" : "img");
-        element.className = "viewer-media w-100 h-100 object-fit-contain";
+        element.className = "img-fluid w-100 h-100";
         element.draggable = false;
         if (video) {
             element.controls = true;
@@ -107,7 +107,7 @@ function createViewer({ mediaGrid, getExtension, isBusy, onDelete, onMove }) {
             if (viewerStage.contains(element)) {
                 element.style.removeProperty("opacity");
                 status.hidden = false;
-                status.textContent = "Could not display this file. Open the original to view or save it.";
+                status.textContent = "Could not display this file. Use Download to open the original.";
                 viewerStage.setAttribute("aria-busy", "false");
                 $("#viewerInfoDimensions, #viewerInfoDuration").text("Not available");
             }
@@ -230,14 +230,9 @@ function createViewer({ mediaGrid, getExtension, isBusy, onDelete, onMove }) {
     });
     document.addEventListener("pointercancel", () => { swipe = null; });
 
-    function mediaRemoved(button, index) {
+    function mediaRemoved(button) {
         if (viewedItem === button) {
-            const remaining = mediaButtons();
-            if (remaining.length) {
-                showMedia(remaining[Math.min(index, remaining.length - 1)]);
-            } else {
-                modal.hide();
-            }
+            modal.hide();
         }
     }
 

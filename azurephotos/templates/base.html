@@ -72,9 +72,6 @@
     <section id="albums" data-page-view class="d-none" aria-labelledby="albumsHeading">
       <div class="section-heading d-flex align-items-center justify-content-between gap-3 mb-3">
         <h2 class="h5 mb-0" id="albumsHeading">Albums</h2>
-        <button type="button" class="btn btn-primary" id="createAlbumCard">
-          <i class="bi bi-plus-lg" aria-hidden="true"></i> New album
-        </button>
       </div>
       <div class="d-none row p-3 mb-4" id="createAlbumFormContainer">
         <div class="col-12 col-sm-10 col-md-8 col-lg-6">
@@ -87,8 +84,13 @@
           </form>
         </div>
       </div>
-
       <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-6 g-3">
+        <div class="col">
+          <button type="button" class="photo-card btn d-flex flex-column align-items-center justify-content-center h-100 w-100" id="createAlbumCard">
+            <i class="bi bi-journal-plus create-album-icon" aria-hidden="true"></i>
+            <span class="mt-2">Create Album</span>
+          </button>
+        </div>
         {% for albumName in albums %}
         <div class="col">
           <a href="/albums/{{ albumName | urlencode }}" class="album-card d-block text-reset text-decoration-none" title="{{ albumName }}">
@@ -104,6 +106,8 @@
     </section>
     {% endblock %}
     {% endif %}
+
+    {% set moveAlbums = albums | reject('equalto', album) | list if album is defined else albums %}
 
     {% block media %}
     <section id="photos" data-page-view aria-labelledby="photosHeading">
@@ -134,7 +138,6 @@
       <i class="bi bi-x-lg" aria-hidden="true"></i>
     </button>
     <span id="selectionCount" class="selection-count small flex-grow-1" role="status">0 selected</span>
-    {% set moveAlbums = albums | reject('equalto', album) | list if album is defined else albums %}
     {% if moveAlbums %}
     <div class="dropdown">
       <button type="button" class="btn btn-outline-primary dropdown-toggle" id="moveSelectedBtn"

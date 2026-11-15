@@ -342,9 +342,8 @@ $(document).ready(() => {
     function removeMediaItem(filename) {
         const buttons = mediaButtons();
         const button = buttons.find(item => item.dataset.filename === filename);
-        const index = buttons.indexOf(button);
         button?.closest(".col").remove();
-        viewer.mediaRemoved(button, index);
+        viewer.mediaRemoved(button);
         updateUI();
     }
 

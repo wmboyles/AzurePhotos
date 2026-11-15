@@ -81,13 +81,15 @@ nav[aria-label="Main navigation"] {
     user-select: none;
 }
 
-.photo-open img {
-    transition: transform 0.15s;
+.photo-card {
+    border-radius: 0.5rem;
+    transition: transform 0.2s;
 }
 
-.photo-card:has(.photo-checkbox:checked) img {
-    transform: scale(0.9);
-    border-radius: 0.5rem;
+/* Hover and selected scaling */
+.photo-card:hover,
+.photo-card:has(.photo-checkbox:checked) {
+    transform: scale(0.96);
 }
 
 .photo-checkbox {
@@ -148,8 +150,16 @@ nav[aria-label="Main navigation"] a:focus-visible,
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .photo-open img,
+    .photo-card,
     .photo-checkbox {
         transition: none;
     }
+}
+
+#createAlbumCard {
+    container-type: inline-size;
+}
+
+.create-album-icon {
+    font-size: 50cqw;
 }
