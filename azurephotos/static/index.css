@@ -5,7 +5,8 @@ main {
 
 #fullsizeModal .modal-content {
     height: 100dvh;
-    background: black;
+    --bs-modal-bg: #111;
+    background: var(--bs-modal-bg);
 }
 
 #fullsizeModalBody img,
@@ -18,7 +19,7 @@ main {
 #fullsizeModal .modal-footer .btn {
     display: flex;
     flex-direction: column;
-    --bs-btn-border-color: black;
+    --bs-btn-border-color: var(--bs-modal-bg);
 }
 
 .photo-card {
