@@ -25,11 +25,11 @@
 </head>
 
 <body>
+  <header class="d-flex align-items-center gap-3 p-3">
   {% block title %}
-  <header class="container-fluid d-flex align-items-center gap-3">
     <h1>Azure Photos</h1>
-  </header>
   {% endblock %}
+  </header>
 
   <main>
     {% block upload %}
@@ -66,7 +66,8 @@
     <hr />
     {% endblock %}
 
-    {% block albums %}
+    {% if album is not defined %}
+    <!-- Only need to list all albums when viewing non-albums -->
     <section id="albums" data-page-view>
       <h2 class="display-6">Albums</h2>
       <!-- Create album form -->
@@ -101,7 +102,7 @@
         {% endfor %}
       </div>
     </section>
-    {% endblock %}
+    {% endif %}
 
     {% block media %}
     <section id="photos" data-page-view>
@@ -133,13 +134,13 @@
   {% block nav %}
   <nav class="fixed-bottom d-flex border-top bg-white"
     aria-label="Main navigation">
-    <a href="#photos"
+    <a href="{% if album is defined %}/{% endif %}#photos"
       data-view="photos"
       class="flex-fill d-flex flex-column align-items-center text-decoration-none text-secondary">
       <i class="bi bi-images fs-4" aria-hidden="true"></i>
       <span>Photos</span>
     </a>
-    <a href="#albums"
+    <a href="{% if album is defined %}/{% endif %}#albums"
       data-view="albums"
       class="flex-fill d-flex flex-column align-items-center text-decoration-none text-secondary">
       <i class="bi bi-journal-album fs-4" aria-hidden="true"></i>
