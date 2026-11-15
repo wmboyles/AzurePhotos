@@ -9,10 +9,14 @@
 
 body {
     background: #fafafa;
-    padding-bottom: calc(var(--navigation-height) + env(safe-area-inset-bottom) + 16px);
 }
 
-body.is-selecting {
+main {
+    padding: 16px max(12px, env(safe-area-inset-right))
+             calc(var(--navigation-height) + env(safe-area-inset-bottom) + 16px) max(12px, env(safe-area-inset-left));
+}
+
+.is-selecting main {
     padding-bottom: calc(var(--navigation-height) + var(--selection-height) + env(safe-area-inset-bottom) + 16px);
 }
 
@@ -24,10 +28,6 @@ body.is-selecting {
 .app-title,
 .selection-count {
     min-width: 0;
-}
-
-.app-main {
-    padding: 16px max(12px, env(safe-area-inset-right)) 16px max(12px, env(safe-area-inset-left));
 }
 
 .section-heading h2 {
@@ -48,25 +48,9 @@ body.is-selecting {
     flex-shrink: 0;
 }
 
-.app-navigation {
+nav[aria-label="Main navigation"] {
     height: calc(var(--navigation-height) + env(safe-area-inset-bottom));
     padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-}
-
-.app-navigation a {
-    flex: 1;
-    gap: 2px;
-    color: #5f6368;
-    font-size: 0.8125rem;
-}
-
-.app-navigation a[aria-current="page"] {
-    color: #0d6efd;
-    background: #edf4ff;
-}
-
-.app-navigation a[aria-disabled="true"] {
-    opacity: 0.5;
 }
 
 .selection-bar {
@@ -131,7 +115,7 @@ body.is-selecting {
 }
 
 .photo-open:focus-visible,
-.app-navigation a:focus-visible,
+nav[aria-label="Main navigation"] a:focus-visible,
 .album-card:focus-visible {
     outline: 3px solid #0d6efd;
     outline-offset: 2px;

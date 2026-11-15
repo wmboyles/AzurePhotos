@@ -1,0 +1,17 @@
+<nav class="fixed-bottom d-flex border-top bg-white" aria-label="Main navigation">
+  <a href="{% if album is defined %}/{% endif %}#photos" data-view="photos"
+    class="flex-fill d-flex flex-column align-items-center text-decoration-none text-secondary">
+    <i class="bi bi-images fs-4" aria-hidden="true"></i>
+    <span>Photos</span>
+  </a>
+  <a href="{% if album is defined %}/{% endif %}#albums" data-view="albums"
+    class="flex-fill d-flex flex-column align-items-center text-decoration-none text-secondary">
+    <i class="bi bi-journal-album fs-4" aria-hidden="true"></i>
+    <span>Albums</span>
+  </a>
+  <a href="#upload" data-view="upload"
+    class="flex-fill d-flex flex-column align-items-center text-decoration-none text-secondary">
+    <i class="bi bi-cloud-arrow-up fs-4" aria-hidden="true"></i>
+    <span>Upload</span>
+  </a>
+</nav>

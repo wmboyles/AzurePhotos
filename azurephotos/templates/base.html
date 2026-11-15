@@ -26,12 +26,12 @@
 
 <body>
   <header class="app-header d-flex align-items-center gap-3 bg-white border-bottom">
-  {% block title %}
+    {% block title %}
     <h1 class="app-title h5 mb-0 fw-semibold text-truncate flex-grow-1">Azure Photos</h1>
-  {% endblock %}
+    {% endblock %}
   </header>
 
-  <main class="app-main">
+  <main>
     <div class="progress mb-3" id="operationProgress" style="display: none;" aria-label="Operation progress">
       <div class="progress-bar progress-bar-striped bg-success"
         role="progressbar"
@@ -49,8 +49,63 @@
         aria-valuemax="100"></div>
     </div>
 
-    <section class="app-panel" id="photos" aria-labelledby="photosHeading">
-  {% block media %}
+    {% block upload %}
+    <section id="upload" data-page-view class="d-none" aria-labelledby="uploadHeading">
+      <div class="section-heading d-flex align-items-center justify-content-between gap-3 mb-3">
+        <h2 class="h5 mb-0" id="uploadHeading">Upload{% if album is defined %} to {{ album }}{% endif %}</h2>
+      </div>
+      <form class="mb-3" id="uploadForm">
+        <div id="uploadDropZone" class="border border-2 rounded p-3 my-3 bg-light">
+          <p class="text-body-secondary d-none d-md-block">Drag and drop photos and videos here, or choose files.</p>
+          <label for="formFileLg" class="btn btn-outline-primary mb-3">Choose photos and videos</label>
+          <input class="d-none" id="formFileLg" type="file" accept="image/*,video/*" multiple name="upload" />
+          <div id="uploadSelectedFiles" class="row row-cols-3 row-cols-md-4 row-cols-lg-6 g-1"></div>
+          <button class="btn btn-primary mt-3" type="submit" id="submitUpload" disabled>Upload</button>
+        </div>
+      </form>
+    </section>
+    {% endblock %}
+
+    {% if album is not defined %}
+    {% block albums %}
+    <section id="albums" data-page-view class="d-none" aria-labelledby="albumsHeading">
+      <div class="section-heading d-flex align-items-center justify-content-between gap-3 mb-3">
+        <h2 class="h5 mb-0" id="albumsHeading">Albums</h2>
+        <button type="button" class="btn btn-primary" id="createAlbumCard">
+          <i class="bi bi-plus-lg" aria-hidden="true"></i> New album
+        </button>
+      </div>
+      <div class="d-none row p-3 mb-4" id="createAlbumFormContainer">
+        <div class="col-12 col-sm-10 col-md-8 col-lg-6">
+          <form>
+            <label for="createAlbumInput" class="form-label">Album name</label>
+            <input type="text" id="createAlbumInput" name="createAlbumInput" class="form-control mb-2" required placeholder="Album name" minlength="1" maxlength="1024">
+            <div class="invalid-feedback mb-2">Invalid album name</div>
+            <button type="submit" id="createAlbumSubmit" class="btn btn-primary w-100 mb-2" disabled>Create</button>
+            <button type="button" id="createAlbumCancel" class="btn btn-secondary w-100">Cancel</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-6 g-3">
+        {% for albumName in albums %}
+        <div class="col">
+          <a href="/albums/{{ albumName | urlencode }}" class="album-card d-block text-reset text-decoration-none" title="{{ albumName }}">
+            <img src="/api/albums/thumbnail/{{ albumName | urlencode }}" class="img-thumbnail d-block w-100 p-0 border-0 object-fit-cover"
+              loading="lazy" alt="" draggable="false">
+            <span class="album-title d-block mt-2 fw-semibold">{{ albumName }}</span>
+          </a>
+        </div>
+        {% else %}
+        <p class="text-body-secondary">Create an album to organize your photos.</p>
+        {% endfor %}
+      </div>
+    </section>
+    {% endblock %}
+    {% endif %}
+
+    {% block media %}
+    <section id="photos" data-page-view aria-labelledby="photosHeading">
       <div class="section-heading d-flex align-items-center justify-content-between gap-3 mb-3">
         <h2 class="h5 mb-0" id="photosHeading">Photos</h2>
       </div>
@@ -69,63 +124,8 @@
         <p>{% if album is defined %}Upload some photos to get started.{% else %}Upload photos or browse your albums.{% endif %}</p>
         <a class="btn btn-primary" href="#upload">Upload photos</a>
       </div>
-  {% endblock %}
     </section>
-
-    <section class="app-panel" id="upload" aria-labelledby="uploadHeading" hidden>
-  {% block upload %}
-    <div class="section-heading d-flex align-items-center justify-content-between gap-3 mb-3">
-      <h2 class="h5 mb-0" id="uploadHeading">Upload{% if album is defined %} to {{ album }}{% endif %}</h2>
-    </div>
-    <form class="mb-3" id="uploadForm">
-      <div id="uploadDropZone" class="border border-2 rounded p-3 my-3 bg-light">
-        <p class="text-body-secondary d-none d-md-block">Drag and drop photos and videos here, or choose files.</p>
-        <label for="formFileLg" class="btn btn-outline-primary mb-3">Choose photos and videos</label>
-        <input class="d-none" id="formFileLg" type="file" accept="image/*,video/*" multiple name="upload" />
-        <div id="uploadSelectedFiles" class="row row-cols-3 row-cols-md-4 row-cols-lg-6 g-1"></div>
-        <button class="btn btn-primary mt-3" type="submit" id="submitUpload" disabled>Upload</button>
-      </div>
-    </form>
-  {% endblock %}
-    </section>
-
-  {% if album is not defined %}
-    <section class="app-panel" id="albums" aria-labelledby="albumsHeading" hidden>
-  {% block albums %}
-    <div class="section-heading d-flex align-items-center justify-content-between gap-3 mb-3">
-      <h2 class="h5 mb-0" id="albumsHeading">Albums</h2>
-      <button type="button" class="btn btn-primary" id="createAlbumCard">
-        <i class="bi bi-plus-lg" aria-hidden="true"></i> New album
-      </button>
-    </div>
-    <div class="d-none row p-3 mb-4" id="createAlbumFormContainer">
-      <div class="col-12 col-sm-10 col-md-8 col-lg-6">
-        <form>
-          <label for="createAlbumInput" class="form-label">Album name</label>
-          <input type="text" id="createAlbumInput" name="createAlbumInput" class="form-control mb-2" required placeholder="Album name" minlength="1" maxlength="1024">
-          <div class="invalid-feedback mb-2">Invalid album name</div>
-          <button type="submit" id="createAlbumSubmit" class="btn btn-primary w-100 mb-2" disabled>Create</button>
-          <button type="button" id="createAlbumCancel" class="btn btn-secondary w-100">Cancel</button>
-        </form>
-      </div>
-    </div>
-    
-    <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-6 g-3">
-      {% for albumName in albums %}
-      <div class="col">
-        <a href="/albums/{{ albumName | urlencode }}" class="album-card d-block text-reset text-decoration-none" title="{{ albumName }}">
-          <img src="/api/albums/thumbnail/{{ albumName | urlencode }}" class="img-thumbnail d-block w-100 p-0 border-0 object-fit-cover"
-            loading="lazy" alt="" draggable="false">
-          <span class="album-title d-block mt-2 fw-semibold">{{ albumName }}</span>
-        </a>
-      </div>
-      {% else %}
-      <p class="text-body-secondary">Create an album to organize your photos.</p>
-      {% endfor %}
-    </div>
-  {% endblock %}
-    </section>
-  {% endif %}
+    {% endblock %}
   </main>
 
   <div class="selection-bar d-flex align-items-center gap-2 bg-white border-top" id="selectionBar" role="region" aria-label="Selected photos" hidden>
@@ -151,19 +151,7 @@
     </button>
   </div>
 
-  <nav class="app-navigation fixed-bottom d-flex bg-white border-top" aria-label="Main navigation">
-    <a href="{% if album is defined %}/{% endif %}#photos" data-view="photos"
-      class="d-flex flex-column align-items-center justify-content-center text-decoration-none">
-      <i class="bi bi-images fs-5" aria-hidden="true"></i><span>Photos</span>
-    </a>
-    <a href="{% if album is defined %}/{% endif %}#albums" data-view="albums"
-      class="d-flex flex-column align-items-center justify-content-center text-decoration-none">
-      <i class="bi bi-journal-album fs-5" aria-hidden="true"></i><span>Albums</span>
-    </a>
-    <a href="#upload" data-view="upload" class="d-flex flex-column align-items-center justify-content-center text-decoration-none">
-      <i class="bi bi-cloud-arrow-up fs-5" aria-hidden="true"></i><span>Upload</span>
-    </a>
-  </nav>
+  {% include "partials/nav.html" %}
 
   {% block modal %}
   <div class="modal fade" id="fullsizeModal" tabindex="-1" aria-labelledby="fullsizeModalLabel"

@@ -84,6 +84,20 @@ async function runWithProgress(items, action, concurrency) {
     return { successCount: completed - errors.length, failureCount: errors.length, totalCount, errors };
 }
 
+function updateView(pageViews, active) {
+    pageViews.each(function () {
+        $(this).toggleClass("d-none", this.id !== active);
+    });
+}
+
+function updateNavigation(navLinks, active) {
+    navLinks.each(function () {
+        const selected = this.dataset.view === active;
+        $(this).toggleClass("text-primary", selected).toggleClass("text-secondary", !selected)
+            .attr("aria-current", selected ? "page" : null);
+    });
+}
+
 // Flask provides `albums` on both pages and `album` on an album page.
 $(document).ready(() => {
     const inAlbum = typeof album !== "undefined";
@@ -91,6 +105,8 @@ $(document).ready(() => {
     const modalElement = document.getElementById("fullsizeModal");
     const viewerStage = document.getElementById("fullsizeModalBody");
     const viewer = bootstrap.Modal.getOrCreateInstance(modalElement);
+    const views = $("section[data-page-view]");
+    const navLinks = $('nav[aria-label="Main navigation"] a[data-view]');
     const uploads = new Map();
     const scrollPositions = {};
     let currentView = null;
@@ -120,7 +136,7 @@ $(document).ready(() => {
         $("#viewerDeleteBtn").prop("disabled", busy || !viewedItem);
         $("#viewerMoveBtn").prop("disabled",
             busy || !viewedItem || $("#viewerMoveMenu .dropdown-item").length === 0);
-        $(".app-navigation a").attr("aria-disabled", String(busy));
+        navLinks.attr("aria-disabled", String(busy)).toggleClass("opacity-50", busy);
     }
 
     function clearSelection() {
@@ -155,28 +171,23 @@ $(document).ready(() => {
     }
 
     // Navigation retains each screen's scroll position.
-    function showView() {
+    function updatePage() {
         const name = location.hash.slice(1);
-        const nextView = document.getElementById(name)?.classList.contains("app-panel") ? name : "photos";
+        const nextView = views.toArray().some(view => view.id === name) ? name : "photos";
         if (nextView !== currentView) {
             if (currentView !== null) {
                 scrollPositions[currentView] = window.scrollY;
                 clearSelection();
             }
-            document.querySelectorAll(".app-panel").forEach(panel => {
-                panel.hidden = panel.id !== nextView;
-            });
+            updateView(views, nextView);
             currentView = nextView;
             window.scrollTo(0, scrollPositions[nextView] || 0);
         }
-        const active = inAlbum && nextView === "photos" ? "albums" : nextView;
-        $(".app-navigation a").each(function () {
-            $(this).attr("aria-current", this.dataset.view === active ? "page" : null);
-        });
+        updateNavigation(navLinks, inAlbum && nextView === "photos" ? "albums" : nextView);
     }
 
-    window.addEventListener("hashchange", showView);
-    $(".app-navigation a").on("click", event => {
+    $(window).on("hashchange", updatePage);
+    navLinks.on("click", event => {
         if (busy) {
             event.preventDefault();
         }
@@ -411,7 +422,7 @@ $(document).ready(() => {
         syncViewerHistory();
     });
     window.addEventListener("popstate", () => {
-        showView();
+        updatePage();
         syncViewerHistory();
     });
     $("#viewerInfoBtn").on("click", () => setViewerInfo(document.getElementById("viewerInfoPanel").hidden));
@@ -631,7 +642,7 @@ $(document).ready(() => {
         }
     });
 
-    showView();
+    updatePage();
     syncViewerHistory();
     updateUI();
 });
