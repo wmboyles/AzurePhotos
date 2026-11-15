@@ -1,11 +1,49 @@
-<div class="modal fade" id="fullsizeModal" tabindex="-1" role="dialog" aria-labelledby="fullsizeModalLabel"
-  aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered" role="document">
-    <div class="modal-content">
-      <div class="modal-body" id="fullsizeModalBody">
-        <!-- Img or video vill be added here -->
+<div class="modal fade" id="fullsizeModal" tabindex="-1" aria-labelledby="fullsizeModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-fullscreen">
+    <div class="modal-content text-white">
+      <div class="modal-header border-0 p-0">
+        <button type="button" class="btn icon-button" data-bs-dismiss="modal">
+          <i class="bi bi-x-lg text-white" aria-hidden="true"></i>
+        </button>
+        <h2 class="modal-title text-truncate flex-grow-1">Photo Title</h2>
+        <a class="btn icon-button text-white" target="_blank" title="Open original">
+          <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+        </a>
       </div>
-      <div class="modal-footer m-0 p-0">
+      <div class="modal-body py-0 d-flex justify-content-center" id="fullsizeModalBody">
+        <!-- Img or video will be added here -->
+      </div>
+      <div class="modal-footer border-0 p-0 justify-content-center">
+          <!-- TODO: Info -->
+          <!-- TODO: Sharing -->
+          <a type="button" class="btn text-white" target="_blank" rel="noopener">
+            <i class="bi bi-download" aria-hidden="true"></i>
+            <span>Download</span>
+          </a>
+          <div class="dropup">
+            <button
+              type="button"
+              class="btn text-white"
+              id="viewerMoveBtn"
+              data-bs-toggle="dropdown"
+              {% if not moveAlbums %}disabled{% endif %}>
+              <i class="bi bi-journal-arrow-up" aria-hidden="true"></i>
+              <span>Move</span>
+            </button>
+            <ul class="dropdown-menu" id="viewerMoveMenu">
+            {% for albumName in moveAlbums %}
+              <li>
+                <button type="button" class="dropdown-item">{{ albumName }}</button>
+              </li>
+            {% endfor %}
+            </ul>
+          </div>
+          <button type="button" class="btn text-danger" id="viewerDeleteBtn">
+            <i
+              class="{% if album is defined %}bi bi-journal-minus{% else %}bi-trash{% endif %}" 
+              aria-hidden="true"></i>
+            <span>{% if album is defined %}Remove{% else %}Delete{% endif %}</span>
+          </button>
       </div>
     </div>
   </div>

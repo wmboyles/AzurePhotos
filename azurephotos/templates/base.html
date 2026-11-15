@@ -103,6 +103,8 @@
     </section>
     {% endif %}
 
+    {% set moveAlbums = albums | reject('equalto', album) | list if album is defined else albums %}
+
     {% block media %}
     <section id="photos" data-page-view>
       <h2 class="display-6">My Files</h2>
@@ -116,7 +118,7 @@
   </main>
 
   {% include "partials/viewer.html" %}
-  
+
   {% include "partials/nav.html" %}
 
   <script src="/static/index.js"></script>
