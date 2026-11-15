@@ -30,9 +30,8 @@ main {
 }
 
 /* Hover and selected scaling */
-/* TODO: How to keep image scaled when checkbox is checked? */
-.photo-card:hover img,
-.photo-card:has(.photo-checkbox:checked) img {
+.photo-card:hover,
+.photo-card:has(.photo-checkbox:checked) {
     transform: scale(0.96);
 }
 
@@ -99,4 +98,12 @@ main {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+#createAlbumCard {
+    container-type: inline-size;
+}
+
+.create-album-icon {
+    font-size: 50cqw;
 }
