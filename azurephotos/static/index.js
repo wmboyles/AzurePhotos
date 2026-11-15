@@ -102,19 +102,21 @@ function updateNavigation(navLinks, active) {
 $(document).ready(() => {
     const inAlbum = typeof album !== "undefined";
     const mediaGrid = document.getElementById("mediaGrid");
-    const modalElement = document.getElementById("fullsizeModal");
-    const viewerStage = document.getElementById("fullsizeModalBody");
-    const viewer = bootstrap.Modal.getOrCreateInstance(modalElement);
     const views = $("section[data-page-view]");
     const navLinks = $('nav[aria-label="Main navigation"] a[data-view]');
     const uploads = new Map();
     const scrollPositions = {};
     let currentView = null;
-    let viewedItem = null;
-    let viewerOpener = null;
     let busy = false;
-    let gesture = null;
+    let longPress = null;
     let suppressPhotoClick = false;
+    const viewer = createViewer({
+        mediaGrid,
+        getExtension,
+        isBusy: () => busy,
+        onDelete: deleteMediaItems,
+        onMove: moveMediaItems,
+    });
 
     function mediaButtons() {
         return Array.from(mediaGrid.querySelectorAll(".photo-open"));
@@ -133,9 +135,7 @@ $(document).ready(() => {
         $("#clearSelectionBtn, #formFileLg, .photo-checkbox, .photo-open").prop("disabled", busy);
         $("#submitUpload").prop("disabled", busy || uploads.size === 0);
         $("#deleteSelectedBtn, #moveSelectedBtn").prop("disabled", busy || count === 0);
-        $("#viewerDeleteBtn").prop("disabled", busy || !viewedItem);
-        $("#viewerMoveBtn").prop("disabled",
-            busy || !viewedItem || $("#viewerMoveMenu .dropdown-item").length === 0);
+        viewer.updateControls();
         navLinks.attr("aria-disabled", String(busy)).toggleClass("opacity-50", busy);
     }
 
@@ -207,19 +207,18 @@ $(document).ready(() => {
             box.prop("checked", !box.prop("checked"));
             updateUI();
         } else {
-            viewer.show(this);
+            viewer.open(this);
         }
     });
     $(mediaGrid).on("contextmenu", ".photo-open", event => event.preventDefault());
 
-    // A touch on a thumbnail can become a long press; a touch in the viewer can become a swipe.
-    function cancelGesture() {
-        clearTimeout(gesture?.timer);
-        gesture = null;
+    function cancelLongPress() {
+        clearTimeout(longPress?.timer);
+        longPress = null;
     }
 
     document.addEventListener("pointerdown", event => {
-        cancelGesture();
+        cancelLongPress();
         if (!event.isPrimary) {
             return;
         }
@@ -228,218 +227,36 @@ $(document).ready(() => {
             return;
         }
         const button = event.target.closest(".photo-open");
-        const inViewer = viewerStage.contains(event.target) && modalElement.classList.contains("show");
-        if ((!button && !inViewer) || (button && selectedFiles().length)) {
+        if (!button || selectedFiles().length) {
             return;
         }
-        const video = event.target.closest("video");
-        if (video && event.clientY >= video.getBoundingClientRect().bottom - 72) {
-            return; // Leave native video controls available.
-        }
-        gesture = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, button };
-        if (button) {
-            gesture.timer = setTimeout(() => {
+        longPress = {
+            pointerId: event.pointerId,
+            x: event.clientX,
+            y: event.clientY,
+            timer: setTimeout(() => {
                 $(button).siblings(".photo-checkbox").prop("checked", true);
                 suppressPhotoClick = true;
                 updateUI();
-            }, 450);
-        }
+            }, 450),
+        };
     });
     document.addEventListener("pointermove", event => {
-        if (gesture?.pointerId !== event.pointerId) {
+        if (longPress?.pointerId !== event.pointerId) {
             return;
         }
-        const dx = event.clientX - gesture.x;
-        const dy = event.clientY - gesture.y;
-        if (gesture.button) {
-            if (Math.hypot(dx, dy) > 10) {
-                cancelGesture();
-            }
-        } else if (Math.abs(dy) > 20 && Math.abs(dy) > Math.abs(dx)) {
-            cancelGesture();
-        } else if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-            viewerStage.setPointerCapture(event.pointerId);
+        if (Math.hypot(event.clientX - longPress.x, event.clientY - longPress.y) > 10) {
+            cancelLongPress();
         }
     });
-    document.addEventListener("pointerup", event => {
-        const completed = gesture;
-        cancelGesture();
-        if (!completed || completed.button || completed.pointerId !== event.pointerId) {
-            return;
-        }
-        const dx = event.clientX - completed.x;
-        const dy = event.clientY - completed.y;
-        if (Math.abs(dx) >= 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-            navigateViewer(dx < 0 ? 1 : -1, true);
-        }
-    });
-    document.addEventListener("pointercancel", cancelGesture);
-
-    // The viewer holds one original image or video, never a separate preview tier.
-    function clearViewerMedia() {
-        const video = viewerStage.querySelector("video");
-        if (video) {
-            if (document.pictureInPictureElement === video) {
-                document.exitPictureInPicture().catch(error => {
-                    console.warn("Could not exit Picture-in-picture:", error);
-                });
-            }
-            video.pause();
-            video.removeAttribute("src");
-            video.load();
-        }
-        viewerStage.replaceChildren();
-        viewerStage.setAttribute("aria-busy", "false");
-    }
-
-    function setViewerInfo(open) {
-        document.getElementById("viewerInfoPanel").hidden = !open;
-        $("#viewerInfoBtn").attr("aria-expanded", String(open));
-    }
-
-    function showViewerNotice(message) {
-        $("#viewerNotice").text(message).prop("hidden", false);
-    }
-
-    function showMedia(button, direction = 0) {
-        clearViewerMedia();
-        viewedItem = button;
-        const { filename, full, mediaType, date } = button.dataset;
-        const video = mediaType === "video";
-        $("#fullsizeModalLabel, #viewerInfoFilename").text(filename);
-        $("#viewerOriginal, #viewerDownload").attr("href", full);
-        $("#viewerNotice").prop("hidden", true);
-        $("#viewerInfoType").text(`${video ? "Video" : "Photo"} (${getExtension(filename).slice(1).toUpperCase()})`);
-        $("#viewerInfoDimensions, #viewerInfoDuration").text("Loading...");
-        $("#viewerInfoDurationLabel, #viewerInfoDuration").prop("hidden", !video);
-        const timestamp = date ? new Date(date) : null;
-        const validDate = timestamp && !Number.isNaN(timestamp.getTime());
-        $("#viewerInfoDate").text(validDate ? timestamp.toLocaleString() : "Not available")
-            .attr("datetime", validDate ? date : null);
-        if (timestamp && !validDate) {
-            console.warn("Invalid date metadata for", filename);
-        }
-        updateUI();
-        viewerStage.setAttribute("aria-busy", "true");
-
-        const status = $("<p>", { class: "viewer-status", role: "status", text: "Loading..." })[0];
-        const element = document.createElement(video ? "video" : "img");
-        element.className = "viewer-media w-100 h-100 object-fit-contain";
-        element.draggable = false;
-        if (video) {
-            element.controls = true;
-            element.playsInline = true;
-            element.preload = "metadata";
-            element.title = filename;
-        } else {
-            element.alt = filename;
-        }
-        if (direction) {
-            element.style.opacity = "0";
-            element.style.setProperty("--slide-from", `${direction * 40}px`);
-        }
-        element.addEventListener(video ? "loadedmetadata" : "load", () => {
-            if (!viewerStage.contains(element)) {
-                return;
-            }
-            status.hidden = true;
-            viewerStage.setAttribute("aria-busy", "false");
-            element.style.removeProperty("opacity");
-            if (direction) {
-                element.classList.add("viewer-enter");
-            }
-            const width = video ? element.videoWidth : element.naturalWidth;
-            const height = video ? element.videoHeight : element.naturalHeight;
-            $("#viewerInfoDimensions").text(width > 0 && height > 0 ? `${width} x ${height}` : "Not available");
-            if (video) {
-                const seconds = Math.floor(element.duration);
-                $("#viewerInfoDuration").text(Number.isFinite(seconds)
-                    ? `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
-                    : "Not available");
-            }
-        });
-        element.addEventListener("error", () => {
-            if (viewerStage.contains(element)) {
-                element.style.removeProperty("opacity");
-                status.hidden = false;
-                status.textContent = "Could not display this file. Open the original to view or save it.";
-                viewerStage.setAttribute("aria-busy", "false");
-                $("#viewerInfoDimensions, #viewerInfoDuration").text("Not available");
-            }
-        });
-        viewerStage.replaceChildren(element, status);
-        element.src = full;
-        if (history.state?.azurePhotosMedia) {
-            history.replaceState({ ...history.state, azurePhotosMedia: filename }, "");
-        }
-    }
-
-    function navigateViewer(direction, animate = false) {
-        if (busy || !modalElement.classList.contains("show")) {
-            return;
-        }
-        const buttons = mediaButtons();
-        const next = buttons[buttons.indexOf(viewedItem) + direction];
-        if (next) {
-            showMedia(next, animate ? direction : 0);
-        }
-    }
-
-    // One history entry lets Back close the viewer and Forward reopen it.
-    function syncViewerHistory() {
-        const button = mediaButtons().find(item => item.dataset.filename === history.state?.azurePhotosMedia);
-        if (!button) {
-            viewer.hide();
-        } else if (!modalElement.classList.contains("show")) {
-            viewer.show(button);
-        } else if (button !== viewedItem) {
-            showMedia(button);
-        }
-    }
-
-    $("#fullsizeModal").on("show.bs.modal", event => {
-        viewerOpener = event.relatedTarget;
-        showMedia(viewerOpener);
-        if (!history.state?.azurePhotosMedia) {
-            history.pushState({ ...history.state, azurePhotosMedia: viewedItem.dataset.filename }, "");
-        }
-    }).on("shown.bs.modal", () => {
-        if (!history.state?.azurePhotosMedia) {
-            viewer.hide();
-        }
-    }).on("hide.bs.modal", () => {
-        cancelGesture();
-        if (history.state?.azurePhotosMedia) {
-            history.back();
-        }
-    }).on("hidden.bs.modal", () => {
-        clearViewerMedia();
-        viewedItem = null;
-        setViewerInfo(false);
-        $("#viewerNotice").prop("hidden", true);
-        viewerOpener?.focus({ preventScroll: true });
-        updateUI();
-        syncViewerHistory();
-    });
+    document.addEventListener("pointerup", cancelLongPress);
+    document.addEventListener("pointercancel", cancelLongPress);
     window.addEventListener("popstate", () => {
         updatePage();
-        syncViewerHistory();
+        viewer.syncHistory();
     });
-    $("#viewerInfoBtn").on("click", () => setViewerInfo(document.getElementById("viewerInfoPanel").hidden));
-    $("#viewerInfoClose").on("click", () => {
-        setViewerInfo(false);
-        $("#viewerInfoBtn").trigger("focus");
-    });
-    $("#viewerShareBtn").on("click", () => showViewerNotice("Anonymous sharing is not implemented in this prototype."));
-    $("#viewerDownload").on("click", () => showViewerNotice(
-        "The original opens in a new tab. Use your browser's save/download option."));
     $(document).on("keydown", event => {
-        if (modalElement.classList.contains("show")) {
-            if (!event.target.closest("video") && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
-                event.preventDefault();
-                navigateViewer(event.key === "ArrowLeft" ? -1 : 1);
-            }
-        } else if (event.key === "Escape" && !busy) {
+        if (!viewer.isOpen() && event.key === "Escape" && !busy) {
             clearSelection();
         }
     });
@@ -527,14 +344,7 @@ $(document).ready(() => {
         const button = buttons.find(item => item.dataset.filename === filename);
         const index = buttons.indexOf(button);
         button?.closest(".col").remove();
-        if (viewedItem === button) {
-            const remaining = mediaButtons();
-            if (remaining.length) {
-                showMedia(remaining[Math.min(index, remaining.length - 1)]);
-            } else {
-                viewer.hide();
-            }
-        }
+        viewer.mediaRemoved(button, index);
         updateUI();
     }
 
@@ -568,16 +378,8 @@ $(document).ready(() => {
     }
 
     $("#deleteSelectedBtn").on("click", () => deleteMediaItems(selectedFiles()));
-    $("#viewerDeleteBtn").on("click", () => {
-        if (viewedItem) {
-            deleteMediaItems([viewedItem.dataset.filename]);
-        }
-    });
-    $("#moveAlbumMenu .dropdown-item, #viewerMoveMenu .dropdown-item").on("click", function () {
-        const files = this.closest("#viewerMoveMenu")
-            ? (viewedItem ? [viewedItem.dataset.filename] : [])
-            : selectedFiles();
-        moveMediaItems(files, this.dataset.targetAlbum);
+    $("#moveAlbumMenu .dropdown-item").on("click", function () {
+        moveMediaItems(selectedFiles(), this.dataset.targetAlbum);
     });
 
     // Album forms retain the existing API and validation rules.
@@ -643,6 +445,6 @@ $(document).ready(() => {
     });
 
     updatePage();
-    syncViewerHistory();
+    viewer.syncHistory();
     updateUI();
 });

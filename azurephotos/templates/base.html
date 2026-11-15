@@ -21,6 +21,7 @@
   {% endblock %}
 
   <link rel="stylesheet" href="/static/index.css">
+  <link rel="stylesheet" href="/static/viewer.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
 </head>
 
@@ -154,76 +155,10 @@
   {% include "partials/nav.html" %}
 
   {% block modal %}
-  <div class="modal fade" id="fullsizeModal" tabindex="-1" aria-labelledby="fullsizeModalLabel"
-    aria-hidden="true">
-    <div class="modal-dialog modal-fullscreen">
-      <div class="modal-content text-white border-0">
-        <div class="modal-header viewer-header border-0 gap-2">
-          <button type="button" class="btn viewer-action icon-button" data-bs-dismiss="modal" aria-label="Close viewer">
-            <i class="bi bi-x-lg" aria-hidden="true"></i>
-          </button>
-          <h2 class="modal-title app-title fs-6 text-truncate flex-grow-1" id="fullsizeModalLabel">Photo viewer</h2>
-          <a class="btn viewer-action icon-button" id="viewerOriginal" target="_blank" rel="noopener"
-            aria-label="Open original in a new tab" title="Open original">
-            <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
-          </a>
-        </div>
-        <div class="modal-body viewer-stage d-flex align-items-center justify-content-center p-0 overflow-hidden" id="fullsizeModalBody" aria-busy="false">
-        </div>
-        <div class="viewer-notice small flex-shrink-0" id="viewerNotice" role="status" hidden></div>
-        <section class="viewer-info flex-shrink-0" id="viewerInfoPanel" aria-labelledby="viewerInfoHeading" hidden>
-          <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-            <h3 class="h6 mb-0" id="viewerInfoHeading">Details</h3>
-            <button type="button" class="btn viewer-action icon-button" id="viewerInfoClose" aria-label="Close details">
-              <i class="bi bi-x-lg" aria-hidden="true"></i>
-            </button>
-          </div>
-          <dl class="small mb-0">
-            <dt>Filename</dt><dd id="viewerInfoFilename"></dd>
-            <dt>File type</dt><dd id="viewerInfoType"></dd>
-            <dt>Date</dt><dd><time id="viewerInfoDate"></time></dd>
-            <dt>Dimensions</dt><dd id="viewerInfoDimensions"></dd>
-            <dt id="viewerInfoDurationLabel" hidden>Duration</dt><dd id="viewerInfoDuration" hidden></dd>
-            <dt>Album</dt><dd>{% if album is defined %}{{ album }}{% else %}Not in an album{% endif %}</dd>
-          </dl>
-        </section>
-        <div class="modal-footer viewer-footer d-block border-0">
-          <div class="viewer-toolbar d-flex gap-1 w-100 mx-auto my-0" role="toolbar" aria-label="File actions">
-            <button type="button" class="btn viewer-action" id="viewerInfoBtn"
-              aria-controls="viewerInfoPanel" aria-expanded="false">
-              <i class="bi bi-info-circle fs-5" aria-hidden="true"></i><span>Info</span>
-            </button>
-            <button type="button" class="btn viewer-action" id="viewerShareBtn" title="Anonymous sharing: prototype only"
-              aria-label="Share (prototype only)">
-              <i class="bi bi-share fs-5" aria-hidden="true"></i><span>Share</span>
-            </button>
-            <a class="btn viewer-action" id="viewerDownload" target="_blank" rel="noopener"
-              title="Open original to save or download it with your browser">
-              <i class="bi bi-download fs-5" aria-hidden="true"></i><span>Download</span>
-            </a>
-            <div class="dropup">
-              <button type="button" class="btn viewer-action" id="viewerMoveBtn" data-bs-toggle="dropdown"
-                aria-label="Move to album" {% if not moveAlbums %}disabled{% endif %}>
-                <i class="bi bi-journal-arrow-up fs-5" aria-hidden="true"></i><span>Move</span>
-              </button>
-              <ul class="dropdown-menu dropdown-menu-dark" id="viewerMoveMenu">
-                {% for albumName in moveAlbums %}
-                <li><button type="button" class="dropdown-item" data-target-album="{{ albumName }}">{{ albumName }}</button></li>
-                {% endfor %}
-              </ul>
-            </div>
-            <button type="button" class="btn viewer-action viewer-delete" id="viewerDeleteBtn"
-              aria-label="{% if album is defined %}Remove from album{% else %}Delete original{% endif %}">
-              <i class="bi {% if album is defined %}bi-journal-minus{% else %}bi-trash{% endif %} fs-5" aria-hidden="true"></i>
-              <span>{% if album is defined %}Remove{% else %}Delete{% endif %}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+  {% include "partials/viewer.html" %}
   {% endblock %}
 
+  <script src="/static/viewer.js"></script>
   <script src="/static/index.js"></script>
 </body>
 
