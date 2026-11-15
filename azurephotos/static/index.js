@@ -1,41 +1,102 @@
-/** Keep supported extensions aligned with src.lib.models.media. */
+/**
+ * Collection of file extensions representing supported photo types.
+ * Should match src.lib.models.media.PHOTO_EXTENSIONS
+ */
 const PHOTO_EXTENSIONS = new Set([
-    ".jpg", ".jpeg", ".jpe", ".jfif", ".png", ".webp", ".bmp", ".dib",
-    ".tif", ".tiff", ".gif", ".mpo", ".heic", ".heif",
+    ".jpg", ".jpeg", ".jpe", ".jfif",
+    ".png",
+    ".webp",
+    ".bmp", ".dib",
+    ".tif", ".tiff",
+    ".gif",
+    ".mpo",
+    ".heic", ".heif",
 ]);
+
+/**
+ * Collection of file extensions representing supported video types.
+ * Should match src.lib.models.media.VIDEO_EXTENSIONS
+ */
 const VIDEO_EXTENSIONS = new Set([
-    ".mp4", ".mov", ".mkv", ".webm", ".avi", ".m4v", ".3gp", ".3g2", ".ts", ".m2ts",
+    ".mp4",
+    ".mov",
+    ".mkv",
+    ".webm",
+    ".avi",
+    ".m4v",
+    ".3gp",
+    ".3g2",
+    ".ts",
+    ".m2ts",
 ]);
 
+/**
+ * Get the extension from a file name.
+ * @example getExtension("video.mp4") === ".mp4"
+ * @param {string} filename File name with extension
+ * @returns {string?}
+ */
 function getExtension(filename) {
-    return typeof filename === "string"
-        ? filename.slice(filename.lastIndexOf(".")).trim().toLowerCase()
-        : null;
+    if (typeof filename !== "string") {
+        return null;
+    }
+
+    const lastIdx = filename.lastIndexOf(".");
+    return filename.slice(lastIdx).trim().toLowerCase();
 }
 
+/**
+ * Determine if a filename is a supported photo type.
+ * @param {string} filename File name with extension
+ * @returns {boolean}
+ */
 function isPhoto(filename) {
-    return PHOTO_EXTENSIONS.has(getExtension(filename));
+    const extension = getExtension(filename);
+    return PHOTO_EXTENSIONS.has(extension);
 }
 
+/**
+ * Determine if a filename is a supported video type.
+ * @param {string} filename File name with extension
+ * @returns {boolean}
+ */
 function isVideo(filename) {
-    return VIDEO_EXTENSIONS.has(getExtension(filename));
+    const extension = getExtension(filename);
+    return VIDEO_EXTENSIONS.has(extension);
 }
 
-/** Keep album-name validation aligned with src.api.albums.is_valid_album_name. */
-function isValidAlbumName(name, existingNames) {
-    if (typeof name !== "string") {
+/**
+ * Validates if an album name is valid or not.
+ * This logic should match src.api.albums.is_valid_album_name
+ * @param {string | null | undefined} albumName 
+ * @param {Array<string>} existingAlbumNames
+ * @returns {boolean}
+ */
+function isValidAlbumName(albumName, existingAlbumNames) {
+    if (typeof albumName !== "string") {
         return false;
     }
-    name = name.trim();
-    if (!name || name.length > 1024 || existingNames.includes(name)) {
+
+    const trimmedAlbumName = albumName.trim();
+    if (!trimmedAlbumName || trimmedAlbumName.length > 1024 || existingAlbumNames.includes(trimmedAlbumName)) {
         return false;
     }
-    for (const char of name) {
-        const code = char.codePointAt(0);
-        if (code <= 0x1F || (code >= 0x7F && code <= 0x9F) || "/\\#?".includes(char)) {
+
+    for (const char of trimmedAlbumName) {
+        const o = char.codePointAt(0);
+
+        // Unicode control characters
+        // U+0000 to U+001F and U+007F to U+009F
+        if (o <= 0x1F || (o >= 0x7F && o <= 0x9F)) {
+            return false;
+        }
+
+        // / \ # ?
+        if (o === 47 || o === 92 || o === 35 || o === 63) {
             return false;
         }
     }
+
     return true;
 }
 
@@ -47,7 +108,26 @@ async function request(path, method = "POST", body) {
     return response;
 }
 
-/** Workers claim an item before awaiting, so each item runs exactly once. */
+/**
+ * Perform an action on a collection of items
+ * Update the progress bar as actions are successful or failed
+ * Limit the number of concurrent actions run at once.
+ * 
+ * @param {Iterable<T> | ArrayLike<T>} items Collection of items to act upon
+ * @param {(item: T) => Promise<void>} action Action to perform on each item
+ * @param {number} concurrency Max concurrency limit
+ * @returns {Promise<{
+ *  successCount: number;
+ *  failureCount: number;
+ *  totalCount: number;
+ *  errors: Array<{
+ *      item: T;
+ *      error: unknown
+ *  }>;
+ * }>}
+ * 
+ * Workers claim an item before awaiting, so each item runs exactly once.
+ */
 async function runWithProgress(items, action, concurrency) {
     items = Array.from(items);
     const totalCount = items.length;
@@ -61,8 +141,10 @@ async function runWithProgress(items, action, concurrency) {
             ["failure", errors.length],
         ]) {
             const percent = totalCount ? Math.round(count / totalCount * 100) : 0;
-            $(`#${status}Progress`).css("width", `${percent}%`)
-                .attr("aria-valuenow", percent).text(`${count} / ${totalCount}`);
+            $(`#${status}Progress`)
+                .css("width", `${percent}%`)
+                .attr("aria-valuenow", percent)
+                .text(`${count} / ${totalCount}`);
         }
     }
 
@@ -80,8 +162,16 @@ async function runWithProgress(items, action, concurrency) {
     }
 
     updateProgress();
-    await Promise.all(Array.from({ length: Math.min(concurrency, totalCount) }, worker));
-    return { successCount: completed - errors.length, failureCount: errors.length, totalCount, errors };
+    await Promise.all(Array.from({
+        length: Math.min(concurrency, totalCount) 
+    }, worker));
+    
+    return { 
+        successCount: completed - errors.length,
+        failureCount: errors.length,
+        totalCount: totalCount, 
+        errors: errors
+    };
 }
 
 function updateView(pageViews, active) {
