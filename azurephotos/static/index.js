@@ -299,6 +299,42 @@ function fileFingerprint(file) {
     ].join(":");
 }
 
+/**
+ * Update the page view based on nav.
+ * @param {JQuery<HTMLElement>} pageViews 
+ */
+function updateView(pageViews) {
+    const active = location.hash.slice(1) || "photos";
+
+    pageViews.each(function () {
+        $(this).toggleClass("d-none", this.id !== active);
+    });
+}
+
+/**
+ * Toggle navbar active link.
+ * @param {JQuery<HTMLAnchorElement>} navLinks 
+ */
+function updateNavigation(navLinks) {
+    const active = location.hash.slice(1) || "photos";
+
+    navLinks.each(function () {
+        /** @type {JQuery.HTMLAnchorElement} */
+        const link = $(this);
+        const selected = link.data("view") === active;
+
+        link
+            .toggleClass("text-primary", selected)
+            .toggleClass("text-secondary", !selected);
+        
+        if (selected) {
+            link.attr("aria-current", "page");
+        } else {
+            link.removeAttr("aria-current");
+        }
+    });
+}
+
 // Some variables are passed here from HTML from Flask.
 // We'll have `albums` on all pages and `album` on an album page
 $(document).ready(() => {
@@ -327,6 +363,25 @@ $(document).ready(() => {
      * @type {Set<string>}
      */
     let itemsToUploadFingerprints = new Set();
+
+    /**
+     * Different page views controlled by nav
+     * @type {JQuery<HTMLElement>}
+     */
+    const views = $('section[data-page-view]');
+    /**
+     * Navbar links
+     * @type {JQuery<HTMLAnchorElement>}
+     */
+    const navLinks = $('nav[aria-label="Main navigation"] a[data-view]');
+
+    // Update view and nav links
+    function updatePage() {
+        updateView(views);
+        updateNavigation(navLinks);
+    }
+    $(window).on("hashchange", updatePage);
+    updatePage();
 
     function updateUploadSubmitState() {
         $("#submitUpload").prop("disabled", itemsToUpload.length === 0);

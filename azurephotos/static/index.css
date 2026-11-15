@@ -1,3 +1,8 @@
+main {
+    padding: 16px max(12px, env(safe-area-inset-right))
+             64px max(12px, env(safe-area-inset-left));
+}
+
 #fullsizeModal .modal-dialog {
     margin: auto;
     max-height: 97vh;
