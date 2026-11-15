@@ -8,12 +8,24 @@
 {% endblock %}
 
 {% block title %}
-<header class="container-fluid">
-    <h1 class="h1">
-      <a href="/" style="text-decoration: none;">&LT;</a> {{album}}
-    </h1>
-    <button type="button" class="btn btn-primary" id="renameAlbumBtn">Rename Album</button>
-  <button type="button" class="btn btn-danger" id="deleteAlbumBtn">Delete Album</button>
+<header class="container-fluid d-flex align-items-center gap-3">
+  <a href="/#albums" class="btn btn-outline-secondary icon-button">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <h1 class="mb-0 text-truncate flex-grow-1">{{ album }}</h1>
+  <div class="dropdown">
+    <button type="button" class="btn btn-outline-secondary icon-button" data-bs-toggle="dropdown" aria-label="Album actions">
+      <i class="bi bi-three-dots"></i>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+      <li>
+        <button type="button" class="dropdown-item" id="renameAlbumBtn">Rename Album</button>
+      </li>
+      <li>
+        <button type="button" class="dropdown-item text-danger" id="deleteAlbumBtn">Delete Album</button>
+      </li>
+    </ul>
+  </div>
 </header>
 {% endblock %}
 
