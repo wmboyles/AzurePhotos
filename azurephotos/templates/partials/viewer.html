@@ -6,33 +6,36 @@
           <i class="bi bi-x-lg text-white" aria-hidden="true"></i>
         </button>
         <h2 class="modal-title app-title fs-6 text-truncate flex-grow-1" id="fullsizeModalLabel">Photo Title</h2>
+        <button type="button" class="btn icon-button text-white" id="viewerInfoBtn" aria-label="Info" title="Photo details"
+          data-bs-toggle="offcanvas" data-bs-target="#viewerInfoPanel" aria-controls="viewerInfoPanel" aria-expanded="false">
+          <i class="bi bi-info-circle" aria-hidden="true"></i>
+        </button>
       </div>
       <div class="modal-body py-0 px-0 d-flex align-items-center justify-content-center overflow-hidden" id="fullsizeModalBody" aria-busy="false">
         <!-- Img or video will be added here -->
       </div>
       <div class="viewer-notice small flex-shrink-0 p-3 bg-dark" id="viewerNotice" role="status" hidden></div>
-      <section class="viewer-info flex-shrink-0 p-3 bg-dark" id="viewerInfoPanel" aria-labelledby="viewerInfoHeading" hidden>
-        <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+      <section class="viewer-info offcanvas offcanvas-bottom bg-dark text-white" id="viewerInfoPanel" tabindex="-1"
+        aria-labelledby="viewerInfoHeading" data-bs-scroll="true" data-bs-backdrop="false">
+        <div class="offcanvas-header">
           <h3 class="h6 mb-0" id="viewerInfoHeading">Details</h3>
-          <button type="button" class="btn icon-button text-white" id="viewerInfoClose" aria-label="Close details">
+          <button type="button" class="btn icon-button text-white ms-auto" id="viewerInfoClose"
+            data-bs-dismiss="offcanvas" aria-label="Close details">
             <i class="bi bi-x-lg" aria-hidden="true"></i>
           </button>
         </div>
-        <dl class="small mb-0">
-          <dt>Filename</dt><dd id="viewerInfoFilename"></dd>
-          <dt>File type</dt><dd id="viewerInfoType"></dd>
-          <dt>Date</dt><dd><time id="viewerInfoDate"></time></dd>
-          <dt>Dimensions</dt><dd id="viewerInfoDimensions"></dd>
-          <dt id="viewerInfoDurationLabel" hidden>Duration</dt><dd id="viewerInfoDuration" hidden></dd>
-          <dt>Album</dt><dd>{% if album is defined %}{{ album }}{% else %}Not in an album{% endif %}</dd>
-        </dl>
+        <div class="offcanvas-body">
+          <dl class="small mb-0">
+            <dt>Filename</dt><dd id="viewerInfoFilename"></dd>
+            <dt>File type</dt><dd id="viewerInfoType"></dd>
+            <dt>Date</dt><dd><time id="viewerInfoDate"></time></dd>
+            <dt>Dimensions</dt><dd id="viewerInfoDimensions"></dd>
+            <dt id="viewerInfoDurationLabel" hidden>Duration</dt><dd id="viewerInfoDuration" hidden></dd>
+            <dt>Album</dt><dd>{% if album is defined %}{{ album }}{% else %}Not in an album{% endif %}</dd>
+          </dl>
+        </div>
       </section>
       <div class="modal-footer border-0 p-0 justify-content-center flex-nowrap gap-1">
-        <button type="button" class="btn btn-outline-secondary text-white" id="viewerInfoBtn"
-          aria-controls="viewerInfoPanel" aria-expanded="false">
-          <i class="bi bi-info-circle" aria-hidden="true"></i>
-          <span>Info</span>
-        </button>
         <button type="button" class="btn btn-outline-secondary text-white" id="viewerShareBtn"
           title="Anonymous sharing: prototype only" aria-label="Share (prototype only)">
           <i class="bi bi-share" aria-hidden="true"></i>

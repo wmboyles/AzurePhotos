@@ -36,8 +36,16 @@
 }
 
 .viewer-info {
-    max-height: 35dvh;
-    overflow-y: auto;
+    --bs-offcanvas-width: min(400px, 100vw);
+    --bs-offcanvas-height: auto;
+}
+
+.viewer-info.offcanvas-bottom {
+    max-height: 45dvh;
+}
+
+.viewer-info.offcanvas-bottom .offcanvas-body {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
 }
 
 .viewer-info dl {

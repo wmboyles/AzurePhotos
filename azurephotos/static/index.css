@@ -161,5 +161,5 @@ nav[aria-label="Main navigation"] a:focus-visible,
 }
 
 .create-album-icon {
-    font-size: 50cqw;
+    font-size: clamp(2.5rem, 20cqw, 4rem);
 }

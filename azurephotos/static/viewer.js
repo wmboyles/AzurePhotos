@@ -2,6 +2,15 @@ function createViewer({ mediaGrid, getExtension, isBusy, onDelete, onMove }) {
     const modalElement = document.getElementById("fullsizeModal");
     const viewerStage = document.getElementById("fullsizeModalBody");
     const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+    const infoElement = document.getElementById("viewerInfoPanel");
+    const wideScreen = window.matchMedia("(min-width: 992px)");
+    function positionInfo() {
+        $(infoElement).toggleClass("offcanvas-end", wideScreen.matches)
+            .toggleClass("offcanvas-bottom", !wideScreen.matches);
+    }
+    wideScreen.addEventListener("change", positionInfo);
+    positionInfo();
+    const info = bootstrap.Offcanvas.getOrCreateInstance(infoElement);
     let viewedItem = null;
     let opener = null;
     let swipe = null;
@@ -35,11 +44,6 @@ function createViewer({ mediaGrid, getExtension, isBusy, onDelete, onMove }) {
         }
         viewerStage.replaceChildren();
         viewerStage.setAttribute("aria-busy", "false");
-    }
-
-    function setInfo(open) {
-        document.getElementById("viewerInfoPanel").hidden = !open;
-        $("#viewerInfoBtn").attr("aria-expanded", String(open));
     }
 
     function showNotice(message) {
@@ -153,6 +157,7 @@ function createViewer({ mediaGrid, getExtension, isBusy, onDelete, onMove }) {
             modal.hide();
         }
     }).on("hide.bs.modal", () => {
+        info.hide();
         swipe = null;
         if (history.state?.azurePhotosMedia) {
             history.back();
@@ -160,17 +165,30 @@ function createViewer({ mediaGrid, getExtension, isBusy, onDelete, onMove }) {
     }).on("hidden.bs.modal", () => {
         clearMedia();
         viewedItem = null;
-        setInfo(false);
         $("#viewerNotice").prop("hidden", true);
         opener?.focus({ preventScroll: true });
         updateControls();
         syncHistory();
     });
-    $("#viewerInfoBtn").on("click", () => setInfo(document.getElementById("viewerInfoPanel").hidden));
-    $("#viewerInfoClose").on("click", () => {
-        setInfo(false);
-        $("#viewerInfoBtn").trigger("focus");
+    $("#viewerInfoPanel").on("show.bs.offcanvas", () => {
+        $("#viewerInfoBtn").attr("aria-expanded", "true");
+    }).on("shown.bs.offcanvas", () => {
+        $("#viewerInfoClose").trigger("focus");
+    }).on("hide.bs.offcanvas", () => {
+        $("#viewerInfoBtn").attr("aria-expanded", "false");
+    }).on("hidden.bs.offcanvas", () => {
+        if (isOpen()) {
+            $("#viewerInfoBtn").trigger("focus");
+        }
     });
+    // Escape dismisses details before the enclosing modal.
+    modalElement.addEventListener("keydown", event => {
+        if (event.key === "Escape" && (infoElement.classList.contains("show") || infoElement.classList.contains("showing"))) {
+            event.preventDefault();
+            event.stopPropagation();
+            info.hide();
+        }
+    }, true);
     $("#viewerShareBtn").on("click", () => showNotice("Anonymous sharing is not implemented in this prototype."));
     $("#viewerDownload").on("click", () => showNotice(
         "The original opens in a new tab. Use your browser's save/download option."));

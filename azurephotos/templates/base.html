@@ -86,9 +86,13 @@
       </div>
       <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-6 g-3">
         <div class="col">
-          <button type="button" class="photo-card btn d-flex flex-column align-items-center justify-content-center h-100 w-100" id="createAlbumCard">
-            <i class="bi bi-journal-plus create-album-icon" aria-hidden="true"></i>
-            <span class="mt-2">Create Album</span>
+          <button type="button" class="album-card btn d-block w-100 p-0 border-0 text-start text-reset" id="createAlbumCard">
+            <span class="ratio ratio-1x1 d-block bg-body-tertiary border rounded-3">
+              <span class="d-flex align-items-center justify-content-center">
+                <i class="bi bi-journal-plus create-album-icon text-secondary" aria-hidden="true"></i>
+              </span>
+            </span>
+            <span class="album-title d-block mt-2 fw-semibold">Create Album</span>
           </button>
         </div>
         {% for albumName in albums %}
