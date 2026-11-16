@@ -13,6 +13,10 @@ div.fixed-bottom {
              max(12px, env(safe-area-inset-left));
 }
 
+[hidden] {
+    display: none !important;
+}
+
 #fullsizeModal .modal-content {
     height: 100dvh;
     --bs-modal-bg: #111;

@@ -646,17 +646,8 @@ $(document).ready(() => {
     });
 
     // Delete photos and videos
-    // TODO: Deduplicate these delete functions
-    $(".photo-action.delete-btn").click(function (event) {
+    function deleteFromCheckedItems() {
         const isAlbum = (typeof album) !== "undefined";
-        const basePath = isAlbum ? `/api/albums/${album}` : `/delete`;
-
-        // If we clicked the delete button on an unchecked item, add it to selected items
-        const selected = event.currentTarget.dataset.selected;
-        $(`.photo-checkbox[value='${selected}']`)
-            .prop("checked", true)
-            .trigger("change")
-
         const confirmMessage = `Are you sure you want to remove ${checkedItems.size} items${isAlbum ? ' from this album' : ''}?`;
         if (!confirm(confirmMessage)) {
             return;
@@ -665,6 +656,7 @@ $(document).ready(() => {
         $("#operationProgress .progress-bar").addClass("progress-bar-animated");
         $("#operationProgress").show();
 
+        const basePath = isAlbum ? `/api/albums/${album}` : `/delete`;
         doWithProgressBarWithConcurrency(
             checkedItems,
             (file) => deleteFile(file, `${basePath}/${file}`),
@@ -678,6 +670,8 @@ $(document).ready(() => {
                 }
 
                 checkedItems.clear();
+                $("#selectionCount").text(`${checkedItems.size} selected`);
+                $("#selectionBar").prop("hidden", checkedItems.size == 0);
             })
             .finally(() => {
                 $("#operationProgress .progress-bar").removeClass("progress-bar-animated");
@@ -685,12 +679,34 @@ $(document).ready(() => {
                     $("#operationProgress").hide(); 
                 }, 500);
             });
-    });
-    $("#viewerDeleteBtn").click(function (event) {
-        const isAlbum = (typeof album) !== "undefined";
-        const basePath = isAlbum ? `/api/albums/${album}` : `/delete`;
+    }
+    $(".photo-action.delete-btn").click(function (event) {
+        // If we clicked the delete button on an unchecked item, add it to selected items
+        const selected = event.currentTarget.dataset.selected;
+        $(`.photo-checkbox[value='${selected}']`)
+            .prop("checked", true)
+            .trigger("change");
 
-        const confirmMessage = `Are you sure you want to remove ${modalPhotoName}${isAlbum ? ' from this album' : ''}?`;
+        deleteFromCheckedItems();
+    });
+    $("#viewerDeleteBtn").click(function () {
+        // Select the modal photo
+        $(`.photo-checkbox[value='${modalPhotoName}']`)
+            .prop("checked", true)
+            .trigger("change");
+
+        // Clear the modal
+        bootstrap.Modal.getInstance(fullsizeModal).hide();
+        modalPhotoName = null;
+        fullsizeModalBody.innerHTML = "";
+
+        deleteFromCheckedItems();
+    });
+    $("#deleteSelectionBtn").click(deleteFromCheckedItems);
+
+    // Place photos and videos in album
+    function moveCheckedItems(targetAlbum) {
+        const confirmMessage = `Are you sure you want to move ${checkedItems.size} items to '${targetAlbum}'?`;
         if (!confirm(confirmMessage)) {
             return;
         }
@@ -698,27 +714,33 @@ $(document).ready(() => {
         $("#operationProgress .progress-bar").addClass("progress-bar-animated");
         $("#operationProgress").show();
 
+        const basePath = `/api/albums/${targetAlbum}`;
+        const inAlbum = (typeof album) !== "undefined";
+        const queryString = inAlbum
+            ? new URLSearchParams({
+                "currentAlbum": album
+            }).toString()
+            : "";
         doWithProgressBarWithConcurrency(
-            new Set([modalPhotoName]),
-            (file) => deleteFile(file, `${basePath}/${file}`),
+            checkedItems,
+            (file) => moveToAlbum(file, `${basePath}/${file}?${queryString}`),
             4
         )
             .then(({ successCount, failureCount, totalCount, errors }) => {
                 if (failureCount) {
-                    console.warn("Some deletes failed:", errors);
-                    alert(`${successCount}/${totalCount} deletes succeeded`);
+                    console.warn("Some moves failed:", errors);
+                    alert(`${successCount}/${totalCount} moves succeeded`);
                     return;
                 }
+                
+                if (modalPhotoName !== null) {
+                    bootstrap.Modal.getInstance(fullsizeModal).hide();
+                    modalPhotoName = null;
+                }
 
-                // Remove the deleted photo from the page.
-                $(`.photo-checkbox[value="${CSS.escape(modalPhotoName)}"]`)
-                    .closest(".photo-item")
-                    .remove();
-
-                // Clear the modal
-                bootstrap.Modal.getInstance(fullsizeModal).hide();
-                modalPhotoName = null;
-                fullsizeModalBody.innerHTML = "";
+                checkedItems.clear();
+                $("#selectionCount").text(`${checkedItems.size} selected`);
+                $("#selectionBar").prop("hidden", checkedItems.size == 0);
             })
             .finally(() => {
                 $("#operationProgress .progress-bar").removeClass("progress-bar-animated");
@@ -726,14 +748,10 @@ $(document).ready(() => {
                     $("#operationProgress").hide(); 
                 }, 500);
             });
-    });
-
-    // Place photos and videos in album
-    // TODO: Deduplicate these move functions
+    }
     $(".photo-action.album-btn").siblings("ul").find("li .dropdown-item").each(function () {
         const li = $(this);
         const targetAlbum = li.text();
-        const inAlbum = (typeof album) !== "undefined";
 
         li.click((_) => {
             const name = li.closest("ul.dropdown-menu")
@@ -745,122 +763,67 @@ $(document).ready(() => {
                 .prop("checked", true)
                 .trigger("change");
 
-            if (!confirm(`Are you sure you want to move ${checkedItems.size} items to '${targetAlbum}'?`)) {
-                return;
-            }
-
-            $("#operationProgress .progress-bar").addClass("progress-bar-animated");
-            $("#operationProgress").show();
-
-            const basePath = `/api/albums/${targetAlbum}`;
-            const queryString = inAlbum
-                ? new URLSearchParams({
-                    "currentAlbum": album
-                }).toString()
-                : "";
-            doWithProgressBarWithConcurrency(
-                checkedItems,
-                (file) => moveToAlbum(file, `${basePath}/${file}?${queryString}`),
-                4
-            )
-                .then(({ successCount, failureCount, totalCount, errors }) => {
-                    if (failureCount) {
-                        console.warn("Some moves failed:", errors);
-                        alert(`${successCount}/${totalCount} moves succeeded`);
-                        return;
-                    }
-                    
-                    if (modalPhotoName !== null) {
-                        bootstrap.Modal.getInstance(fullsizeModal).hide();
-                        modalPhotoName = null;
-                    }
-
-                    checkedItems.clear();
-                })
-                .finally(() => {
-                    $("#operationProgress .progress-bar").removeClass("progress-bar-animated");
-                    setTimeout(() => { 
-                        $("#operationProgress").hide(); 
-                    }, 500);
-                });
+            moveCheckedItems(targetAlbum);
         });
     });
     $("#viewerMoveBtn").siblings("ul").find("li .dropdown-item").each(function() {
         const li = $(this);
         const targetAlbum = li.text();
-        const inAlbum = (typeof album) !== "undefined";
 
-        li.click((_) => {
-            const name = modalPhotoName;
+        li.click(() => {
+            // Add modal to selection
+            $(`.photo-checkbox[value='${modalPhotoName}']`)
+                .prop("checked", true)
+                .trigger("change");
 
-            if (!confirm(`Are you sure you want to move ${name} to '${targetAlbum}'?`)) {
-                return;
-            }
+            // Clear the modal
+            bootstrap.Modal.getInstance(fullsizeModal).hide();
+            modalPhotoName = null;
+            fullsizeModalBody.innerHTML = "";
 
-            $("#operationProgress .progress-bar").addClass("progress-bar-animated");
-            $("#operationProgress").show();
+            moveCheckedItems(targetAlbum);
+        });
+    });
+    $("#moveSelectionBtn").siblings("ul").find("li .dropdown-item").each(function () {
+        const li = $(this);
+        const targetAlbum = li.text();
 
-            const basePath = `/api/albums/${targetAlbum}`;
-            const queryString = inAlbum
-                ? new URLSearchParams({
-                    "currentAlbum": album
-                }).toString()
-                : "";
-            doWithProgressBarWithConcurrency(
-                new Set([modalPhotoName]),
-                (file) => moveToAlbum(file, `${basePath}/${file}?${queryString}`),
-                4
-            )
-                .then(({ successCount, failureCount, totalCount, errors }) => {
-                    if (failureCount) {
-                        console.warn("Some moves failed:", errors);
-                        alert(`${successCount}/${totalCount} moves succeeded`);
-                        return;
-                    }
-
-                    // Remove the deleted photo from the page.
-                    $(`.photo-checkbox[value="${CSS.escape(modalPhotoName)}"]`)
-                        .closest(".photo-item")
-                        .remove();
-                    
-                    // Clear the modal
-                    bootstrap.Modal.getInstance(fullsizeModal).hide();
-                    modalPhotoName = null;
-                    fullsizeModalBody.innerHTML = "";
-                })
-                .finally(() => {
-                    $("#operationProgress .progress-bar").removeClass("progress-bar-animated");
-                    setTimeout(() => { 
-                        $("#operationProgress").hide(); 
-                    }, 500);
-                });
-        })
+        li.click((_) => moveCheckedItems(targetAlbum));
     });
 
-    // Select photos and videos
+    // Select and unselect photos and videos
     $(".photo-checkbox").on("change", function (_) {
         const selected = $(this).val()
         if (this.checked) {
-            checkedItems.add(selected)
+            checkedItems.add(selected);
         } else {
-            checkedItems.delete(selected)
+            checkedItems.delete(selected);
         }
+
+        $("#selectionCount").text(`${checkedItems.size} selected`);
+        $("#selectionBar").prop("hidden", checkedItems.size == 0);
     });
 
     // Clear selected photos and videos
+    function unselectAll() {
+        $(".photo-checkbox")
+            .prop("checked", false)
+            .trigger("change")
+        checkedItems.clear();
+    }
     $(document).on("keydown", function (event) {
-        if (event.key === "Escape") {
-            // Do not uncheck anything if the modal was closing
-            if (event.target.id === "fullsizeModal") {
-                return;
-            }
-
-            $(".photo-checkbox")
-                .prop("checked", false)
-                .trigger("change")
-            checkedItems.clear();
+        if (event.key !== "Escape") {
+            return;
         }
+
+        // Do not uncheck anything if the modal was closing
+        if (event.target.id === "fullsizeModal") {
+            return;
+        }
+
+        unselectAll();
     });
+    $("#clearSelectionBtn").click(unselectAll);
 
     // Show create album form
     $("#createAlbumCard").click(function() {

@@ -121,14 +121,14 @@
   {% include "partials/viewer.html" %}
 
   <div class="fixed-bottom d-flex flex-column">
-    <div class="d-flex align-items-center gap-2 border-top bg-white" role="region">
-      <button type="button" class="btn btn-outline-secondary icon-button">
+    <div class="d-flex align-items-center gap-2 border-top bg-white" id="selectionBar" role="region" hidden>
+      <button type="button" class="btn btn-outline-secondary icon-button" id="clearSelectionBtn">
         <i class="bi bi-x-lg" aria-hidden="true"></i>
       </button>
-      <span class="small flex-grow-1" role="status">0 selected</span>
+      <span class="small flex-grow-1" role="status" id="selectionCount">0 selected</span>
       {% if moveAlbums %}
       <div class="dropup">
-        <button type="button" class="btn btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown">
+        <button type="button" class="btn btn-outline-primary dropdown-toggle" id="moveSelectionBtn" data-bs-toggle="dropdown">
           <i class="bi bi-journal-arrow-up" aria-hidden="true"></i>
           <span>Move</span>
         </button>
@@ -141,7 +141,7 @@
         </ul>
       </div>
       {% endif %}
-      <button type="button" class="btn btn-outline-danger">
+      <button type="button" class="btn btn-outline-danger" id="deleteSelectionBtn">
         <i
           class="{% if album is defined %}bi bi-journal-minus{% else %}bi-trash{% endif %}"
           aria-hidden="true"></i>
