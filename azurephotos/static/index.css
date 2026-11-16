@@ -1,6 +1,16 @@
 main {
-    padding: 16px max(12px, env(safe-area-inset-right))
-             64px max(12px, env(safe-area-inset-left));
+    padding: 0px
+             max(12px, env(safe-area-inset-right))
+             max(64px, env(safe-area-inset-bottom))
+             max(12px, env(safe-area-inset-left));
+}
+
+/* TODO: This should probably identify the footer itself */
+div.fixed-bottom {
+    padding: 12px
+             max(12px, env(safe-area-inset-right))
+             0px
+             max(12px, env(safe-area-inset-left));
 }
 
 #fullsizeModal .modal-content {
