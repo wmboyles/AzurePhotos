@@ -680,15 +680,6 @@ $(document).ready(() => {
                 }, 500);
             });
     }
-    $(".photo-action.delete-btn").click(function (event) {
-        // If we clicked the delete button on an unchecked item, add it to selected items
-        const selected = event.currentTarget.dataset.selected;
-        $(`.photo-checkbox[value='${selected}']`)
-            .prop("checked", true)
-            .trigger("change");
-
-        deleteFromCheckedItems();
-    });
     $("#viewerDeleteBtn").click(function () {
         // Select the modal photo
         $(`.photo-checkbox[value='${modalPhotoName}']`)
@@ -749,23 +740,6 @@ $(document).ready(() => {
                 }, 500);
             });
     }
-    $(".photo-action.album-btn").siblings("ul").find("li .dropdown-item").each(function () {
-        const li = $(this);
-        const targetAlbum = li.text();
-
-        li.click((_) => {
-            const name = li.closest("ul.dropdown-menu")
-                .siblings(".photo-action.album-btn")
-                .data("name");
-
-            // Add photo to selection
-            $(`.photo-checkbox[value='${name}']`)
-                .prop("checked", true)
-                .trigger("change");
-
-            moveCheckedItems(targetAlbum);
-        });
-    });
     $("#viewerMoveBtn").siblings("ul").find("li .dropdown-item").each(function() {
         const li = $(this);
         const targetAlbum = li.text();

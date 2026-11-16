@@ -1,24 +1,16 @@
 <div class="col">
     <div class="photo-card position-relative">
-        <img src="/thumbnail/{{ media.filename }}" title="{{ media.filename }}" class="img-fluid img-thumbnail"
-            loading="lazy" data-bs-toggle="modal" data-bs-target="#fullsizeModal"
-            data-full="/fullsize/{{ media.filename }}" draggable="false">
-        <input class="form-check-input photo-checkbox" type="checkbox" name="selected_photos"
+        <img src="/thumbnail/{{ media.filename }}"
+            title="{{ media.filename }}"
+            class="img-fluid img-thumbnail"
+            loading="lazy"
+            data-bs-toggle="modal"
+            data-bs-target="#fullsizeModal"
+            data-full="/fullsize/{{ media.filename }}"
+            draggable="false">
+        <input class="form-check-input photo-checkbox"
+            type="checkbox"
+            name="selected_photos"
             value="{{ media.filename }}">
-        <button type="button" class="btn btn-sm btn-danger photo-action delete-btn"
-            data-selected="{{ media.filename }}">
-            <i class="bi bi-trash"></i>
-        </button>
-        {% if moveAlbums %}
-        <button type="button" class="btn btn-sm btn-secondary dropdown-toggle photo-action album-btn"
-            data-name="{{ media.filename }}" data-bs-toggle="dropdown">
-            <i class="bi bi-journal-album"></i>
-        </button>
-        <ul class="dropdown-menu">
-        {% for albumName in moveAlbums %}
-            <li><a class="dropdown-item" href="#">{{ albumName }}</a></li>
-        {% endfor %}
-        </ul>
-        {% endif %}
     </div>
 </div>
