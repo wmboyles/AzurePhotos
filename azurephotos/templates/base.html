@@ -118,6 +118,30 @@
     {% endblock %}
   </main>
 
+  <div class="d-flex align-items-center" role="region">
+    <button type="button" class="btn btn-outline-secondary icon-button">
+      <i class="bi bi-x-lg" aria-hidden="true"></i>
+    </button>
+    <span class="small flex-grow-1" role="status">0 selected</span>
+    {% if moveAlbums %}
+    <div class="dropup">
+      <button type="button" class="btn btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown">
+        Move
+      </button>
+      <ul class="dropdown-menu">
+      {% for albumName in moveAlbums %}
+        <li>
+          <button type="button" class="dropdown-item">{{ albumName }}</button>
+        </li>
+      {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+    <button type="button" class="btn btn-outline-danger">
+      Delete
+    </button>
+  </div>
+
   {% include "partials/viewer.html" %}
 
   {% include "partials/nav.html" %}
