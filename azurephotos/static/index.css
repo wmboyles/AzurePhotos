@@ -7,6 +7,10 @@ main {
 
 /* TODO: This should probably identify the footer itself */
 div.fixed-bottom {
+    position: fixed;
+    bottom: env(safe-area-inset-bottom, 0px);
+    left: 0;
+    right: 0;
     padding: 12px
              max(12px, env(safe-area-inset-right))
              0px
