@@ -20,7 +20,7 @@
   {% block jsinit %}
   {% endblock %}
 
-  <link rel="stylesheet" href="/static/index.css">
+  <link rel="stylesheet" href="{{ static_asset_url('index.css') }}">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
 </head>
 
@@ -86,7 +86,7 @@
         <div class="col">
           <div class="photo-card d-flex flex-column align-items-center justify-content-center h-100" id="createAlbumCard">
             <i class="bi bi-journal-plus create-album-icon photo-card"></i>
-            <span class="mt-2">Create Album</span>
+            <span class="mt-2 small text-nowrap">Create Album</span>
           </div>
         </div>
 
@@ -120,8 +120,8 @@
 
   {% include "partials/viewer.html" %}
 
-  <div class="fixed-bottom d-flex flex-column">
-    <div class="d-flex align-items-center gap-2 border-top bg-white" id="selectionBar" role="region" hidden>
+  <div class="fixed-bottom d-flex flex-column bg-white" id="appFooter">
+    <div class="d-flex align-items-center gap-2 border-top" id="selectionBar" role="region" hidden>
       <button type="button" class="btn btn-outline-secondary icon-button" id="clearSelectionBtn">
         <i class="bi bi-x-lg" aria-hidden="true"></i>
       </button>
@@ -152,7 +152,7 @@
     {% include "partials/nav.html" %}
   </div>
 
-  <script src="/static/index.js"></script>
+  <script src="{{ static_asset_url('index.js') }}"></script>
 </body>
 
 </html>

@@ -351,13 +351,14 @@ $(document).ready(() => {
     /**
      * Items queued for upload
      * @type {Array<{
-     *  id: `${string}-${string}-${string}-${string}-${string}`;
+     *  id: number;
      *  fingerprint: string;
      *  file: File;
      *  previewUrl: string;
      * }>}
      */
     let itemsToUpload = [];
+    let nextUploadId = 0;
     /**
      * Collection of fingerprints of files queued for upload
      * @type {Set<string>}
@@ -398,14 +399,11 @@ $(document).ready(() => {
             const video = document.createElement("video");
             video.className = "img-fluid";
             video.controls = true;
+            video.playsInline = true;
+            video.preload = "metadata";
             video.title = modalPhotoName;
             video.draggable = false;
-
-            const source = document.createElement("source");
-            source.src = fullSrc;
-            source.type = "video/mp4";
-
-            video.appendChild(source);
+            video.src = fullSrc;
             fullsizeModalBody.appendChild(video);
             video.load();
         } else {
@@ -494,7 +492,7 @@ $(document).ready(() => {
             itemsToUploadFingerprints.add(fingerprint);
 
             const item = {
-                id: crypto.randomUUID(),
+                id: ++nextUploadId,
                 fingerprint,
                 file,
                 previewUrl: URL.createObjectURL(file)
@@ -509,16 +507,13 @@ $(document).ready(() => {
     /**
      * Add an item to the UI for rendering
      * @param {{
-     *  id: `${string}-${string}-${string}-${string}-${string}`;
+     *  id: number;
      *  fingerprint: string;
      *  file: File;
      *  previewUrl: string;
      * }} item 
      */
     function appendUploadPreview(item) {
-        const isImage = item.file.type.startsWith("image/");
-        const isVideo = item.file.type.startsWith("video/");
-
         const col = $("<div>")
             .addClass("col")
             .attr("data-upload-id", item.id);
@@ -526,13 +521,14 @@ $(document).ready(() => {
             .addClass("photo-card position-relative");
 
         let previewElement = null;
-        if (isImage) {
+        if (isPhoto(item.file.name)) {
             previewElement = $("<img>")
                 .addClass("img-fluid img-thumbnail")
                 .attr("src", item.previewUrl)
                 .attr("title", item.file.name)
+                .attr("alt", item.file.name)
                 .prop("draggable", false);
-        } else if (isVideo) {
+        } else if (isVideo(item.file.name)) {
             previewElement = $("<video>")
                 .addClass("img-thumbnail")
                 .attr("title", item.file.name)
@@ -556,6 +552,15 @@ $(document).ready(() => {
             .text("x");
 
         if (previewElement) {
+            previewElement.on("error", () => {
+                console.warn("Could not preview upload:", item.file.name);
+                previewElement.replaceWith(
+                    $("<div>").addClass("ratio ratio-1x1 bg-light")
+                        .append($("<div>").addClass("d-flex flex-column justify-content-center p-2 small")
+                            .append($("<span>").text(item.file.name))
+                            .append($("<span>").text("Preview unavailable")))
+                );
+            });
             photoCard.append(previewElement);
         }
         photoCard.append(removeButton);
@@ -599,7 +604,7 @@ $(document).ready(() => {
                     return false;
                 }
 
-                if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
+                if (file.type && !file.type.startsWith("image/") && !file.type.startsWith("video/")) {
                     alert(`${file.name} is not a photo nor a video`);
                     return false
                 }
@@ -806,9 +811,15 @@ $(document).ready(() => {
     const movementThreshold = 10;
     const suppressNextClick = new WeakSet();
     let activePress = null;
+    function cancelActivePress() {
+        clearTimeout(activePress?.timer);
+        activePress = null;
+    }
     $("#photos").on("pointerdown", ".photo-card", function (event) {
-        // Mouse clicks handled seperately above
-        if (event.pointerType == "mouse") {
+        cancelActivePress();
+        const pointer = event.originalEvent;
+        // Mouse clicks handled separately above.
+        if (!pointer.isPrimary || pointer.pointerType === "mouse") {
             return;
         }
 
@@ -818,13 +829,14 @@ $(document).ready(() => {
         }
 
         const card = this;
-        const startX = event.clientX;
-        const startY = event.clientY;
+        suppressNextClick.delete(card);
+        const startX = pointer.clientX;
+        const startY = pointer.clientY;
 
         activePress = {
             card,
             startX, startY,
-            pointerId: event.pointerId,
+            pointerId: pointer.pointerId,
             timer: setTimeout(() => {
                 const checkbox = $(this).find(".photo-checkbox")[0];
 
@@ -840,34 +852,34 @@ $(document).ready(() => {
         };
     });
 
-    // Android compatability: Suppress context menu
-    $("#photos").on("contextmenu", ".photo-card img", function (event) {
+    // Android compatability: Suppress context menu on long-press
+    $("#photos").on("contextmenu", ".photo-card", function (event) {
         event.preventDefault();
     });
 
     // Track movement and release globally so the gesture can end outside the photo card
     $(document).on("pointermove", function (event) {
-        if (!activePress || event.pointerId !== activePress.pointerId) {
+        const pointer = event.originalEvent;
+        if (!activePress || pointer.pointerId !== activePress.pointerId) {
             return;
         }
 
-        const dx = event.clientX - activePress.startX;
-        const dy = event.clientY - activePress.startY;
+        const dx = pointer.clientX - activePress.startX;
+        const dy = pointer.clientY - activePress.startY;
 
         if (Math.hypot(dx, dy) > movementThreshold) {
-            clearTimeout(activePress.timer);
-            activePress = null;
+            cancelActivePress();
         }
     });
 
     $(document).on("pointerup pointercancel", function (event) {
-        if (!activePress || event.pointerId !== activePress.pointerId) {
+        if (!activePress || event.originalEvent.pointerId !== activePress.pointerId) {
             return;
         }
 
-        clearTimeout(activePress.timer);
-        activePress = null;
+        cancelActivePress();
     });
+    $(window).on("blur", cancelActivePress);
 
     // Select and unselect photos and videos
     $(".photo-checkbox").on("change", function (_) {
