@@ -16,6 +16,12 @@ main {
              max(12px, env(safe-area-inset-left));
 }
 
+#appFooter.viewport-positioned {
+    top: var(--footer-viewport-bottom);
+    bottom: auto;
+    translate: 0 -100%;
+}
+
 [hidden] {
     display: none !important;
 }
