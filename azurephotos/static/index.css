@@ -43,6 +43,10 @@ div.fixed-bottom {
 .photo-card {
     position: relative;
     transition: transform 0.2s;
+    /* Prevent browser from treating long press as test selection or callout gesture */
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
 }
 
 /* Normal mode: Checkbox appears on hover */

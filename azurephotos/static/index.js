@@ -770,10 +770,16 @@ $(document).ready(() => {
         $("#selectionBar").prop("hidden", !selectionMode);
     }
 
-    // Photo Click
+    // Photo mouse click
     // Normal mode: Open fullsize viewer modal
     // Selection mode: Add/remove photo from selection
     $("#photos").on("click", ".photo-card", function (event) {
+        // Ignore clicks generated after a long press
+        if (suppressNextClick.has(this)) {
+            suppressNextClick.delete(this);
+            return;
+        }
+
         // Checkboxes have their own handler
         if ($(event.target).closest(".photo-checkbox").length) {
             return;
@@ -791,6 +797,76 @@ $(document).ready(() => {
             const image = $(this).find("img")[0];
             openPhotoViewer(image);
         }
+    });
+
+    // Photo touch
+    // Short press opens the modal
+    // Long press selects the image and enters selection mode
+    const longPressDuration = 500;
+    const movementThreshold = 10;
+    const suppressNextClick = new WeakSet();
+    let activePress = null;
+    $("#photos").on("pointerdown", ".photo-card", function (event) {
+        // Mouse clicks handled seperately above
+        if (event.pointerType == "mouse") {
+            return;
+        }
+
+        // Checkboxes have their own handler
+        if ($(event.target).closest(".photo-checkbox").length) {
+            return;
+        }
+
+        const card = this;
+        const startX = event.clientX;
+        const startY = event.clientY;
+
+        activePress = {
+            card,
+            startX, startY,
+            pointerId: event.pointerId,
+            timer: setTimeout(() => {
+                const checkbox = $(this).find(".photo-checkbox")[0];
+
+                // Long press only selects, not deselects
+                if (!checkbox.checked) {
+                    checkbox.checked = true;
+                    $(checkbox).trigger("change");
+                }
+
+                // The click generated after pointerup should be ignored
+                suppressNextClick.add(card);
+            }, longPressDuration)
+        };
+    });
+
+    // Android compatability: Suppress context menu
+    $("#photos").on("contextmenu", ".photo-card img", function (event) {
+        event.preventDefault();
+    });
+
+    // Track movement and release globally so the gesture can end outside the photo card
+    $(document).on("pointermove", function (event) {
+        if (!activePress || event.pointerId !== activePress.pointerId) {
+            return;
+        }
+
+        const dx = event.clientX - activePress.startX;
+        const dy = event.clientY - activePress.startY;
+
+        if (Math.hypot(dx, dy) > movementThreshold) {
+            clearTimeout(activePress.timer);
+            activePress = null;
+        }
+    });
+
+    $(document).on("pointerup pointercancel", function (event) {
+        if (!activePress || event.pointerId !== activePress.pointerId) {
+            return;
+        }
+
+        clearTimeout(activePress.timer);
+        activePress = null;
     });
 
     // Select and unselect photos and videos
