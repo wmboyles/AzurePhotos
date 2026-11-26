@@ -8,7 +8,7 @@ from azure.storage.blob import (
 from .refresher import refreshed
 
 @refreshed(every=timedelta(minutes=15))
-def get_container_sas(container_name: str) -> str:
+def get_container_sas(container_name: str, content_type: str | None = None) -> str:
     now = datetime.now(timezone.utc)
     sas_start = now - timedelta(minutes=1)
     sas_end = now + timedelta(minutes=30)
@@ -26,4 +26,5 @@ def get_container_sas(container_name: str) -> str:
         permission=ContainerSasPermissions(read=True),
         start=sas_start,
         expiry=sas_end,
+        content_type=content_type,
     )

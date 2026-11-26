@@ -1,12 +1,31 @@
 import pytest
 
 from datetime import datetime
-from flask import Response
+from flask import Flask, Response
+from pathlib import Path
+from urllib.parse import parse_qs, urlparse
+import os
 from flask.testing import FlaskClient
 from typing import Any
 
 from src.view import view
 from src.lib.models import media
+
+
+def test_static_asset_url_changes_when_file_changes(
+    app: Flask, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    asset = tmp_path / "index.js"
+    asset.write_text("const example = 1;")
+    monkeypatch.setattr(app, "static_folder", str(tmp_path))
+    with app.test_request_context():
+        first = view.static_asset_url("index.js")
+        stamp = asset.stat().st_mtime_ns + 1_000_000_000
+        os.utime(asset, ns=(stamp, stamp))
+        second = view.static_asset_url("index.js")
+    assert urlparse(first).path == "/static/index.js"
+    assert first != second
+    assert parse_qs(urlparse(second).query)["v"] == [str(asset.stat().st_mtime_ns)]
 
 
 class TestLandingViewController:

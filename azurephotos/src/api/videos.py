@@ -20,6 +20,22 @@ from werkzeug.datastructures.file_storage import FileStorage
 from ..lib.thumbnails import video_thumbnail as compute_thumbnail
 from ..lib.storage_helper import get_container_sas
 
+VIDEO_CONTENT_TYPES = {
+    ".mp4": "video/mp4",
+    ".m4v": "video/mp4",
+    ".mov": "video/quicktime",
+    ".mkv": "video/x-matroska",
+    ".webm": "video/webm",
+    ".avi": "video/x-msvideo",
+    ".3gp": "video/3gpp",
+    ".3g2": "video/3gpp2",
+    ".ts": "video/mp2t",
+    ".m2ts": "video/mp2t",
+}
+
+def video_content_type(filename: str) -> str:
+    return VIDEO_CONTENT_TYPES[os.path.splitext(filename)[1].lower()]
+
 def fullsize(filename: str) -> Response:
     """
     Get a full resolution video.
@@ -30,7 +46,8 @@ def fullsize(filename: str) -> Response:
     blob_account_url: str = current_app.config["blob_account_url"]
     videos_container_name: str = "videos"
 
-    videos_container_sas = get_container_sas(videos_container_name)
+    # Signed response headers also fix existing blobs uploaded as application/octet-stream.
+    videos_container_sas = get_container_sas(videos_container_name, content_type=video_content_type(filename))
     return redirect(
         f"{blob_account_url}/{videos_container_name}/{filename}?{videos_container_sas}"
     )
@@ -76,7 +93,8 @@ def upload(file: FileStorage, date_taken: datetime) -> str:
                     data=full,
                     length=file_size,
                     max_concurrency=4,
-                    metadata=metadata
+                    metadata=metadata,
+                    content_settings=ContentSettings(content_type=video_content_type(save_filename)),
                 )
 
         with ThreadPoolExecutor(max_workers=2) as executor:

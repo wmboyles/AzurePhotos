@@ -77,7 +77,7 @@ def test_fullsize_video(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         videos,
         "get_container_sas",
-        lambda container: f"sas={container}-container-sas",
+        lambda container, content_type=None: f"sas={container}-container-sas",
     )
 
     filename = "video.mp4"
@@ -212,6 +212,7 @@ class TestUpload:
             length=len(content),
             max_concurrency=4,
             metadata=expected_metadata,
+            content_settings=ContentSettings(content_type="video/mp4"),
         )
 
         upload_thumbnail_blob_mock = as_mock(self.thumbnails_client.upload_blob)

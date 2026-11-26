@@ -1,6 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
-from flask import Blueprint, render_template, Response, current_app
+from flask import Blueprint, render_template, Response, current_app, url_for
 from flask.ctx import AppContext
+from pathlib import Path
 
 from ..api.albums import list_albums, list_album
 from ..api.media_cache import all_media
@@ -25,6 +26,15 @@ blueprints = {
     landing_view_controller,
     albums_view_controller,
 }
+
+@landing_view_controller.app_template_global()
+def static_asset_url(filename: str) -> str:
+    """Invalidate cached CSS/JS when the deployed or locally edited file changes."""
+    static_folder = current_app.static_folder
+    if static_folder is None:
+        raise RuntimeError("Static folder is not configured")
+    version = (Path(static_folder) / filename).stat().st_mtime_ns
+    return url_for("static", filename=filename, v=version)
 
 @landing_view_controller.route("/", methods=["GET"])
 def main() -> str:

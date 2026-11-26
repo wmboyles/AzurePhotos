@@ -11,14 +11,22 @@ from src.api import videos
 from tests.mocks import as_mock
 
 
-def test_fullsize(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("video_name, content_type", [
+    ("video.mp4", "video/mp4"),
+    ("video.MOV", "video/quicktime"),
+    ("video.ts", "video/mp2t"),
+])
+def test_fullsize(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, video_name: str, content_type: str
+) -> None:
     videos_container_sas = "sas=videos-container-sas"
-    monkeypatch.setattr(
-        videos, "get_container_sas", lambda container: f"sas={container}-container-sas"
-    )
+    calls = []
+    def fake_sas(container: str, content_type: str | None = None) -> str:
+        calls.append((container, content_type))
+        return f"sas={container}-container-sas"
+    monkeypatch.setattr(videos, "get_container_sas", fake_sas)
 
     with app.app_context():
-        video_name = "video.mp4"
         response = videos.fullsize(video_name)
 
         assert isinstance(response, Response)
@@ -26,6 +34,7 @@ def test_fullsize(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
 
         expected_location = f"{app.config["blob_account_url"]}/videos/{video_name}?{videos_container_sas}"
         assert response.location == expected_location
+        assert calls == [("videos", content_type)]
 
 
 class TestUpload:
@@ -51,10 +60,17 @@ class TestUpload:
     ) -> FileStorage:
         return FileStorage(stream=BytesIO(content), filename=filename)
 
-    def test_upload_success(self) -> None:
-        filename = "video.mp4"
+    @pytest.mark.parametrize("filename, content_type", [
+        ("video.mp4", "video/mp4"),
+        ("video.MOV", "video/quicktime"),
+        ("video.ts", "video/mp2t"),
+    ])
+    def test_upload_success(self, filename: str, content_type: str) -> None:
         file = self.make_file(filename=filename)
         date_taken = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        uploaded_bytes = []
+        video_client_upload_blob_mock = as_mock(self.video_client.upload_blob)
+        video_client_upload_blob_mock.side_effect = lambda **kwargs: uploaded_bytes.append(kwargs["data"].read())
 
         with self.app.app_context():
             result = videos.upload(file, date_taken)
@@ -66,10 +82,11 @@ class TestUpload:
         thumbnail_kwargs = thumbnails_client_upload_blob_mock.call_args.kwargs
         assert thumbnail_kwargs["metadata"] == {"lastModified": date_taken.isoformat()}
 
-        video_client_upload_blob_mock = as_mock(self.video_client.upload_blob)
         video_client_upload_blob_mock.assert_called_once()
         video_kwargs = video_client_upload_blob_mock.call_args.kwargs
         assert video_kwargs["name"] == filename
+        assert video_kwargs["content_settings"].content_type == content_type
+        assert uploaded_bytes == [b"video-data"]
 
     def test_upload_secure_filename(self) -> None:
         safe_filename = "evil.mp4"
