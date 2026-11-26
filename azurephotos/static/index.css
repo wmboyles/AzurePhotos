@@ -42,43 +42,52 @@ div.fixed-bottom {
 
 .photo-card {
     position: relative;
-    border-radius: 0.5rem;
     transition: transform 0.2s;
-    border: none;
 }
 
-/* Hover and selected scaling */
-.photo-card:hover,
-.photo-card:has(.photo-checkbox:checked) {
-    transform: scale(0.96);
-}
-
-/* Initially hide the checkbox and action buttons */
+/* Normal mode: Checkbox appears on hover */
 .photo-card .photo-checkbox {
     opacity: 0;
     position: absolute;
     top: 0.5rem;
     right: 0.5rem;
-    background-color: rgba(255, 255, 255, 0.8);
-    border-radius: 0.25rem;
-    padding: 0.25rem;
     transition: opacity 0.2s;
+    pointer-events: none;
 }
 
-.photo-action.remove-file-btn {
+.photo-card:hover .photo-checkbox {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Selection mode: Checkboxes always visible */
+#photos.selection-mode .photo-checkbox {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Selection mode: Indicate entire card is clickable */
+#photos.selection-mode .photo-card {
+    cursor: pointer;
+}
+
+/* Make selected photos visually distinct */
+.photo-card:has(.photo-checkbox:checked) {
+    transform: scale(0.96);
+    opacity: 0.75;
+}
+
+/* Upload: Hide action buttons */
+.photo-card .photo-action  {
     opacity: 0;
     position: absolute;
     bottom: 0.5rem;
     left: 0.5rem;
-    padding: 0.25rem;
     transition: opacity 0.2s;
 }
 
-/* Show checkbox and action on buttons on hover */
-/* Keep checkbox visible when checkbox is checked */
-.photo-card:hover .photo-checkbox,
-.photo-card:hover .photo-action,
-.photo-card .photo-checkbox:checked {
+/* Upload: Show action on buttons on hover */
+.photo-card:hover .photo-action  {
     opacity: 1;
 }
 

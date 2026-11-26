@@ -387,18 +387,13 @@ $(document).ready(() => {
         $("#submitUpload").prop("disabled", itemsToUpload.length === 0);
     }
 
-    // Open fullsize modal when clicking on a thumbnail
-    $("#fullsizeModal").on('show.bs.modal', function (event) {
-        const trigger = event.relatedTarget;
-        const fullSrc = trigger.getAttribute('data-full');
+    function openPhotoViewer(trigger) {
+        const fullSrc = trigger.getAttribute("data-full");
         modalPhotoName = fullSrc.slice("/fullsize/".length);
 
         const fullsizeModalBody = document.getElementById("fullsizeModalBody");
-
-        // Clear any existing parts of the modal body
         fullsizeModalBody.innerHTML = "";
 
-        // Build a new img or video inside the modal body
         if (isVideo(fullSrc)) {
             const video = document.createElement("video");
             video.className = "img-fluid";
@@ -423,15 +418,15 @@ $(document).ready(() => {
             fullsizeModalBody.appendChild(img);
         }
 
-        // Populate title
         $("#fullsizeModalLabel").text(modalPhotoName);
-
-        // Make new tab viewing buttons work
-        $("#viewerOriginal, #viewerDownload").attr("href", `/fullsize/${modalPhotoName}`);
-    });
-
-    // Close fullsize modal
-    $("#fullsizeModal").on("hidden.bs.modal", async function () {
+        $("#viewerOriginal, #viewerDownload")
+            .attr("href", `/fullsize/${modalPhotoName}`);
+        
+        bootstrap.Modal.getOrCreateInstance(
+            document.getElementById("fullsizeModal")
+        ).show(trigger);
+    }
+    async function closePhotoViewer() {
         // Clear any existing parts of the modal body
         // This should also stop a video that was playing
         const fullsizeModalBody = document.getElementById("fullsizeModalBody");
@@ -464,7 +459,8 @@ $(document).ready(() => {
         // Clear modal body
         fullsizeModalBody.innerHTML = "";
         modalPhotoName = null;
-    });
+    }
+    $("#fullsizeModal").on("hidden.bs.modal", closePhotoViewer);
 
     // Drag and drop photos for upload
     $("#uploadDropZone").on("dragover", function (event) {
@@ -765,25 +761,56 @@ $(document).ready(() => {
         li.click((_) => moveCheckedItems(targetAlbum));
     });
 
+    // Manage selection mode and selection bar
+    function updateSelectionUI() {
+        const selectionMode = checkedItems.size > 0;
+
+        $("#photos").toggleClass("selection-mode", selectionMode);
+        $("#selectionCount").text(`${checkedItems.size} selected`);
+        $("#selectionBar").prop("hidden", !selectionMode);
+    }
+
+    // Photo Click
+    // Normal mode: Open fullsize viewer modal
+    // Selection mode: Add/remove photo from selection
+    $("#photos").on("click", ".photo-card", function (event) {
+        // Checkboxes have their own handler
+        if ($(event.target).closest(".photo-checkbox").length) {
+            return;
+        }
+
+        const checkbox = $(this).find(".photo-checkbox")[0];
+
+        // Selection mode
+        if ($("#photos").hasClass("selection-mode")) {
+            checkbox.checked = !checkbox.checked;
+            $(checkbox).trigger("change");
+        }
+        // Normal mode 
+        else {
+            const image = $(this).find("img")[0];
+            openPhotoViewer(image);
+        }
+    });
+
     // Select and unselect photos and videos
     $(".photo-checkbox").on("change", function (_) {
-        const selected = $(this).val()
+        const selected = $(this).val();
+
         if (this.checked) {
             checkedItems.add(selected);
         } else {
             checkedItems.delete(selected);
         }
 
-        $("#selectionCount").text(`${checkedItems.size} selected`);
-        $("#selectionBar").prop("hidden", checkedItems.size == 0);
+        updateSelectionUI();
     });
 
     // Clear selected photos and videos
     function unselectAll() {
-        $(".photo-checkbox")
-            .prop("checked", false)
-            .trigger("change")
+        $(".photo-checkbox").prop("checked", false);
         checkedItems.clear();
+        updateSelectionUI();
     }
     $(document).on("keydown", function (event) {
         if (event.key !== "Escape") {
