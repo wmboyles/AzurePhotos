@@ -10,12 +10,11 @@ An empty row key represents the album itself.
 
 from azure.core.exceptions import ResourceNotFoundError, ResourceExistsError
 from azure.data.tables import TableClient
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from flask import Blueprint, Response, current_app, request, url_for, redirect
 from typing import Any
 
 from .media_cache import invalidate_media_cache
-from ..lib.refresher import refreshed
 from ..lib.models.media import MediaRecord
 
 api_albums_controller = Blueprint(
@@ -410,7 +409,6 @@ def remove_from_all_albums(filename: str) -> set[str]:
     return albums_affected
 
 
-@refreshed(every=timedelta(seconds=30))
 def non_album_file_names() -> list[MediaRecord]:
     """
     Get all entities not in an album

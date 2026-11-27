@@ -1,10 +1,20 @@
 import pytest
 
+from azure.data.tables import TableClient
 from datetime import datetime, timezone, timedelta
+from flask import Flask
 from unittest.mock import Mock
 
 from src.api import media_cache, albums
 from src.lib.models.media import MediaRecord, MediaType
+from tests.mocks import as_mock
+
+
+@pytest.fixture(autouse=True)
+def reset_media_cache():
+    media_cache.invalidate_media_cache()
+    yield
+    media_cache.invalidate_media_cache()
 
 
 def test_invalidate_media_cache() -> None:
@@ -58,3 +68,59 @@ def test_all_media(monkeypatch: pytest.MonkeyPatch) -> None:
 
     assert result2 == result
     non_album_file_names_mock.assert_called_once()
+
+
+@pytest.mark.parametrize("empty_cache", [False, True])
+def test_all_media_expires_after_five_minutes(
+    monkeypatch: pytest.MonkeyPatch, empty_cache: bool
+) -> None:
+    dt = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    initial = [] if empty_cache else [MediaRecord(dt, "first.jpg", MediaType.PHOTO)]
+    updated = [MediaRecord(dt, "new.jpg", MediaType.PHOTO)]
+    storage = Mock(side_effect=[initial, updated])
+    monkeypatch.setattr(albums, "non_album_file_names", storage)
+    now = [100.0]
+    monkeypatch.setattr(media_cache, "monotonic", lambda: now[0])
+    ttl = timedelta(minutes=5)
+
+    assert media_cache.all_media() == initial
+    now[0] = 100.0 + (ttl - timedelta(milliseconds=100)).total_seconds()
+    assert media_cache.all_media() == initial
+    storage.assert_called_once()
+    now[0] = 100.0 + ttl.total_seconds()
+    assert media_cache.all_media() == updated
+    assert storage.call_count == 2
+
+
+def test_invalidation_reads_storage_without_waiting_for_expiry(
+    app: Flask, fake_albums_table_client: TableClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    dt = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    storage = as_mock(fake_albums_table_client.query_entities)
+    storage.side_effect = [
+        [{"RowKey": "first.jpg", "Created": dt}],
+        [{"RowKey": "new.jpg", "Created": dt}],
+    ]
+    monkeypatch.setattr(media_cache, "monotonic", lambda: 100.0)
+
+    with app.app_context():
+        assert media_cache.all_media()[0].filename == "first.jpg"
+        media_cache.invalidate_media_cache()
+        assert media_cache.all_media()[0].filename == "new.jpg"
+    assert storage.call_count == 2
+
+
+def test_expired_cache_surfaces_storage_failure_and_retries(
+    monkeypatch: pytest.MonkeyPatch
+) -> None:
+    storage = Mock(side_effect=[[], RuntimeError("storage unavailable"), []])
+    monkeypatch.setattr(albums, "non_album_file_names", storage)
+    now = [100.0]
+    monkeypatch.setattr(media_cache, "monotonic", lambda: now[0])
+
+    assert media_cache.all_media() == []
+    now[0] += timedelta(minutes=5).total_seconds()
+    with pytest.raises(RuntimeError, match="storage unavailable"):
+        media_cache.all_media()
+    assert media_cache.all_media() == []
+    assert storage.call_count == 3
