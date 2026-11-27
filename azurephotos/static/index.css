@@ -16,10 +16,16 @@ main {
              max(12px, env(safe-area-inset-left));
 }
 
-#appFooter.viewport-positioned {
-    top: var(--footer-viewport-bottom);
-    bottom: auto;
-    translate: 0 -100%;
+/* Cover Safari toolbar gaps without changing the footer's position or size. */
+#appFooter::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    height: calc(100lvh - 100svh + env(safe-area-inset-bottom));
+    background: inherit;
+    pointer-events: none;
 }
 
 [hidden] {

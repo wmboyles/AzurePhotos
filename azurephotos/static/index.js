@@ -338,23 +338,6 @@ function updateNavigation(navLinks) {
 // Some variables are passed here from HTML from Flask.
 // We'll have `albums` on all pages and `album` on an album page
 $(document).ready(() => {
-    const footer = document.getElementById("appFooter");
-    const viewport = window.visualViewport;
-    // Safari's collapsed toolbar can leave bottom: 0 anchored above the visible edge.
-    function positionFooter() {
-        if (!viewport || viewport.scale !== 1) {
-            footer.classList.remove("viewport-positioned");
-            footer.style.removeProperty("--footer-viewport-bottom");
-            return;
-        }
-        footer.style.setProperty("--footer-viewport-bottom", `${viewport.offsetTop + viewport.height}px`);
-        footer.classList.add("viewport-positioned");
-    }
-    viewport?.addEventListener("resize", positionFooter);
-    viewport?.addEventListener("scroll", positionFooter);
-    $(window).on("pageshow resize", positionFooter);
-    positionFooter();
-
     /**
      * Last viewed photo or video in modal
      * @type {string?}
